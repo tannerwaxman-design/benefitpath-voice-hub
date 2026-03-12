@@ -21,7 +21,9 @@ export function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const usagePercent = (user.minutesUsed / user.minutesLimit) * 100;
+  const minutesUsed = user?.tenant?.minutes_used_this_cycle ?? 0;
+  const minutesLimit = user?.tenant?.monthly_minute_limit ?? 10000;
+  const usagePercent = (minutesUsed / minutesLimit) * 100;
   const usageColor = usagePercent > 90 ? "bg-destructive" : usagePercent > 70 ? "bg-warning" : "bg-success";
 
   return (
@@ -63,7 +65,7 @@ export function Sidebar() {
           <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-1">
             <div className={`h-full rounded-full transition-all ${usageColor}`} style={{ width: `${usagePercent}%` }} />
           </div>
-          <p className="text-xs text-slate-500">{user.minutesUsed.toLocaleString()} / {user.minutesLimit.toLocaleString()} min</p>
+          <p className="text-xs text-slate-500">{minutesUsed.toLocaleString()} / {minutesLimit.toLocaleString()} min</p>
           <button className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Upgrade Plan</button>
         </div>
       )}

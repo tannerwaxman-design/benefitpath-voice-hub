@@ -40,8 +40,8 @@ export function Header() {
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">MT</AvatarFallback>
           </Avatar>
           <div className="hidden md:block">
-            <p className="text-sm font-medium text-foreground leading-none">{user.name}</p>
-            <p className="text-xs text-muted-foreground">{user.company}</p>
+            <p className="text-sm font-medium text-foreground leading-none">{user?.email ?? ""}</p>
+            <p className="text-xs text-muted-foreground">{user?.tenant?.company_name ?? ""}</p>
           </div>
         </div>
       </div>
