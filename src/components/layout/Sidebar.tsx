@@ -65,7 +65,7 @@ export function Sidebar() {
           <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-1">
             <div className={`h-full rounded-full transition-all ${usageColor}`} style={{ width: `${usagePercent}%` }} />
           </div>
-          <p className="text-xs text-slate-500">{user.minutesUsed.toLocaleString()} / {user.minutesLimit.toLocaleString()} min</p>
+          <p className="text-xs text-slate-500">{minutesUsed.toLocaleString()} / {minutesLimit.toLocaleString()} min</p>
           <button className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Upgrade Plan</button>
         </div>
       )}
