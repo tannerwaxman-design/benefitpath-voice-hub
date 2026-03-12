@@ -1,31 +1,73 @@
-import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, TrendingUp } from "lucide-react";
+import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { campaigns, calls, callOutcomeData, generateCallVolumeData } from "@/data/mockData";
-import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCampaigns } from "@/hooks/use-campaigns";
+import { useRecentCalls } from "@/hooks/use-calls";
+import { useAnalyticsSummary, useCallsPerDay } from "@/hooks/use-analytics";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState, useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { subDays, format } from "date-fns";
 
-const statCards = [
-  { label: "Total Calls Made", value: "12,847", sub: "+1,243 this week", icon: PhoneOutgoing, accent: "stat-card-accent-indigo", iconBg: "bg-primary/10 text-primary" },
-  { label: "Connect Rate", value: "68.4%", sub: "+2.1% vs last week", icon: PhoneCall, accent: "stat-card-accent-green", iconBg: "bg-success/10 text-success" },
-  { label: "Avg Call Duration", value: "3m 24s", sub: "Target: 4m 00s", icon: Clock, accent: "stat-card-accent-amber", iconBg: "bg-warning/10 text-warning" },
-  { label: "Appointments Set", value: "1,847", sub: "14.4% conversion rate", icon: CalendarCheck, accent: "stat-card-accent-purple", iconBg: "bg-purple-100 text-purple-600" },
-];
+const OUTCOME_COLORS: Record<string, string> = {
+  connected: "bg-success/10 text-success",
+  completed: "bg-success/10 text-success",
+  voicemail: "bg-blue-50 text-blue-600",
+  no_answer: "bg-warning/10 text-warning",
+  transferred: "bg-purple-50 text-purple-600",
+  busy: "bg-pink-50 text-pink-600",
+  failed: "bg-destructive/10 text-destructive",
+  in_progress: "bg-blue-50 text-blue-600",
+};
+
+const sentimentDot: Record<string, string> = {
+  positive: "bg-success",
+  neutral: "bg-warning",
+  negative: "bg-destructive",
+};
 
 export default function Overview() {
+  const { user } = useAuth();
   const [chartRange, setChartRange] = useState(30);
-  const chartData = generateCallVolumeData(chartRange);
-  const activeCampaigns = campaigns.filter(c => c.status === "Active" || c.status === "Paused").slice(0, 4);
-  const recentCalls = calls.slice(0, 8);
+  const now = new Date();
+  const dateFrom = subDays(now, chartRange).toISOString();
+  const dateTo = now.toISOString();
 
-  const outcomeColors: Record<string, string> = {
-    Connected: "bg-success/10 text-success",
-    Voicemail: "bg-blue-50 text-blue-600",
-    "No Answer": "bg-warning/10 text-warning",
-    Transferred: "bg-purple-50 text-purple-600",
-    Callback: "bg-pink-50 text-pink-600",
-    Failed: "bg-destructive/10 text-destructive",
-  };
+  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary(dateFrom, dateTo);
+  const { data: callsPerDay } = useCallsPerDay(dateFrom, dateTo);
+  const { data: campaigns } = useCampaigns();
+  const { data: recentCalls } = useRecentCalls(8);
+
+  const activeCampaigns = useMemo(() => {
+    return (campaigns || []).filter(c => c.status === "active" || c.status === "paused").slice(0, 4);
+  }, [campaigns]);
+
+  const chartData = useMemo(() => {
+    return (callsPerDay || []).map((d: any) => ({
+      date: d.day,
+      calls: Number(d.total_calls),
+    }));
+  }, [callsPerDay]);
+
+  const pieData = useMemo(() => {
+    if (!summary) return [];
+    const total = Number(summary.total_calls) || 1;
+    // Approximate from connect rate
+    const connected = Math.round(total * (Number(summary.connect_rate) || 0) / 100);
+    const remaining = total - connected;
+    return [
+      { name: "Connected", value: connected, color: "#10B981" },
+      { name: "Other", value: remaining, color: "#F59E0B" },
+    ];
+  }, [summary]);
+
+  const statCards = [
+    { label: "Total Calls Made", value: summary ? Number(summary.total_calls).toLocaleString() : "—", sub: `Last ${chartRange} days`, icon: PhoneOutgoing, accent: "stat-card-accent-indigo", iconBg: "bg-primary/10 text-primary" },
+    { label: "Connect Rate", value: summary ? `${Number(summary.connect_rate || 0).toFixed(1)}%` : "—", sub: "Connected / total", icon: PhoneCall, accent: "stat-card-accent-green", iconBg: "bg-success/10 text-success" },
+    { label: "Avg Call Duration", value: summary ? `${Math.floor(Number(summary.avg_duration_seconds || 0) / 60)}m ${Math.round(Number(summary.avg_duration_seconds || 0) % 60)}s` : "—", sub: "Average per call", icon: Clock, accent: "stat-card-accent-amber", iconBg: "bg-warning/10 text-warning" },
+    { label: "Appointments Set", value: summary ? Number(summary.appointments_set).toLocaleString() : "—", sub: summary ? `${Number(summary.conversion_rate || 0).toFixed(1)}% conversion` : "—", icon: CalendarCheck, accent: "stat-card-accent-purple", iconBg: "bg-purple-100 text-purple-600" },
+  ];
 
   function timeAgo(dt: string) {
     const diff = Date.now() - new Date(dt).getTime();
@@ -36,7 +78,8 @@ export default function Overview() {
     return `${Math.floor(hrs / 24)}d ago`;
   }
 
-  function formatDuration(s: number) {
+  function formatDuration(s: number | null) {
+    if (!s) return "0:00";
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
@@ -51,11 +94,8 @@ export default function Overview() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{card.label}</p>
-                <p className="text-2xl font-bold text-foreground mt-1">{card.value}</p>
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  {card.sub.includes("+") && <ArrowUp className="h-3 w-3 text-success" />}
-                  {card.sub}
-                </p>
+                {summaryLoading ? <Skeleton className="h-8 w-20 mt-1" /> : <p className="text-2xl font-bold text-foreground mt-1">{card.value}</p>}
+                <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
               </div>
               <div className={`p-2.5 rounded-full ${card.iconBg}`}>
                 <card.icon className="h-5 w-5" />
@@ -79,36 +119,44 @@ export default function Overview() {
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="callGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={v => v.slice(5)} interval={Math.floor(chartData.length / 6)} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Area type="monotone" dataKey="calls" stroke="#4F46E5" fill="url(#callGrad)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="callGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={v => v?.slice(5) || ""} interval={Math.max(1, Math.floor(chartData.length / 6))} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="calls" stroke="#4F46E5" fill="url(#callGrad)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">No call data yet</div>
+            )}
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle className="card-title">Call Outcomes</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={callOutcomeData} cx="50%" cy="45%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={2}>
-                  {callOutcomeData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" className="text-lg font-bold fill-foreground">12,847</text>
-                <Legend iconType="circle" iconSize={8} formatter={(value) => <span className="text-xs text-slate-600">{value}</span>} />
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {pieData.length > 0 && Number(summary?.total_calls) > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="45%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={2}>
+                    {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" className="text-lg font-bold fill-foreground">{Number(summary?.total_calls || 0)}</text>
+                  <Legend iconType="circle" iconSize={8} formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>} />
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">No data yet</div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -121,19 +169,23 @@ export default function Overview() {
             <a href="/campaigns" className="text-xs text-primary hover:underline">View All</a>
           </CardHeader>
           <CardContent className="space-y-3">
-            {activeCampaigns.map(c => (
+            {activeCampaigns.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No active campaigns</p>
+            ) : activeCampaigns.map(c => (
               <div key={c.id} className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-medium text-foreground truncate">{c.name}</span>
-                    <Badge variant={c.status === "Active" ? "default" : "secondary"} className={c.status === "Active" ? "bg-success/10 text-success border-0 text-[10px]" : "bg-warning/10 text-warning border-0 text-[10px]"}>
+                    <Badge variant={c.status === "active" ? "default" : "secondary"} className={c.status === "active" ? "bg-success/10 text-success border-0 text-[10px]" : "bg-warning/10 text-warning border-0 text-[10px]"}>
                       {c.status}
                     </Badge>
                   </div>
-                  <div className="w-full bg-secondary rounded-full h-1.5 mb-1">
-                    <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(c.contactsCalled / c.contactsTotal) * 100}%` }} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{c.contactsCalled} / {c.contactsTotal} contacted • {c.appointments} appointments</p>
+                  {c.total_contacts > 0 && (
+                    <div className="w-full bg-secondary rounded-full h-1.5 mb-1">
+                      <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(c.contacts_called / c.total_contacts) * 100}%` }} />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">{c.contacts_called} / {c.total_contacts} contacted • {c.appointments_set} appointments</p>
                 </div>
               </div>
             ))}
@@ -146,19 +198,19 @@ export default function Overview() {
             <a href="/call-logs" className="text-xs text-primary hover:underline">View All</a>
           </CardHeader>
           <CardContent className="space-y-2">
-            {recentCalls.map(call => (
+            {(!recentCalls || recentCalls.length === 0) ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No calls yet</p>
+            ) : recentCalls.map(call => (
               <div key={call.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{call.contactName}</p>
-                  <p className="text-xs text-muted-foreground">{call.phone}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{call.contact_name || "Unknown"}</p>
+                  <p className="text-xs text-muted-foreground">{call.to_number}</p>
                 </div>
                 <div className="flex items-center gap-3 text-right">
-                  <span className="text-xs text-muted-foreground">{timeAgo(call.dateTime)}</span>
-                  <Badge variant="secondary" className={`${outcomeColors[call.outcome]} border-0 text-[10px]`}>{call.outcome}</Badge>
-                  <span className="text-xs text-muted-foreground w-10">{formatDuration(call.duration)}</span>
-                  {call.outcome === "Connected" && (
-                    <span className={`h-2 w-2 rounded-full ${call.sentiment === "positive" ? "bg-success" : call.sentiment === "neutral" ? "bg-warning" : "bg-destructive"}`} />
-                  )}
+                  <span className="text-xs text-muted-foreground">{timeAgo(call.started_at)}</span>
+                  <Badge variant="secondary" className={`${OUTCOME_COLORS[call.outcome] || ""} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge>
+                  <span className="text-xs text-muted-foreground w-10">{formatDuration(call.duration_seconds)}</span>
+                  {call.sentiment && <span className={`h-2 w-2 rounded-full ${sentimentDot[call.sentiment] || ""}`} />}
                 </div>
               </div>
             ))}
@@ -166,30 +218,25 @@ export default function Overview() {
         </Card>
       </div>
 
-      {/* AI Insights */}
-      <Card>
-        <CardHeader><CardTitle className="card-title">AI Agent Performance Insights</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 rounded-lg bg-secondary/30">
-              <p className="section-label mb-2">Top Performing Agent</p>
-              <p className="text-base font-semibold text-foreground">Sarah — Benefits Specialist</p>
-              <p className="text-sm text-muted-foreground mt-1">73.2% success rate • 4,892 calls</p>
+      {/* Minutes Usage */}
+      {user?.tenant && (
+        <Card>
+          <CardHeader><CardTitle className="card-title">Minutes Usage</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-foreground">{user.tenant.minutes_used_this_cycle.toLocaleString()} / {user.tenant.monthly_minute_limit.toLocaleString()} minutes</span>
+                  <span className="text-sm text-muted-foreground">{((user.tenant.minutes_used_this_cycle / user.tenant.monthly_minute_limit) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${Math.min(100, (user.tenant.minutes_used_this_cycle / user.tenant.monthly_minute_limit) * 100)}%` }} />
+                </div>
+              </div>
             </div>
-            <div className="p-4 rounded-lg bg-secondary/30">
-              <p className="section-label mb-2">Most Common Objection</p>
-              <p className="text-base font-semibold text-foreground">"Already have coverage"</p>
-              <p className="text-sm text-muted-foreground mt-1">Detected 342 times this month</p>
-              <button className="text-xs text-primary mt-2 hover:underline">View objection handling →</button>
-            </div>
-            <div className="p-4 rounded-lg bg-secondary/30">
-              <p className="section-label mb-2">Recommended Action</p>
-              <p className="text-sm text-foreground">Your Tuesday 10am-12pm slot has 23% higher connect rates. Consider scheduling more campaigns during this window.</p>
-              <button className="mt-2 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:opacity-90">Adjust Schedule</button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
