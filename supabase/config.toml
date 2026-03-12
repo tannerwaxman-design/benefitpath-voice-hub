@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.start-campaign]
 verify_jwt = false
 
+[functions.launch-campaign]
+verify_jwt = false
+
 [functions.provision-phone-number]
 verify_jwt = false
 
