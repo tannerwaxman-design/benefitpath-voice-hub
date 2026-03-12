@@ -9,72 +9,161 @@ const corsHeaders = {
 const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY")!;
 const VAPI_BASE_URL = "https://api.vapi.ai";
 
+// ============================================
+// SYSTEM PROMPT COMPILER
+// Takes all agent config + tenant info and builds
+// one comprehensive system prompt for VAPI's LLM
+// ============================================
+
+function formatObjective(objective: string): string {
+  const map: Record<string, string> = {
+    appointment_setting: "Schedule an appointment with a benefits advisor",
+    lead_qualification: "Qualify the lead and determine their level of interest",
+    enrollment_followup: "Follow up on benefits enrollment status",
+    policy_renewal: "Remind about and facilitate policy renewal",
+    survey: "Conduct a satisfaction or feedback survey",
+    payment_reminder: "Remind about an upcoming or overdue payment",
+    general_info: "Provide general information about benefits and services",
+    custom: "Complete the custom objective defined by the caller's needs",
+  };
+  return map[objective] || objective.replace(/_/g, " ");
+}
+
+function formatCTA(cta: string): string {
+  const map: Record<string, string> = {
+    book_appointment: "Book an appointment",
+    confirm_enrollment: "Confirm enrollment details",
+    collect_info: "Collect contact information for follow-up",
+    transfer: "Transfer to a live agent",
+    send_email: "Offer to send detailed information via email",
+    custom: "Complete the custom action",
+  };
+  return map[cta] || cta.replace(/_/g, " ");
+}
+
+function formatTrigger(trigger: string): string {
+  const map: Record<string, string> = {
+    human_requested: "The caller explicitly asks to speak with a human",
+    high_intent: "The caller shows high buying intent (e.g., 'I want to sign up', 'How do I enroll?')",
+    frustrated: "The caller becomes frustrated, angry, or raises their voice",
+    cannot_answer: "You cannot answer a question after 2 attempts",
+    competitor_mention: "The caller mentions a competitor by name",
+    sensitive_topic: "The caller discusses sensitive medical details or legal concerns",
+  };
+  return map[trigger] || trigger.replace(/_/g, " ");
+}
+
 function compileSystemPrompt(agent: any, tenant: any): string {
   const companyName = agent.company_name_override || tenant.company_name;
+
   let prompt = `You are ${agent.agent_name}`;
   if (agent.agent_title) prompt += `, a ${agent.agent_title}`;
-  prompt += ` at ${companyName}.\n\n`;
+  prompt += ` at ${companyName}.`;
 
-  // Tone
-  prompt += `## Communication Style\n`;
-  prompt += `Tone: ${agent.tone}. Enthusiasm: ${agent.enthusiasm_level}/10.\n`;
-  if (agent.filler_words_enabled) prompt += `Use natural filler words occasionally to sound human.\n`;
-  prompt += `Interruption style: ${agent.interruption_handling}.\n\n`;
+  prompt += `\n\nYour tone is ${agent.tone}. `;
 
-  // Objective
-  prompt += `## Call Objective\nYour primary objective is: ${agent.call_objective.replace(/_/g, " ")}.\n`;
-  prompt += `Primary CTA: ${agent.primary_cta.replace(/_/g, " ")}. Fallback CTA: ${agent.fallback_cta?.replace(/_/g, " ") || "send email"}.\n\n`;
+  if (agent.filler_words_enabled) {
+    prompt += `Use natural filler words occasionally (um, let me think, well) to sound more human. `;
+  }
+
+  prompt += `Your enthusiasm level is ${agent.enthusiasm_level}/10. `;
+
+  if (agent.interruption_handling === "patient") {
+    prompt += `Be patient — wait for complete silence before responding. `;
+  } else if (agent.interruption_handling === "responsive") {
+    prompt += `Be responsive — reply quickly when you detect the caller has paused. `;
+  } else {
+    prompt += `Let the caller finish speaking, then respond naturally. `;
+  }
+
+  // Call objective
+  prompt += `\n\n## YOUR OBJECTIVE\n`;
+  prompt += `Your primary goal for this call is: ${formatObjective(agent.call_objective)}. `;
+  prompt += `Primary CTA: ${formatCTA(agent.primary_cta)}. `;
+  prompt += `If that fails, your fallback is: ${formatCTA(agent.fallback_cta || "send_email")}.\n`;
 
   // Conversation stages
-  if (agent.conversation_stages && Array.isArray(agent.conversation_stages) && agent.conversation_stages.length > 0) {
-    prompt += `## Conversation Flow\nFollow these stages in order:\n`;
-    for (const stage of agent.conversation_stages) {
+  const stages = agent.conversation_stages;
+  if (stages && Array.isArray(stages) && stages.length > 0) {
+    prompt += `\n## CONVERSATION FLOW\nFollow these stages in order:\n`;
+    for (const stage of stages) {
       prompt += `\n### ${stage.name}\n${stage.script || ""}\n`;
-      if (stage.questions?.length) {
+      if (stage.questions && stage.questions.length > 0) {
         prompt += `Ask these questions:\n`;
-        for (const q of stage.questions) prompt += `- ${q}\n`;
+        for (const q of stage.questions) {
+          prompt += `- ${q}\n`;
+        }
       }
     }
-    prompt += "\n";
   }
 
   // Objection handling
-  if (agent.objection_handling && Array.isArray(agent.objection_handling) && agent.objection_handling.length > 0) {
-    prompt += `## Objection Handling\n`;
-    for (const obj of agent.objection_handling) {
-      prompt += `If they say "${obj.objection}": ${obj.response}\n`;
+  const objections = agent.objection_handling;
+  if (objections && Array.isArray(objections) && objections.length > 0) {
+    prompt += `\n## OBJECTION HANDLING\n`;
+    prompt += `When the caller raises objections, respond as follows:\n`;
+    for (const obj of objections) {
+      prompt += `\nIf they say "${obj.objection}": ${obj.response}\n`;
     }
-    prompt += "\n";
   }
 
   // Knowledge base
   if (agent.knowledge_base_text) {
-    prompt += `## Knowledge Base\n${agent.knowledge_base_text}\n\n`;
+    prompt += `\n## COMPANY KNOWLEDGE BASE\nUse this information to answer questions:\n`;
+    prompt += agent.knowledge_base_text + "\n";
   }
 
   // FAQ
-  if (agent.faq_pairs && Array.isArray(agent.faq_pairs) && agent.faq_pairs.length > 0) {
-    prompt += `## Frequently Asked Questions\n`;
-    for (const faq of agent.faq_pairs) {
+  const faqs = agent.faq_pairs;
+  if (faqs && Array.isArray(faqs) && faqs.length > 0) {
+    prompt += `\n## FREQUENTLY ASKED QUESTIONS\n`;
+    for (const faq of faqs) {
       prompt += `Q: ${faq.question}\nA: ${faq.answer}\n\n`;
     }
   }
 
-  // Closing
-  if (agent.closing_script) {
-    prompt += `## Closing Script\n${agent.closing_script}\n\n`;
+  // Transfer rules
+  const triggers = agent.transfer_triggers;
+  if (agent.transfer_phone_number && triggers && Array.isArray(triggers) && triggers.length > 0) {
+    prompt += `\n## WHEN TO TRANSFER TO A HUMAN\n`;
+    prompt += `Transfer the call to a live agent when:\n`;
+    for (const trigger of triggers) {
+      prompt += `- ${formatTrigger(trigger)}\n`;
+    }
+    if (agent.transfer_announcement) {
+      prompt += `Before transferring, say: "${agent.transfer_announcement}"\n`;
+    }
   }
 
-  // Compliance
-  if (agent.respect_dnc) {
-    prompt += `## Compliance\nIf the caller asks to be placed on a do-not-call list or says "stop calling me", immediately comply, end the call politely, and note the DNC request.\n`;
+  // Compliance rules
+  prompt += `\n## COMPLIANCE RULES (ALWAYS FOLLOW THESE)\n`;
+  if (tenant.recording_disclosure_enabled || agent.play_disclosure) {
+    prompt += `- If asked about recording: "${agent.disclosure_script || tenant.recording_disclosure_text || "This call may be recorded for quality and training purposes."}"\n`;
   }
-  if (agent.require_verbal_consent && agent.consent_script) {
-    prompt += `Before proceeding with the call, ask for consent: "${agent.consent_script}"\n`;
+  if (agent.require_verbal_consent) {
+    prompt += `- Before proceeding with the call, get verbal consent: "${agent.consent_script || tenant.consent_script || "Do you consent to receiving information about your benefits options?"}"\n`;
+  }
+  prompt += `- If the caller says "stop calling", "do not call", "remove me", or anything similar, IMMEDIATELY comply. Say "I understand, I'll make sure you're removed from our call list. I apologize for the inconvenience. Have a good day." Then end the call.\n`;
+  prompt += `- NEVER provide medical, legal, or financial advice.\n`;
+  prompt += `- NEVER make guarantees about coverage, pricing, or eligibility.\n`;
+  prompt += `- Always identify yourself honestly as calling on behalf of ${companyName}.\n`;
+
+  // Closing
+  if (agent.closing_script) {
+    prompt += `\n## CLOSING THE CALL\nWhen wrapping up, say something like: "${agent.closing_script}"\n`;
+  }
+
+  // Voicemail
+  if (agent.voicemail_enabled && agent.voicemail_script) {
+    prompt += `\n## VOICEMAIL\nIf you reach voicemail, leave this message: "${agent.voicemail_script}"\n`;
   }
 
   return prompt;
 }
+
+// ============================================
+// EDGE FUNCTION: create-agent
+// ============================================
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -123,7 +212,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Tenant not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Save agent to DB first
+    // Build agent data
     const agentData = {
       tenant_id: tenantUser.tenant_id,
       agent_name: body.agent_name,
@@ -162,6 +251,7 @@ Deno.serve(async (req) => {
       cooloff_days_not_interested: body.cooloff_days_not_interested || 30,
       max_call_duration_minutes: body.max_call_duration_minutes || 10,
       silence_timeout_seconds: body.silence_timeout_seconds || 15,
+      warning_before_max_duration: body.warning_before_max_duration ?? true,
       amd_enabled: body.amd_enabled ?? true,
       amd_action: body.amd_action || "leave_voicemail",
       business_hours: body.business_hours || {},
@@ -169,14 +259,21 @@ Deno.serve(async (req) => {
       transfer_triggers: body.transfer_triggers || ["human_requested"],
       transfer_method: body.transfer_method || "warm",
       transfer_phone_number: body.transfer_phone_number || null,
-      transfer_announcement: body.transfer_announcement || null,
+      backup_transfer_number: body.backup_transfer_number || null,
+      transfer_announcement: body.transfer_announcement || "I'm going to connect you with one of our specialists. Please hold for just a moment.",
       transfer_timeout_seconds: body.transfer_timeout_seconds || 30,
+      if_no_human: body.if_no_human || "take_message",
       record_calls: body.record_calls ?? tenant.recording_enabled,
       play_disclosure: body.play_disclosure ?? tenant.recording_disclosure_enabled,
       disclosure_script: body.disclosure_script || tenant.recording_disclosure_text,
+      disclosure_timing: body.disclosure_timing || "before_greeting",
+      require_verbal_consent: body.require_verbal_consent ?? false,
+      consent_script: body.consent_script || null,
+      respect_dnc: true, // Always true, cannot be disabled
       vapi_sync_status: "pending",
     };
 
+    // Insert agent
     const { data: agent, error: insertErr } = await supabase
       .from("agents")
       .insert(agentData)
@@ -187,15 +284,23 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: insertErr.message }), { status: 400, headers: corsHeaders });
     }
 
-    // Compile system prompt and create VAPI assistant
-    const systemPrompt = compileSystemPrompt(agent, tenant);
+    // Compile system prompt
+    const compiledPrompt = compileSystemPrompt(agent, tenant);
 
+    // Store compiled prompt
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    await serviceClient.from("agents").update({ compiled_system_prompt: compiledPrompt }).eq("id", agent.id);
+
+    // Create VAPI assistant
     const vapiPayload: any = {
       name: `${tenant.company_name} - ${agent.agent_name}`,
       model: {
         provider: "openai",
         model: "gpt-4o",
-        messages: [{ role: "system", content: systemPrompt }],
+        messages: [{ role: "system", content: compiledPrompt }],
         temperature: 0.7,
       },
       voice: {
@@ -229,9 +334,14 @@ Deno.serve(async (req) => {
         destinations: [{
           type: "number",
           number: agent.transfer_phone_number,
-          message: agent.transfer_announcement || "Connecting you now...",
+          message: agent.transfer_announcement,
         }],
       }];
+    }
+
+    // Add voicemail message if configured
+    if (agent.voicemail_enabled && agent.voicemail_script) {
+      vapiPayload.voicemailMessage = agent.voicemail_script;
     }
 
     const vapiRes = await fetch(`${VAPI_BASE_URL}/assistant`, {
@@ -245,13 +355,12 @@ Deno.serve(async (req) => {
 
     if (!vapiRes.ok) {
       const vapiErr = await vapiRes.text();
-      // Update agent with error
-      await supabase.from("agents").update({
+      await serviceClient.from("agents").update({
         vapi_sync_status: "error",
         vapi_sync_error: vapiErr,
       }).eq("id", agent.id);
 
-      return new Response(JSON.stringify({ error: "VAPI sync failed", details: vapiErr, agent_id: agent.id }), {
+      return new Response(JSON.stringify({ error: "Voice engine sync failed", details: vapiErr, agent_id: agent.id }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -259,14 +368,19 @@ Deno.serve(async (req) => {
     const vapiAssistant = await vapiRes.json();
 
     // Update agent with VAPI ID
-    await supabase.from("agents").update({
+    await serviceClient.from("agents").update({
       vapi_assistant_id: vapiAssistant.id,
       vapi_sync_status: "synced",
       vapi_last_synced_at: new Date().toISOString(),
       vapi_sync_error: null,
     }).eq("id", agent.id);
 
-    return new Response(JSON.stringify({ ...agent, vapi_assistant_id: vapiAssistant.id, vapi_sync_status: "synced" }), {
+    return new Response(JSON.stringify({
+      ...agent,
+      vapi_assistant_id: vapiAssistant.id,
+      vapi_sync_status: "synced",
+      compiled_system_prompt: compiledPrompt,
+    }), {
       status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
