@@ -51,7 +51,7 @@ export default function AgentEditor() {
   const [companyName, setCompanyName] = useState("");
   const [description, setDescription] = useState("");
   const [agentActive, setAgentActive] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState("aria");
+  const [selectedVoice, setSelectedVoice] = useState("EXAVITQu4vr4xnSDxMaL");
   const [speed, setSpeed] = useState([1.0]);
   const [tone, setTone] = useState("professional");
   const [enthusiasm, setEnthusiasm] = useState([6]);
