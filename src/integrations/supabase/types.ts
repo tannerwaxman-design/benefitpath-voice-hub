@@ -1220,6 +1220,10 @@ export type Database = {
         Args: { cc_id: string }
         Returns: undefined
       }
+      increment_tenant_minutes: {
+        Args: { p_minutes: number; p_tenant_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -200,25 +200,21 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // Update tenant minute usage
+          // Update tenant minute usage (atomic increment via RPC)
           if (tenantId && !isTestCall) {
+            await supabase.rpc("increment_tenant_minutes", {
+              p_tenant_id: tenantId,
+              p_minutes: durationMinutes,
+            });
+
+            // Get billing cycle for usage log
             const { data: tenant } = await supabase
               .from("tenants")
-              .select("minutes_used_this_cycle, billing_cycle_start, billing_cycle_end")
+              .select("billing_cycle_start, billing_cycle_end")
               .eq("id", tenantId)
               .single();
 
             if (tenant) {
-              await supabase
-                .from("tenants")
-                .update({
-                  minutes_used_this_cycle:
-                    (tenant.minutes_used_this_cycle || 0) +
-                    Math.ceil(durationMinutes),
-                })
-                .eq("id", tenantId);
-
-              // Log usage for billing
               await supabase.from("usage_logs").insert({
                 tenant_id: tenantId,
                 event_type: "call_minutes",
