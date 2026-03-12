@@ -21,15 +21,12 @@ const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowled
 
 const industries = ["Insurance", "Employee Benefits", "Health & Wellness", "Human Resources", "Financial Services", "Medicare", "Dental/Vision", "Life Insurance", "Workers' Comp", "Other"];
 
-const voiceOptions = [
-  { id: "aria", name: "Aria", gender: "Female", accent: "American — Warm & Professional", provider: "eleven_labs" },
-  { id: "marcus", name: "Marcus", gender: "Male", accent: "American — Confident & Clear", provider: "eleven_labs" },
-  { id: "elena", name: "Elena", gender: "Female", accent: "British — Polished", provider: "eleven_labs" },
-  { id: "devon", name: "Devon", gender: "Male", accent: "American — Friendly & Casual", provider: "eleven_labs" },
-  { id: "nina", name: "Nina", gender: "Female", accent: "American — Empathetic & Caring", provider: "eleven_labs" },
-  { id: "carter", name: "Carter", gender: "Male", accent: "American — Authoritative", provider: "eleven_labs" },
-  { id: "priya", name: "Priya", gender: "Female", accent: "American — Energetic & Upbeat", provider: "eleven_labs" },
-  { id: "jackson", name: "Jackson", gender: "Male", accent: "Southern — Warm & Trustworthy", provider: "eleven_labs" },
+// Fallback voices if API hasn't loaded yet
+const fallbackVoices: ElevenLabsVoice[] = [
+  { voice_id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", category: "premade", labels: { accent: "American", gender: "Female" }, preview_url: null, description: null },
+  { voice_id: "JBFqnCBsd6RMkjVDRZzb", name: "George", category: "premade", labels: { accent: "British", gender: "Male" }, preview_url: null, description: null },
+  { voice_id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", category: "premade", labels: { accent: "British", gender: "Male" }, preview_url: null, description: null },
+  { voice_id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", category: "premade", labels: { accent: "British", gender: "Female" }, preview_url: null, description: null },
 ];
 
 export default function AgentEditor() {
