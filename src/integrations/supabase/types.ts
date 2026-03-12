@@ -26,6 +26,7 @@ export type Database = {
           call_objective: string
           closing_script: string | null
           company_name_override: string | null
+          compiled_system_prompt: string | null
           consent_script: string | null
           conversation_stages: Json
           cooloff_days_not_interested: number
@@ -94,6 +95,7 @@ export type Database = {
           call_objective?: string
           closing_script?: string | null
           company_name_override?: string | null
+          compiled_system_prompt?: string | null
           consent_script?: string | null
           conversation_stages?: Json
           cooloff_days_not_interested?: number
@@ -162,6 +164,7 @@ export type Database = {
           call_objective?: string
           closing_script?: string | null
           company_name_override?: string | null
+          compiled_system_prompt?: string | null
           consent_script?: string | null
           conversation_stages?: Json
           cooloff_days_not_interested?: number
