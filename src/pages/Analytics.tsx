@@ -1,62 +1,85 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { generateCallVolumeData, callOutcomeData, generateHeatmapData } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, TrendingDown, Download } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, ComposedChart, Line,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, Funnel, FunnelChart, LabelList,
+  ComposedChart, Bar, Line,
+  BarChart,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 
-const kpis = [
-  { label: "Total Calls", value: "12,847", change: "+18.2%", up: true },
-  { label: "Connect Rate", value: "68.4%", change: "+2.1%", up: true },
-  { label: "Avg Duration", value: "3m 24s", change: "+12s", up: true },
-  { label: "Appointments Set", value: "1,847", change: "+24.3%", up: true },
-  { label: "Conversion Rate", value: "14.4%", change: "+1.8%", up: true },
-  { label: "Minutes Used", value: "4,328", change: "43.3% used", up: true },
-];
-
-const volumeData = generateCallVolumeData(30).map((d, i) => ({
-  ...d,
-  connectRate: 60 + Math.random() * 20,
-}));
-
-const sentimentData = [
-  { agent: "Sarah", positive: 72, neutral: 20, negative: 8 },
-  { agent: "James", positive: 65, neutral: 25, negative: 10 },
-];
-
-const objectionData = [
-  { name: "Not interested", count: 342 },
-  { name: "Already have coverage", count: 289 },
-  { name: "Too busy", count: 234 },
-  { name: "Call back later", count: 198 },
-  { name: "Is this a scam?", count: 87 },
-  { name: "Want to speak to human", count: 76 },
-];
-
-const funnelData = [
-  { name: "Total Calls", value: 12847, fill: "#4F46E5" },
-  { name: "Connected", value: 8787, fill: "#6366F1" },
-  { name: "Engaged (>1 min)", value: 6234, fill: "#818CF8" },
-  { name: "Qualified", value: 3892, fill: "#A5B4FC" },
-  { name: "Appointment Set", value: 1847, fill: "#10B981" },
-  { name: "Showed Up (est.)", value: 1293, fill: "#34D399" },
-];
-
-const agentPerformance = [
-  { agent: "Sarah", calls: 4892, connectRate: "71.2%", avgDuration: "3:48", appointments: 892, conversion: "18.2%", sentiment: "72% pos" },
-  { agent: "James", calls: 2341, connectRate: "64.8%", avgDuration: "3:12", appointments: 412, conversion: "17.6%", sentiment: "65% pos" },
-  { agent: "Maria", calls: 0, connectRate: "—", avgDuration: "—", appointments: 0, conversion: "—", sentiment: "—" },
-];
+function formatDuration(seconds: number | null): string {
+  if (!seconds) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export default function Analytics() {
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState("30");
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(null);
+  const [callsPerDay, setCallsPerDay] = useState<any[]>([]);
+  const [agentPerf, setAgentPerf] = useState<any[]>([]);
+  const [funnel, setFunnel] = useState<any>(null);
+  const [tenant, setTenant] = useState<any>(null);
+
+  const dateFrom = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - parseInt(dateRange));
+    return d.toISOString();
+  }, [dateRange]);
+  const dateTo = useMemo(() => new Date().toISOString(), [dateRange]);
+
+  useEffect(() => {
+    async function fetchAnalytics() {
+      setLoading(true);
+      const [summaryRes, dailyRes, agentRes, funnelRes, tenantRes] = await Promise.all([
+        supabase.rpc("get_analytics_summary", { date_from: dateFrom, date_to: dateTo }),
+        supabase.rpc("get_calls_per_day", { date_from: dateFrom, date_to: dateTo }),
+        supabase.rpc("get_agent_performance", { date_from: dateFrom, date_to: dateTo }),
+        supabase.rpc("get_conversion_funnel", { date_from: dateFrom, date_to: dateTo }),
+        supabase.from("tenants").select("minutes_used_this_cycle, monthly_minute_limit").single(),
+      ]);
+
+      if (summaryRes.data) setSummary(Array.isArray(summaryRes.data) ? summaryRes.data[0] : summaryRes.data);
+      if (dailyRes.data) setCallsPerDay(dailyRes.data);
+      if (agentRes.data) setAgentPerf(agentRes.data);
+      if (funnelRes.data) setFunnel(Array.isArray(funnelRes.data) ? funnelRes.data[0] : funnelRes.data);
+      if (tenantRes.data) setTenant(tenantRes.data);
+      setLoading(false);
+    }
+    fetchAnalytics();
+  }, [dateFrom, dateTo]);
+
+  const kpis = summary ? [
+    { label: "Total Calls", value: (summary.total_calls || 0).toLocaleString() },
+    { label: "Connect Rate", value: `${summary.connect_rate || 0}%` },
+    { label: "Avg Duration", value: formatDuration(summary.avg_duration_seconds) },
+    { label: "Appointments Set", value: (summary.appointments_set || 0).toLocaleString() },
+    { label: "Conversion Rate", value: `${summary.conversion_rate || 0}%` },
+    { label: "Minutes Used", value: tenant ? `${tenant.minutes_used_this_cycle.toLocaleString()} / ${tenant.monthly_minute_limit.toLocaleString()}` : "—" },
+  ] : [];
+
+  const funnelData = funnel ? [
+    { name: "Total Calls", value: funnel.total_calls || 0, fill: "hsl(var(--primary))" },
+    { name: "Connected", value: funnel.connected || 0, fill: "hsl(var(--primary) / 0.8)" },
+    { name: "Engaged (>1 min)", value: funnel.engaged || 0, fill: "hsl(var(--primary) / 0.6)" },
+    { name: "Qualified", value: funnel.qualified || 0, fill: "hsl(var(--primary) / 0.4)" },
+    { name: "Appointment Set", value: funnel.appointments || 0, fill: "hsl(var(--success))" },
+  ] : [];
+
+  const volumeData = callsPerDay.map((d: any) => ({
+    date: d.day,
+    calls: Number(d.total_calls),
+    connected: Number(d.connected),
+    connectRate: d.total_calls > 0 ? Math.round((Number(d.connected) / Number(d.total_calls)) * 100) : 0,
+  }));
 
   return (
     <div className="space-y-6">
@@ -77,15 +100,13 @@ export default function Analytics() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {kpis.map(kpi => (
+        {loading ? Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-20 mb-2" /><Skeleton className="h-6 w-16" /></CardContent></Card>
+        )) : kpis.map(kpi => (
           <Card key={kpi.label}>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
               <p className="text-xl font-bold text-foreground">{kpi.value}</p>
-              <p className={`text-xs flex items-center gap-1 mt-1 ${kpi.up ? "text-success" : "text-destructive"}`}>
-                {kpi.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {kpi.change}
-              </p>
             </CardContent>
           </Card>
         ))}
@@ -95,80 +116,53 @@ export default function Analytics() {
       <Card>
         <CardHeader><CardTitle className="card-title">Call Volume & Connect Rate</CardTitle></CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={volumeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={v => v.slice(5)} interval={4} />
-              <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} domain={[0, 100]} />
-              <Tooltip />
-              <Bar yAxisId="left" dataKey="calls" fill="#C7D2FE" radius={[2, 2, 0, 0]} />
-              <Line yAxisId="right" dataKey="connectRate" stroke="#10B981" strokeWidth={2} dot={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
+          {loading ? <Skeleton className="h-[300px] w-full" /> : volumeData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">No call data for this period</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={volumeData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={v => v?.slice(5) || ""} interval={Math.max(0, Math.floor(volumeData.length / 8))} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} domain={[0, 100]} />
+                <Tooltip />
+                <Bar yAxisId="left" dataKey="calls" fill="hsl(var(--primary) / 0.3)" radius={[2, 2, 0, 0]} name="Total Calls" />
+                <Line yAxisId="right" dataKey="connectRate" stroke="hsl(var(--success))" strokeWidth={2} dot={false} name="Connect Rate %" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
-
-      {/* Sentiment + Objections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle className="card-title">Sentiment by Agent</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={sentimentData} layout="vertical">
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="agent" tick={{ fontSize: 12 }} width={60} />
-                <Tooltip />
-                <Bar dataKey="positive" stackId="a" fill="#10B981" />
-                <Bar dataKey="neutral" stackId="a" fill="#F59E0B" />
-                <Bar dataKey="negative" stackId="a" fill="#EF4444" />
-                <Legend />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="card-title">Top Objections</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={objectionData} layout="vertical">
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#4F46E5" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Agent Performance Table */}
       <Card>
         <CardHeader><CardTitle className="card-title">Agent Performance Comparison</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-secondary/50">
-                {["Agent", "Calls", "Connect Rate", "Avg Duration", "Appointments", "Conversion", "Sentiment"].map(h => (
-                  <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {agentPerformance.map(a => (
-                <tr key={a.agent} className="border-t">
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{a.agent}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{a.calls.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{a.connectRate}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{a.avgDuration}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{a.appointments}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{a.conversion}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{a.sentiment}</td>
+          {loading ? <Skeleton className="h-40 w-full m-4" /> : agentPerf.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No active agents</p>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-secondary/50">
+                  {["Agent", "Calls", "Connect Rate", "Avg Duration", "Appointments", "Sentiment"].map(h => (
+                    <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {agentPerf.map((a: any) => (
+                  <tr key={a.agent_id} className="border-t">
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{a.agent_name}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.total_calls).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{a.connect_rate != null ? `${a.connect_rate}%` : "—"}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(a.avg_duration)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.appointments).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{a.positive_sentiment_pct != null ? `${a.positive_sentiment_pct}% pos` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
 
@@ -176,23 +170,27 @@ export default function Analytics() {
       <Card>
         <CardHeader><CardTitle className="card-title">Conversion Funnel</CardTitle></CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {funnelData.map((stage, i) => {
-              const pct = ((stage.value / funnelData[0].value) * 100).toFixed(1);
-              const dropoff = i > 0 ? ((1 - stage.value / funnelData[i - 1].value) * 100).toFixed(1) : null;
-              return (
-                <div key={stage.name} className="flex items-center gap-4">
-                  <div className="w-40 text-sm text-foreground text-right">{stage.name}</div>
-                  <div className="flex-1 relative">
-                    <div className="h-10 rounded-md flex items-center px-4" style={{ width: `${pct}%`, backgroundColor: stage.fill, minWidth: 80 }}>
-                      <span className="text-xs font-medium text-white">{stage.value.toLocaleString()} ({pct}%)</span>
+          {loading ? <Skeleton className="h-40 w-full" /> : !funnel || funnel.total_calls === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No data for this period</p>
+          ) : (
+            <div className="space-y-2">
+              {funnelData.map((stage, i) => {
+                const pct = funnelData[0].value > 0 ? ((stage.value / funnelData[0].value) * 100).toFixed(1) : "0";
+                const dropoff = i > 0 && funnelData[i - 1].value > 0 ? ((1 - stage.value / funnelData[i - 1].value) * 100).toFixed(1) : null;
+                return (
+                  <div key={stage.name} className="flex items-center gap-4">
+                    <div className="w-40 text-sm text-foreground text-right">{stage.name}</div>
+                    <div className="flex-1 relative">
+                      <div className="h-10 rounded-md flex items-center px-4" style={{ width: `${Math.max(Number(pct), 5)}%`, backgroundColor: stage.fill, minWidth: 80 }}>
+                        <span className="text-xs font-medium text-primary-foreground">{stage.value.toLocaleString()} ({pct}%)</span>
+                      </div>
                     </div>
+                    {dropoff && <span className="text-xs text-destructive w-16">-{dropoff}%</span>}
                   </div>
-                  {dropoff && <span className="text-xs text-destructive w-16">-{dropoff}%</span>}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -63,9 +63,41 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Tenant not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Check minute balance
+    // === BILLING ENFORCEMENT ===
+    const usagePercent = tenant.minutes_used_this_cycle / tenant.monthly_minute_limit;
+
+    // Hard stop: if at or over limit
     if (tenant.minutes_used_this_cycle >= tenant.monthly_minute_limit) {
-      return new Response(JSON.stringify({ error: "Monthly minute limit reached" }), { status: 429, headers: corsHeaders });
+      return new Response(JSON.stringify({
+        error: "Monthly minute limit reached. Upgrade your plan to continue.",
+        code: "MINUTE_LIMIT_REACHED",
+        minutes_used: tenant.minutes_used_this_cycle,
+        monthly_limit: tenant.monthly_minute_limit,
+      }), { status: 429, headers: corsHeaders });
+    }
+
+    // Service client for logging (bypasses RLS)
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Warning at 80% usage
+    if (usagePercent >= 0.8 && usagePercent < 1.0) {
+      // Fire usage alert webhook if configured
+      if (tenant.webhook_url && tenant.webhook_events?.includes("usage_alert")) {
+        fetch(tenant.webhook_url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "usage_alert",
+            level: "approaching_limit",
+            minutes_used: tenant.minutes_used_this_cycle,
+            monthly_limit: tenant.monthly_minute_limit,
+            usage_percent: Math.round(usagePercent * 100),
+          }),
+        }).catch(() => {});
+      }
     }
 
     // Fetch agent
@@ -110,6 +142,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No phone number provided" }), { status: 400, headers: corsHeaders });
     }
 
+    // Also check DNC list table directly
+    const { data: dncEntry } = await serviceClient
+      .from("dnc_list")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("phone_number", toNumber)
+      .maybeSingle();
+
+    if (dncEntry) {
+      return new Response(JSON.stringify({ error: "Phone number is on Do Not Call list" }), { status: 403, headers: corsHeaders });
+    }
+
     // Get from number
     let fromNumber = "";
     let phoneNumberIdFinal = phone_number_id;
@@ -122,7 +166,6 @@ Deno.serve(async (req) => {
         .single();
       if (pn) fromNumber = pn.phone_number;
     } else {
-      // Get default or agent-assigned number
       const { data: pn } = await supabase
         .from("phone_numbers")
         .select("*")
@@ -195,12 +238,7 @@ Deno.serve(async (req) => {
 
     const vapiCall = await vapiRes.json();
 
-    // Create call record in our DB using service role for insert
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
+    // Create call record
     const { data: callRecord, error: callErr } = await serviceClient
       .from("calls")
       .insert({
@@ -229,7 +267,11 @@ Deno.serve(async (req) => {
         .eq("id", campaign_contact_id);
     }
 
-    return new Response(JSON.stringify({ call_id: callRecord?.id, vapi_call_id: vapiCall.id }), {
+    return new Response(JSON.stringify({
+      call_id: callRecord?.id,
+      vapi_call_id: vapiCall.id,
+      minutes_remaining: tenant.monthly_minute_limit - tenant.minutes_used_this_cycle,
+    }), {
       status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

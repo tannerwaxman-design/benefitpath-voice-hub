@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.upload-document]
 verify_jwt = false
+
+[functions.billing-cycle-reset]
+verify_jwt = false

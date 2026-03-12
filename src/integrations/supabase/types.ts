@@ -1161,8 +1161,65 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_agent_performance: {
+        Args: { date_from: string; date_to: string }
+        Returns: {
+          agent_id: string
+          agent_name: string
+          appointments: number
+          avg_duration: number
+          connect_rate: number
+          positive_sentiment_pct: number
+          total_calls: number
+        }[]
+      }
+      get_analytics_summary: {
+        Args: { date_from: string; date_to: string }
+        Returns: {
+          appointments_set: number
+          avg_duration_seconds: number
+          connect_rate: number
+          conversion_rate: number
+          minutes_used: number
+          total_calls: number
+        }[]
+      }
+      get_calling_heatmap: {
+        Args: { date_from: string; date_to: string }
+        Returns: {
+          connect_rate: number
+          day_of_week: number
+          hour: number
+          total_calls: number
+        }[]
+      }
+      get_calls_per_day: {
+        Args: { date_from: string; date_to: string }
+        Returns: {
+          connected: number
+          day: string
+          failed: number
+          no_answer: number
+          total_calls: number
+          voicemail: number
+        }[]
+      }
+      get_conversion_funnel: {
+        Args: { date_from: string; date_to: string }
+        Returns: {
+          appointments: number
+          connected: number
+          engaged: number
+          qualified: number
+          total_calls: number
+        }[]
+      }
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_tenant_role: { Args: never; Returns: string }
+      increment_campaign_contact_attempts: {
+        Args: { cc_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
