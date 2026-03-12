@@ -21,7 +21,9 @@ export function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const usagePercent = (user.minutesUsed / user.minutesLimit) * 100;
+  const minutesUsed = user?.tenant?.minutes_used_this_cycle ?? 0;
+  const minutesLimit = user?.tenant?.monthly_minute_limit ?? 10000;
+  const usagePercent = (minutesUsed / minutesLimit) * 100;
   const usageColor = usagePercent > 90 ? "bg-destructive" : usagePercent > 70 ? "bg-warning" : "bg-success";
 
   return (
