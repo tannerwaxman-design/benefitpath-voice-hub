@@ -1,41 +1,26 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY")!;
-const VAPI_BASE_URL = "https://api.vapi.ai";
+import { getAuthContext, corsHeaders, errorResponse, successResponse } from "../_shared/auth-helpers.ts";
+import { createAdminClient } from "../_shared/supabase-admin.ts";
+import { vapiRequest } from "../_shared/vapi-client.ts";
+import { compileSystemPrompt } from "../_shared/prompt-compiler.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders() });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
+    const auth = await getAuthContext(req).catch(() => null);
+    if (!auth) return errorResponse("Unauthorized", 401);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
     );
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
 
     const body = await req.json();
     const { agent_id, updates } = body;
 
-    if (!agent_id) {
-      return new Response(JSON.stringify({ error: "agent_id is required" }), { status: 400, headers: corsHeaders });
-    }
+    if (!agent_id) return errorResponse("agent_id is required", 400);
 
     // Fetch existing agent (RLS ensures tenant isolation)
     const { data: agent, error: fetchErr } = await supabase
@@ -44,9 +29,7 @@ Deno.serve(async (req) => {
       .eq("id", agent_id)
       .single();
 
-    if (fetchErr || !agent) {
-      return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: corsHeaders });
-    }
+    if (fetchErr || !agent) return errorResponse("Agent not found", 404);
 
     // Update in DB
     const { data: updatedAgent, error: updateErr } = await supabase
@@ -56,11 +39,9 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (updateErr) {
-      return new Response(JSON.stringify({ error: updateErr.message }), { status: 400, headers: corsHeaders });
-    }
+    if (updateErr) return errorResponse(updateErr.message, 400);
 
-    // If agent has a VAPI assistant, sync changes
+    // If agent has a VAPI assistant, recompile prompt and sync
     if (agent.vapi_assistant_id) {
       const { data: tenant } = await supabase
         .from("tenants")
@@ -68,59 +49,79 @@ Deno.serve(async (req) => {
         .eq("id", agent.tenant_id)
         .single();
 
-      // Recompile system prompt with merged data
-      const merged = { ...agent, ...updates };
-      const companyName = merged.company_name_override || tenant?.company_name || "";
-      let prompt = `You are ${merged.agent_name}`;
-      if (merged.agent_title) prompt += `, a ${merged.agent_title}`;
-      prompt += ` at ${companyName}.\n\nTone: ${merged.tone}. Enthusiasm: ${merged.enthusiasm_level}/10.\n`;
-      if (merged.knowledge_base_text) prompt += `\n## Knowledge Base\n${merged.knowledge_base_text}\n`;
+      if (tenant) {
+        const merged = { ...agent, ...updates };
+        const promptInput = {
+          ...merged,
+          transfer_enabled: !!merged.transfer_phone_number,
+          consent_script_override: merged.consent_script,
+          recording_enabled_override: merged.record_calls,
+          recording_disclosure_override: merged.disclosure_script,
+        };
 
-      const vapiUpdate: any = {
-        model: {
-          provider: "openai",
-          model: "gpt-4o",
-          messages: [{ role: "system", content: prompt }],
-          temperature: 0.7,
-        },
-        voice: {
-          provider: merged.voice_provider === "eleven_labs" ? "11labs" : merged.voice_provider,
-          voiceId: merged.voice_id,
-          speed: merged.speaking_speed,
-        },
-        firstMessage: merged.greeting_script,
-        silenceTimeoutSeconds: merged.silence_timeout_seconds,
-        maxDurationSeconds: merged.max_call_duration_minutes * 60,
-      };
+        const compiledPrompt = compileSystemPrompt(promptInput, {
+          company_name: tenant.company_name,
+          industry: tenant.industry,
+          recording_disclosure_enabled: tenant.recording_disclosure_enabled,
+          recording_disclosure_text: tenant.recording_disclosure_text,
+          require_consent: tenant.require_consent,
+          consent_script: tenant.consent_script,
+        });
 
-      const vapiRes = await fetch(`${VAPI_BASE_URL}/assistant/${agent.vapi_assistant_id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${VAPI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(vapiUpdate),
-      });
+        const adminClient = createAdminClient();
+        await adminClient.from("agents").update({ compiled_system_prompt: compiledPrompt }).eq("id", agent_id);
 
-      if (vapiRes.ok) {
-        await supabase.from("agents").update({
-          vapi_sync_status: "synced",
-          vapi_last_synced_at: new Date().toISOString(),
-          vapi_sync_error: null,
-        }).eq("id", agent_id);
-      } else {
-        const errText = await vapiRes.text();
-        await supabase.from("agents").update({
-          vapi_sync_status: "error",
-          vapi_sync_error: errText,
-        }).eq("id", agent_id);
+        const vapiUpdate: Record<string, unknown> = {
+          model: {
+            provider: "openai",
+            model: "gpt-4o",
+            messages: [{ role: "system", content: compiledPrompt }],
+            temperature: 0.7,
+          },
+          voice: {
+            provider: merged.voice_provider === "eleven_labs" ? "11labs" : merged.voice_provider,
+            voiceId: merged.voice_id,
+            speed: merged.speaking_speed,
+          },
+          firstMessage: merged.greeting_script,
+          silenceTimeoutSeconds: merged.silence_timeout_seconds,
+          maxDurationSeconds: merged.max_call_duration_minutes * 60,
+        };
+
+        if (merged.transfer_phone_number) {
+          vapiUpdate.tools = [{
+            type: "transferCall",
+            destinations: [{
+              type: "number",
+              number: merged.transfer_phone_number,
+              message: merged.transfer_announcement,
+            }],
+          }];
+        }
+
+        const vapiRes = await vapiRequest({
+          method: "PATCH",
+          endpoint: `/assistant/${agent.vapi_assistant_id}`,
+          body: vapiUpdate,
+        });
+
+        if (vapiRes.ok) {
+          await adminClient.from("agents").update({
+            vapi_sync_status: "synced",
+            vapi_last_synced_at: new Date().toISOString(),
+            vapi_sync_error: null,
+          }).eq("id", agent_id);
+        } else {
+          await adminClient.from("agents").update({
+            vapi_sync_status: "error",
+            vapi_sync_error: vapiRes.error,
+          }).eq("id", agent_id);
+        }
       }
     }
 
-    return new Response(JSON.stringify(updatedAgent), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return successResponse(updatedAgent);
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    return errorResponse(err.message, 500);
   }
 });
