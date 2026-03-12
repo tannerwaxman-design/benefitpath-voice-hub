@@ -56,7 +56,7 @@ export default function Settings() {
           <Card>
             <CardHeader><CardTitle className="section-title">Account Information</CardTitle></CardHeader>
             <CardContent className="space-y-4 max-w-xl">
-              <div><Label>Company Name</Label><Input defaultValue={user.company} /></div>
+              <div><Label>Company Name</Label><Input defaultValue={user?.tenant?.company_name ?? ""} /></div>
               <div><Label>Primary Contact Email</Label><Input defaultValue={user.email} /></div>
               <div><Label>Company Website</Label><Input defaultValue="https://benefitsfirst.com" /></div>
               <div>
