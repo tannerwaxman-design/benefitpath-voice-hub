@@ -14,21 +14,19 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, GripVertical, Loader2, Phone, Play, Plus, Trash2, Upload, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, GripVertical, Loader2, Phone, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
+import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
 
 const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Handling Rules", "Transfer & Escalation", "Compliance", "Review & Save"];
 
 const industries = ["Insurance", "Employee Benefits", "Health & Wellness", "Human Resources", "Financial Services", "Medicare", "Dental/Vision", "Life Insurance", "Workers' Comp", "Other"];
 
-const voiceOptions = [
-  { id: "aria", name: "Aria", gender: "Female", accent: "American — Warm & Professional", provider: "eleven_labs" },
-  { id: "marcus", name: "Marcus", gender: "Male", accent: "American — Confident & Clear", provider: "eleven_labs" },
-  { id: "elena", name: "Elena", gender: "Female", accent: "British — Polished", provider: "eleven_labs" },
-  { id: "devon", name: "Devon", gender: "Male", accent: "American — Friendly & Casual", provider: "eleven_labs" },
-  { id: "nina", name: "Nina", gender: "Female", accent: "American — Empathetic & Caring", provider: "eleven_labs" },
-  { id: "carter", name: "Carter", gender: "Male", accent: "American — Authoritative", provider: "eleven_labs" },
-  { id: "priya", name: "Priya", gender: "Female", accent: "American — Energetic & Upbeat", provider: "eleven_labs" },
-  { id: "jackson", name: "Jackson", gender: "Male", accent: "Southern — Warm & Trustworthy", provider: "eleven_labs" },
+// Fallback voices if API hasn't loaded yet
+const fallbackVoices: ElevenLabsVoice[] = [
+  { voice_id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", category: "premade", labels: { accent: "American", gender: "Female" }, preview_url: null, description: null },
+  { voice_id: "JBFqnCBsd6RMkjVDRZzb", name: "George", category: "premade", labels: { accent: "British", gender: "Male" }, preview_url: null, description: null },
+  { voice_id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", category: "premade", labels: { accent: "British", gender: "Male" }, preview_url: null, description: null },
+  { voice_id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", category: "premade", labels: { accent: "British", gender: "Female" }, preview_url: null, description: null },
 ];
 
 export default function AgentEditor() {
@@ -43,6 +41,8 @@ export default function AgentEditor() {
   const updateAgent = useUpdateAgent();
   const deleteAgent = useDeleteAgent();
   const testCall = useTestCall();
+  const { data: apiVoices, isLoading: voicesLoading } = useVoices();
+  const voiceOptions = apiVoices && apiVoices.length > 0 ? apiVoices : fallbackVoices;
 
   const [activeSection, setActiveSection] = useState(0);
   const [name, setName] = useState("");
@@ -51,7 +51,7 @@ export default function AgentEditor() {
   const [companyName, setCompanyName] = useState("");
   const [description, setDescription] = useState("");
   const [agentActive, setAgentActive] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState("aria");
+  const [selectedVoice, setSelectedVoice] = useState("EXAVITQu4vr4xnSDxMaL");
   const [speed, setSpeed] = useState([1.0]);
   const [tone, setTone] = useState("professional");
   const [enthusiasm, setEnthusiasm] = useState([6]);
@@ -114,8 +114,8 @@ export default function AgentEditor() {
     description: description || null,
     status: agentActive ? "active" : "draft",
     voice_id: selectedVoice,
-    voice_provider: voiceOptions.find(v => v.id === selectedVoice)?.provider || "eleven_labs",
-    voice_name: voiceOptions.find(v => v.id === selectedVoice)?.name || null,
+    voice_provider: "eleven_labs",
+    voice_name: voiceOptions.find(v => v.voice_id === selectedVoice)?.name || null,
     speaking_speed: speed[0],
     tone,
     enthusiasm_level: enthusiasm[0],
@@ -228,17 +228,23 @@ export default function AgentEditor() {
             <CardHeader><CardTitle className="section-title">Voice & Persona</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <Label className="mb-3 block">Voice Selection</Label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Label className="mb-3 block">Voice Selection {voicesLoading && <span className="text-xs text-muted-foreground">(loading...)</span>}</Label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto">
                   {voiceOptions.map(v => (
-                    <button key={v.id} onClick={() => setSelectedVoice(v.id)}
-                      className={`p-3 rounded-lg border-2 text-left transition-all ${selectedVoice === v.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
+                    <button key={v.voice_id} onClick={() => setSelectedVoice(v.voice_id)}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${selectedVoice === v.voice_id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium text-foreground">{v.name}</span>
-                        {selectedVoice === v.id && <Check className="h-4 w-4 text-primary" />}
+                        {selectedVoice === v.voice_id && <Check className="h-4 w-4 text-primary" />}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{v.gender}</p>
-                      <p className="text-[10px] text-muted-foreground">{v.accent}</p>
+                      <p className="text-[10px] text-muted-foreground">{v.labels?.gender || v.category}</p>
+                      <p className="text-[10px] text-muted-foreground">{v.labels?.accent || ""}</p>
+                      {v.preview_url && (
+                        <button type="button" onClick={(e) => { e.stopPropagation(); new Audio(v.preview_url!).play(); }}
+                          className="mt-1 flex items-center gap-1 text-[10px] text-primary hover:underline">
+                          <Volume2 className="h-3 w-3" /> Preview
+                        </button>
+                      )}
                     </button>
                   ))}
                 </div>

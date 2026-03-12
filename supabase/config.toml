@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.billing-cycle-reset]
 verify_jwt = false
+
+[functions.list-voices]
+verify_jwt = false
