@@ -9,6 +9,7 @@
 // ============================================================
 
 import { createAdminClient } from "../_shared/supabase-admin.ts";
+import { vapiRequest } from "../_shared/vapi-client.ts";
 
 const WEBHOOK_SECRET = Deno.env.get("VAPI_WEBHOOK_SECRET");
 
@@ -200,32 +201,79 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // Update tenant minute usage (atomic increment via RPC)
+          // Fetch cost breakdown from VAPI and update tenant usage
           if (tenantId && !isTestCall) {
+            // Fetch detailed cost data from VAPI API
+            const costData = await fetchAndStoreCosts(supabase, vapiCallId, tenantId);
+
             await supabase.rpc("increment_tenant_minutes", {
               p_tenant_id: tenantId,
               p_minutes: durationMinutes,
             });
 
-            // Get billing cycle for usage log
+            // Get tenant for billing cycle + margin
             const { data: tenant } = await supabase
               .from("tenants")
-              .select("billing_cycle_start, billing_cycle_end")
+              .select("billing_cycle_start, billing_cycle_end, margin_percent, total_cost_this_cycle, usage_alert_threshold, usage_alert_sent, hard_stop_enabled, monthly_minute_limit, minutes_used_this_cycle, webhook_url, webhook_events")
               .eq("id", tenantId)
               .single();
 
             if (tenant) {
+              const costWithMargin = costData.totalCost * (1 + (tenant.margin_percent || 20) / 100);
+
+              // Update call with margin cost
+              await supabase
+                .from("calls")
+                .update({ cost_with_margin: parseFloat(costWithMargin.toFixed(4)) })
+                .eq("vapi_call_id", vapiCallId);
+
+              // Increment tenant total cost
+              await supabase
+                .from("tenants")
+                .update({
+                  total_cost_this_cycle: parseFloat(
+                    ((tenant.total_cost_this_cycle || 0) + costWithMargin).toFixed(4)
+                  ),
+                  usage_alert_sent: false, // reset for next threshold check
+                })
+                .eq("id", tenantId);
+
+              // Create usage log
               await supabase.from("usage_logs").insert({
                 tenant_id: tenantId,
+                call_id: null, // we'll link by time
                 event_type: "call_minutes",
                 quantity: durationMinutes,
-                unit_cost: 0.05,
-                total_cost: parseFloat(
-                  (durationMinutes * 0.05).toFixed(4)
-                ),
+                unit_cost: costData.totalCost > 0 ? parseFloat((costData.totalCost / Math.max(durationMinutes, 0.1)).toFixed(4)) : 0.05,
+                total_cost: parseFloat(costWithMargin.toFixed(4)),
                 billing_cycle_start: tenant.billing_cycle_start,
                 billing_cycle_end: tenant.billing_cycle_end,
               });
+
+              // Usage alert check
+              const usagePercent = ((tenant.minutes_used_this_cycle || 0) + durationMinutes) / tenant.monthly_minute_limit * 100;
+              if (usagePercent >= (tenant.usage_alert_threshold || 80) && !tenant.usage_alert_sent) {
+                await supabase
+                  .from("tenants")
+                  .update({ usage_alert_sent: true })
+                  .eq("id", tenantId);
+
+                // Fire usage alert webhook
+                if (tenant.webhook_url && tenant.webhook_events?.includes("usage_alert")) {
+                  fetch(tenant.webhook_url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      event: "usage_alert",
+                      level: usagePercent >= 100 ? "limit_reached" : "approaching_limit",
+                      minutes_used: Math.round((tenant.minutes_used_this_cycle || 0) + durationMinutes),
+                      monthly_limit: tenant.monthly_minute_limit,
+                      usage_percent: Math.round(usagePercent),
+                      total_cost_this_cycle: parseFloat(((tenant.total_cost_this_cycle || 0) + costWithMargin).toFixed(2)),
+                    }),
+                  }).catch(() => {});
+                }
+              }
             }
           }
 
@@ -622,6 +670,78 @@ async function incrementCampaignStat(
     updates[outcomeField] =
       ((campaign as Record<string, unknown>)[outcomeField] as number || 0) + 1;
     await supabase.from("campaigns").update(updates).eq("id", campaignId);
+  }
+}
+
+// Fetch cost breakdown from VAPI API and store on call record
+async function fetchAndStoreCosts(
+  supabase: ReturnType<typeof createAdminClient>,
+  vapiCallId: string,
+  tenantId: string
+): Promise<{ totalCost: number }> {
+  try {
+    // Give VAPI a moment to finalize cost data
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const result = await vapiRequest<{
+      id: string;
+      costs?: Array<{ type: string; cost: number; minutes?: number; characters?: number; promptTokens?: number; completionTokens?: number }>;
+      costBreakdown?: { transport?: number; stt?: number; llm?: number; tts?: number; vapi?: number; total?: number };
+    }>({
+      method: "GET",
+      endpoint: `/call/${vapiCallId}`,
+    });
+
+    if (!result.ok || !result.data) {
+      console.warn(`Failed to fetch VAPI call costs for ${vapiCallId}`);
+      return { totalCost: 0 };
+    }
+
+    const costs = result.data.costs || [];
+    const breakdown = result.data.costBreakdown || {};
+
+    let costVapi = 0, costTransport = 0, costStt = 0, costLlm = 0, costTts = 0;
+
+    for (const c of costs) {
+      const amount = c.cost || 0;
+      switch (c.type) {
+        case "vapi": costVapi += amount; break;
+        case "transport": costTransport += amount; break;
+        case "transcriber": costStt += amount; break;
+        case "model": costLlm += amount; break;
+        case "voice": costTts += amount; break;
+      }
+    }
+
+    // Fallback to costBreakdown if costs array is empty
+    if (costs.length === 0 && breakdown) {
+      costVapi = breakdown.vapi || 0;
+      costTransport = breakdown.transport || 0;
+      costStt = breakdown.stt || 0;
+      costLlm = breakdown.llm || 0;
+      costTts = breakdown.tts || 0;
+    }
+
+    const totalCost = costVapi + costTransport + costStt + costLlm + costTts;
+
+    await supabase
+      .from("calls")
+      .update({
+        cost_vapi: parseFloat(costVapi.toFixed(4)),
+        cost_transport: parseFloat(costTransport.toFixed(4)),
+        cost_stt: parseFloat(costStt.toFixed(4)),
+        cost_llm: parseFloat(costLlm.toFixed(4)),
+        cost_tts: parseFloat(costTts.toFixed(4)),
+        cost_breakdown: costs,
+        cost_total: parseFloat(totalCost.toFixed(4)),
+        cost_amount: parseFloat(totalCost.toFixed(4)),
+      })
+      .eq("vapi_call_id", vapiCallId);
+
+    return { totalCost };
+  } catch (err) {
+    console.error(`Error fetching costs for ${vapiCallId}:`, err);
+    return { totalCost: 0 };
   }
 }
 

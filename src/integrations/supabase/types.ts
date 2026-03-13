@@ -241,7 +241,15 @@ export type Database = {
           contact_id: string | null
           contact_name: string | null
           cost_amount: number | null
+          cost_breakdown: Json | null
+          cost_llm: number | null
           cost_minutes: number | null
+          cost_stt: number | null
+          cost_total: number | null
+          cost_transport: number | null
+          cost_tts: number | null
+          cost_vapi: number | null
+          cost_with_margin: number | null
           created_at: string
           detected_intent: string | null
           direction: string
@@ -282,7 +290,15 @@ export type Database = {
           contact_id?: string | null
           contact_name?: string | null
           cost_amount?: number | null
+          cost_breakdown?: Json | null
+          cost_llm?: number | null
           cost_minutes?: number | null
+          cost_stt?: number | null
+          cost_total?: number | null
+          cost_transport?: number | null
+          cost_tts?: number | null
+          cost_vapi?: number | null
+          cost_with_margin?: number | null
           created_at?: string
           detected_intent?: string | null
           direction?: string
@@ -323,7 +339,15 @@ export type Database = {
           contact_id?: string | null
           contact_name?: string | null
           cost_amount?: number | null
+          cost_breakdown?: Json | null
+          cost_llm?: number | null
           cost_minutes?: number | null
+          cost_stt?: number | null
+          cost_total?: number | null
+          cost_transport?: number | null
+          cost_tts?: number | null
+          cost_vapi?: number | null
+          cost_with_margin?: number | null
           created_at?: string
           detected_intent?: string | null
           direction?: string
@@ -1006,9 +1030,11 @@ export type Database = {
           default_calling_hours_end: string
           default_calling_hours_start: string
           default_timezone: string
+          hard_stop_enabled: boolean
           id: string
           industry: string
           logo_url: string | null
+          margin_percent: number
           minutes_used_this_cycle: number
           monthly_minute_limit: number
           overage_rate_per_minute: number
@@ -1023,8 +1049,11 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           tcpa_compliance_mode: string
+          total_cost_this_cycle: number
           trial_ends_at: string | null
           updated_at: string
+          usage_alert_sent: boolean
+          usage_alert_threshold: number
           webhook_events: string[] | null
           webhook_url: string | null
         }
@@ -1042,9 +1071,11 @@ export type Database = {
           default_calling_hours_end?: string
           default_calling_hours_start?: string
           default_timezone?: string
+          hard_stop_enabled?: boolean
           id?: string
           industry?: string
           logo_url?: string | null
+          margin_percent?: number
           minutes_used_this_cycle?: number
           monthly_minute_limit?: number
           overage_rate_per_minute?: number
@@ -1059,8 +1090,11 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           tcpa_compliance_mode?: string
+          total_cost_this_cycle?: number
           trial_ends_at?: string | null
           updated_at?: string
+          usage_alert_sent?: boolean
+          usage_alert_threshold?: number
           webhook_events?: string[] | null
           webhook_url?: string | null
         }
@@ -1078,9 +1112,11 @@ export type Database = {
           default_calling_hours_end?: string
           default_calling_hours_start?: string
           default_timezone?: string
+          hard_stop_enabled?: boolean
           id?: string
           industry?: string
           logo_url?: string | null
+          margin_percent?: number
           minutes_used_this_cycle?: number
           monthly_minute_limit?: number
           overage_rate_per_minute?: number
@@ -1095,8 +1131,11 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           tcpa_compliance_mode?: string
+          total_cost_this_cycle?: number
           trial_ends_at?: string | null
           updated_at?: string
+          usage_alert_sent?: boolean
+          usage_alert_threshold?: number
           webhook_events?: string[] | null
           webhook_url?: string | null
         }

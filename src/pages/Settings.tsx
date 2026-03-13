@@ -3,30 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Copy, RefreshCw } from "lucide-react";
+import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-
-const usageHistory = [
-  { month: "Sep", minutes: 3200 },
-  { month: "Oct", minutes: 4100 },
-  { month: "Nov", minutes: 5800 },
-  { month: "Dec", minutes: 6200 },
-  { month: "Jan", minutes: 3900 },
-  { month: "Feb", minutes: 4328 },
-];
-
-const invoices = [
-  { date: "Feb 1, 2026", amount: "$299.00", status: "Paid" },
-  { date: "Jan 1, 2026", amount: "$299.00", status: "Paid" },
-  { date: "Dec 1, 2025", amount: "$349.00", status: "Paid" },
-];
+import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const teamMembers = [
   { name: "Michael Torres", email: "michael@benefitsfirst.com", role: "Admin", status: "Active", lastActive: "Today" },
@@ -34,9 +20,17 @@ const teamMembers = [
   { name: "David Park", email: "david@benefitsfirst.com", role: "Viewer", status: "Active", lastActive: "3 days ago" },
 ];
 
+const planNames: Record<string, string> = {
+  voice_ai_starter: "Voice AI Starter",
+  voice_ai_pro: "Voice AI Pro",
+  voice_ai_enterprise: "Voice AI Enterprise",
+};
+
 export default function Settings() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { data: billing, isLoading: billingLoading } = useBillingUsage();
+  const updateSettings = useUpdateBillingSettings();
 
   return (
     <div className="space-y-6">
@@ -58,7 +52,7 @@ export default function Settings() {
             <CardContent className="space-y-4 max-w-xl">
               <div><Label>Company Name</Label><Input defaultValue={user?.tenant?.company_name ?? ""} /></div>
               <div><Label>Primary Contact Email</Label><Input defaultValue={user?.email ?? ""} /></div>
-              <div><Label>Company Website</Label><Input defaultValue="https://benefitsfirst.com" /></div>
+              <div><Label>Company Website</Label><Input defaultValue="" /></div>
               <div>
                 <Label>Industry</Label>
                 <Select defaultValue="insurance">
@@ -133,23 +127,17 @@ export default function Settings() {
           <Card>
             <CardHeader><CardTitle className="section-title">Do-Not-Call Management</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">247 numbers on your DNC list</p>
+              <p className="text-sm text-muted-foreground">Manage your DNC list from the Contact Lists page</p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => toast({ title: "DNC list uploaded" })}>Upload DNC List</Button>
                 <Button variant="outline" onClick={() => toast({ title: "DNC list downloaded" })}>Download DNC List</Button>
               </div>
-              <div><Label>Check Number</Label><div className="flex gap-2"><Input placeholder="(555) 000-0000" /><Button variant="outline" onClick={() => toast({ title: "Number not on DNC list" })}>Check</Button></div></div>
+              <div><Label>Check Number</Label><div className="flex gap-2"><Input placeholder="+1 (555) 000-0000" /><Button variant="outline" onClick={() => toast({ title: "Number not on DNC list" })}>Check</Button></div></div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle className="section-title">Call Recording Storage</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex justify-between text-sm mb-1"><span className="text-foreground">12.4 GB used</span><span className="text-muted-foreground">50 GB</span></div>
-                  <div className="h-2 bg-secondary rounded-full"><div className="h-2 bg-primary rounded-full" style={{ width: "24.8%" }} /></div>
-                </div>
-              </div>
               <div><Label>Retention Policy</Label>
                 <Select defaultValue="90">
                   <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -167,83 +155,249 @@ export default function Settings() {
 
         {/* Billing */}
         <TabsContent value="billing" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader><CardTitle className="section-title">Current Plan</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                <div>
-                  <p className="text-lg font-semibold text-foreground">Voice AI Pro</p>
-                  <p className="text-sm text-muted-foreground">10,000 minutes/month • $299/month</p>
-                  <p className="text-xs text-muted-foreground mt-1">Billing cycle: Feb 1 – Feb 28, 2026</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => toast({ title: "Plan change modal would open" })}>Change Plan</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {billingLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : billing ? (
+            <>
+              {/* Current Plan */}
+              <Card>
+                <CardHeader><CardTitle className="section-title">Current Plan</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div>
+                      <p className="text-lg font-semibold text-foreground">
+                        {planNames[billing.tenant.plan] || billing.tenant.plan}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {billing.tenant.monthly_minute_limit.toLocaleString()} minutes/month
+                        {billing.tenant.margin_percent > 0 && ` • ${billing.tenant.margin_percent}% margin`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Billing cycle: {new Date(billing.tenant.billing_cycle_start).toLocaleDateString()} – {new Date(billing.tenant.billing_cycle_end).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button variant="outline" onClick={() => toast({ title: "Plan upgrade coming soon" })}>Change Plan</Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="section-title">Usage</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="relative w-40 h-40 mx-auto">
-                    <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#E2E8F0" strokeWidth="8" />
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#4F46E5" strokeWidth="8" strokeDasharray={`${43.3 * 2.51} ${100 * 2.51}`} strokeLinecap="round" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-foreground">43.3%</span>
-                      <span className="text-xs text-muted-foreground">used</span>
+              {/* Cost Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Total Calls</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{billing.costSummary.totalCalls}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Minutes Used</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">
+                      {billing.tenant.minutes_used_this_cycle.toLocaleString()}
+                      <span className="text-sm font-normal text-muted-foreground"> / {billing.tenant.monthly_minute_limit.toLocaleString()}</span>
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">VAPI Cost (at cost)</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">${billing.costSummary.total.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Revenue (w/ margin)</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">${(billing.tenant.total_cost_this_cycle || 0).toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Usage Gauge + Cost Breakdown */}
+              <Card>
+                <CardHeader><CardTitle className="section-title">Usage & Cost Breakdown</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Usage gauge */}
+                    <div>
+                      <div className="relative w-40 h-40 mx-auto">
+                        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
+                          <circle
+                            cx="50" cy="50" r="40" fill="none"
+                            stroke={billing.usagePercent >= 90 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
+                            strokeWidth="8"
+                            strokeDasharray={`${Math.min(billing.usagePercent, 100) * 2.51} ${100 * 2.51}`}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-2xl font-bold text-foreground">{billing.usagePercent}%</span>
+                          <span className="text-xs text-muted-foreground">used</span>
+                        </div>
+                      </div>
+
+                      {billing.usagePercent >= 80 && (
+                        <div className="mt-3 flex items-center gap-2 text-xs bg-destructive/10 text-destructive p-2 rounded-md">
+                          <AlertTriangle className="h-3 w-3" />
+                          {billing.usagePercent >= 100 ? "Minute limit reached!" : "Approaching minute limit"}
+                        </div>
+                      )}
+
+                      <div className="mt-4 space-y-2 text-sm">
+                        <p className="font-medium text-foreground mb-2">Cost per component (VAPI at-cost)</p>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Platform (Vapi)</span><span className="text-foreground">${billing.costSummary.vapi.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Transport</span><span className="text-foreground">${billing.costSummary.transport.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Speech-to-Text</span><span className="text-foreground">${billing.costSummary.stt.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">LLM</span><span className="text-foreground">${billing.costSummary.llm.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Text-to-Speech</span><span className="text-foreground">${billing.costSummary.tts.toFixed(2)}</span></div>
+                        <div className="flex justify-between border-t pt-2"><span className="font-medium text-foreground">Total at-cost</span><span className="font-bold text-foreground">${billing.costSummary.total.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span className="font-medium text-foreground">Your revenue (+{billing.tenant.margin_percent}%)</span><span className="font-bold text-primary">${(billing.tenant.total_cost_this_cycle || 0).toFixed(2)}</span></div>
+                      </div>
+                    </div>
+
+                    {/* Monthly history chart */}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Monthly Usage History</p>
+                      {billing.usageHistory.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={billing.usageHistory}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip
+                              formatter={(value: number, name: string) =>
+                                name === "minutes" ? [`${value} min`, "Minutes"] : [`$${value}`, "Cost"]
+                              }
+                            />
+                            <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
+                          No usage history yet. Make some calls to see data here.
+                        </div>
+                      )}
+
+                      {/* Per-minute cost */}
+                      {billing.costSummary.totalMinutes > 0 && (
+                        <div className="mt-4 p-3 bg-secondary/30 rounded-lg">
+                          <p className="text-xs text-muted-foreground">Average cost per minute</p>
+                          <div className="flex items-baseline gap-4 mt-1">
+                            <div>
+                              <span className="text-lg font-bold text-foreground">
+                                ${(billing.costSummary.total / billing.costSummary.totalMinutes).toFixed(3)}
+                              </span>
+                              <span className="text-xs text-muted-foreground"> at-cost</span>
+                            </div>
+                            <div>
+                              <span className="text-lg font-bold text-primary">
+                                ${((billing.tenant.total_cost_this_cycle || 0) / billing.costSummary.totalMinutes).toFixed(3)}
+                              </span>
+                              <span className="text-xs text-muted-foreground"> w/ margin</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="mt-4 space-y-1 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Outbound calls</span><span className="text-foreground">3,892 min</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Voicemail</span><span className="text-foreground">312 min</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Transfers</span><span className="text-foreground">124 min</span></div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Monthly Usage History</p>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={usageHistory}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip />
-                      <Bar dataKey="minutes" fill="#4F46E5" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-3"><Switch defaultChecked /><span className="text-sm text-foreground">Alert me when usage exceeds 80%</span></div>
-                <div className="flex items-center gap-3"><Switch /><span className="text-sm text-foreground">Hard stop — do not make calls beyond plan limit</span></div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="section-title">Invoice History</CardTitle></CardHeader>
-            <CardContent className="p-0">
-              <table className="w-full">
-                <thead><tr className="bg-secondary/50">
-                  {["Date", "Amount", "Status", ""].map(h => <th key={h} className="px-4 py-3 text-left section-label">{h}</th>)}
-                </tr></thead>
-                <tbody>
-                  {invoices.map(inv => (
-                    <tr key={inv.date} className="border-t">
-                      <td className="px-4 py-3 text-sm text-foreground">{inv.date}</td>
-                      <td className="px-4 py-3 text-sm text-foreground">{inv.amount}</td>
-                      <td className="px-4 py-3"><Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px]">{inv.status}</Badge></td>
-                      <td className="px-4 py-3"><button className="text-xs text-primary hover:underline">Download</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
+                  {/* Controls */}
+                  <div className="mt-6 space-y-3 border-t pt-4">
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={billing.tenant.hard_stop_enabled}
+                        onCheckedChange={(checked) => updateSettings.mutate({ hard_stop_enabled: checked })}
+                      />
+                      <span className="text-sm text-foreground">Hard stop — block calls when minute limit is reached</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Label className="text-sm text-foreground whitespace-nowrap">Alert at</Label>
+                      <Select
+                        value={String(billing.tenant.usage_alert_threshold || 80)}
+                        onValueChange={(v) => updateSettings.mutate({ usage_alert_threshold: Number(v) })}
+                      >
+                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="50">50%</SelectItem>
+                          <SelectItem value="70">70%</SelectItem>
+                          <SelectItem value="80">80%</SelectItem>
+                          <SelectItem value="90">90%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground">of monthly limit</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Label className="text-sm text-foreground whitespace-nowrap">Margin</Label>
+                      <Select
+                        value={String(billing.tenant.margin_percent || 20)}
+                        onValueChange={(v) => updateSettings.mutate({ margin_percent: Number(v) })}
+                      >
+                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0%</SelectItem>
+                          <SelectItem value="10">10%</SelectItem>
+                          <SelectItem value="15">15%</SelectItem>
+                          <SelectItem value="20">20%</SelectItem>
+                          <SelectItem value="25">25%</SelectItem>
+                          <SelectItem value="30">30%</SelectItem>
+                          <SelectItem value="50">50%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground">markup on VAPI costs</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Usage Logs */}
+              <Card>
+                <CardHeader><CardTitle className="section-title">Recent Usage Logs</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <table className="w-full">
+                    <thead><tr className="bg-secondary/50">
+                      {["Date", "Type", "Minutes", "Cost", ""].map(h => <th key={h} className="px-4 py-3 text-left section-label">{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                      {billing.usageLogs.length === 0 ? (
+                        <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">No usage logs yet</td></tr>
+                      ) : (
+                        billing.usageLogs.slice(0, 20).map((log) => (
+                          <tr key={log.id} className="border-t">
+                            <td className="px-4 py-3 text-sm text-foreground">{new Date(log.created_at).toLocaleString()}</td>
+                            <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{log.event_type}</Badge></td>
+                            <td className="px-4 py-3 text-sm text-foreground">{log.quantity} min</td>
+                            <td className="px-4 py-3 text-sm text-foreground">${Number(log.total_cost).toFixed(4)}</td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">${Number(log.unit_cost).toFixed(3)}/min</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Unable to load billing data
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Team */}
@@ -281,7 +435,7 @@ export default function Settings() {
                 <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText("bp_live_sk_example_key_4f2a"); toast({ title: "API key copied!" }); }}><Copy className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="sm" onClick={() => toast({ title: "API key regenerated!" })}><RefreshCw className="h-4 w-4" /></Button>
               </div>
-              <p className="text-xs text-muted-foreground">Use this key to integrate BenefitPath Voice AI with your own systems.</p>
+              <p className="text-xs text-muted-foreground">Use this key to integrate with your own systems.</p>
             </CardContent>
           </Card>
         </TabsContent>

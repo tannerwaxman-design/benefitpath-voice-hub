@@ -59,10 +59,14 @@ Deno.serve(async (req: Request) => {
 
     // === BILLING ENFORCEMENT ===
     if (tenant.minutes_used_this_cycle >= tenant.monthly_minute_limit) {
-      return errorResponse(
-        "Monthly minute limit reached. Upgrade your plan to continue.",
-        429
-      );
+      if (tenant.hard_stop_enabled) {
+        return errorResponse(
+          "Monthly minute limit reached. Upgrade your plan to continue.",
+          429
+        );
+      }
+      // If hard stop not enabled, allow but log warning
+      console.warn(`Tenant ${auth.tenantId} exceeded limit but hard_stop_enabled=false`);
     }
 
     const serviceClient = createAdminClient();
