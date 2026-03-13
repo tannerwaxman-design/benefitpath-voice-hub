@@ -201,82 +201,12 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // Fetch cost breakdown from VAPI and update tenant usage
+          // Track minutes (cost/credit deduction moved to end-of-call-report)
           if (tenantId && !isTestCall) {
-            // Fetch detailed cost data from VAPI API
-            const costData = await fetchAndStoreCosts(supabase, vapiCallId, tenantId);
-
             await supabase.rpc("increment_tenant_minutes", {
               p_tenant_id: tenantId,
               p_minutes: durationMinutes,
             });
-
-            // Get tenant for billing cycle + margin
-            const { data: tenant } = await supabase
-              .from("tenants")
-              .select("billing_cycle_start, billing_cycle_end, margin_percent, total_cost_this_cycle, credit_balance, usage_alert_sent, webhook_url, webhook_events")
-              .eq("id", tenantId)
-              .single();
-
-            if (tenant) {
-              const costWithMargin = costData.totalCost * (1 + (tenant.margin_percent || 20) / 100);
-
-              // Update call with margin cost
-              await supabase
-                .from("calls")
-                .update({ cost_with_margin: parseFloat(costWithMargin.toFixed(4)) })
-                .eq("vapi_call_id", vapiCallId);
-
-              // Deduct credits from tenant balance
-              await supabase.rpc("deduct_tenant_credits", {
-                p_tenant_id: tenantId,
-                p_amount: parseFloat(costWithMargin.toFixed(4)),
-              });
-
-              // Also update total cost for reporting
-              await supabase
-                .from("tenants")
-                .update({
-                  total_cost_this_cycle: parseFloat(
-                    ((tenant.total_cost_this_cycle || 0) + costWithMargin).toFixed(4)
-                  ),
-                })
-                .eq("id", tenantId);
-
-              // Create usage log
-              await supabase.from("usage_logs").insert({
-                tenant_id: tenantId,
-                call_id: null,
-                event_type: "call_minutes",
-                quantity: durationMinutes,
-                unit_cost: costData.totalCost > 0 ? parseFloat((costData.totalCost / Math.max(durationMinutes, 0.1)).toFixed(4)) : 0.05,
-                total_cost: parseFloat(costWithMargin.toFixed(4)),
-                billing_cycle_start: tenant.billing_cycle_start,
-                billing_cycle_end: tenant.billing_cycle_end,
-              });
-
-              // Low balance alert
-              const newBalance = (tenant.credit_balance || 0) - costWithMargin;
-              if (newBalance <= 5 && !tenant.usage_alert_sent) {
-                await supabase
-                  .from("tenants")
-                  .update({ usage_alert_sent: true })
-                  .eq("id", tenantId);
-
-                if (tenant.webhook_url && tenant.webhook_events?.includes("usage_alert")) {
-                  fetch(tenant.webhook_url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      event: "usage_alert",
-                      level: newBalance <= 0 ? "balance_depleted" : "low_balance",
-                      credit_balance: parseFloat(newBalance.toFixed(2)),
-                      total_cost_this_cycle: parseFloat(((tenant.total_cost_this_cycle || 0) + costWithMargin).toFixed(2)),
-                    }),
-                  }).catch(() => {});
-                }
-              }
-            }
           }
 
           // Check for DNC request in end reason or analysis
@@ -353,23 +283,97 @@ Deno.serve(async (req: Request) => {
           analysis.successEvaluation
         );
 
+        // Extract duration from the report (VAPI includes it in message.call or message.durationSeconds)
+        const reportDuration =
+          message.durationSeconds ||
+          message.call?.duration ||
+          message.duration ||
+          artifact.duration ||
+          0;
+
+        const reportDurationMinutes = Math.ceil((reportDuration / 60) * 10) / 10;
+
+        // Build update payload
+        const reportUpdate: Record<string, unknown> = {
+          transcript,
+          summary: analysis.summary || null,
+          sentiment: sentimentResult.sentiment,
+          sentiment_score: sentimentResult.score,
+          recording_url:
+            message.recordingUrl ||
+            message.call?.recordingUrl ||
+            artifact.recordingUrl ||
+            null,
+          detected_intent: analysis.successEvaluation || null,
+          extracted_data: analysis.structuredData || {},
+        };
+
+        // Backfill duration if it was 0 from the status-update
+        if (reportDuration > 0) {
+          reportUpdate.duration_seconds = Math.round(reportDuration);
+          reportUpdate.cost_minutes = reportDurationMinutes;
+        }
+
         // Update call record with rich data
         await supabase
           .from("calls")
-          .update({
-            transcript,
-            summary: analysis.summary || null,
-            sentiment: sentimentResult.sentiment,
-            sentiment_score: sentimentResult.score,
-            recording_url:
-              message.recordingUrl ||
-              message.call?.recordingUrl ||
-              artifact.recordingUrl ||
-              null,
-            detected_intent: analysis.successEvaluation || null,
-            extracted_data: analysis.structuredData || {},
-          })
+          .update(reportUpdate)
           .eq("vapi_call_id", vapiCallId);
+
+        // Fetch and store costs (end-of-call-report arrives after VAPI has finalized costs)
+        if (tenantId && !isTestCall) {
+          const costData = await fetchAndStoreCosts(supabase, vapiCallId, tenantId);
+
+          if (costData.totalCost > 0) {
+            const { data: tenant } = await supabase
+              .from("tenants")
+              .select("margin_percent, billing_cycle_start, billing_cycle_end, total_cost_this_cycle, credit_balance, usage_alert_sent, webhook_url, webhook_events")
+              .eq("id", tenantId)
+              .single();
+
+            if (tenant) {
+              const costWithMargin = costData.totalCost * (1 + (tenant.margin_percent || 20) / 100);
+
+              await supabase
+                .from("calls")
+                .update({ cost_with_margin: parseFloat(costWithMargin.toFixed(4)) })
+                .eq("vapi_call_id", vapiCallId);
+
+              await supabase.rpc("deduct_tenant_credits", {
+                p_tenant_id: tenantId,
+                p_amount: parseFloat(costWithMargin.toFixed(4)),
+              });
+
+              await supabase
+                .from("tenants")
+                .update({
+                  total_cost_this_cycle: parseFloat(
+                    ((tenant.total_cost_this_cycle || 0) + costWithMargin).toFixed(4)
+                  ),
+                })
+                .eq("id", tenantId);
+
+              await supabase.from("usage_logs").insert({
+                tenant_id: tenantId,
+                call_id: null,
+                event_type: "call_minutes",
+                quantity: reportDurationMinutes || 0.1,
+                unit_cost: costData.totalCost > 0 ? parseFloat((costData.totalCost / Math.max(reportDurationMinutes, 0.1)).toFixed(4)) : 0.05,
+                total_cost: parseFloat(costWithMargin.toFixed(4)),
+                billing_cycle_start: tenant.billing_cycle_start,
+                billing_cycle_end: tenant.billing_cycle_end,
+              });
+
+              const newBalance = (tenant.credit_balance || 0) - costWithMargin;
+              if (newBalance <= 5 && !tenant.usage_alert_sent) {
+                await supabase
+                  .from("tenants")
+                  .update({ usage_alert_sent: true })
+                  .eq("id", tenantId);
+              }
+            }
+          }
+        }
 
         // Check if appointment was booked
         if (
@@ -682,8 +686,8 @@ async function fetchAndStoreCosts(
   tenantId: string
 ): Promise<{ totalCost: number }> {
   try {
-    // Give VAPI a moment to finalize cost data
-    await new Promise((r) => setTimeout(r, 2000));
+    // Give VAPI time to finalize cost data
+    await new Promise((r) => setTimeout(r, 5000));
 
     const result = await vapiRequest<{
       id: string;
