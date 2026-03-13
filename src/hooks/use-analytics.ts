@@ -15,6 +15,7 @@ export function useAnalyticsSummary(dateFrom: string, dateTo: string) {
       return data?.[0] || null;
     },
     enabled: !!user?.tenant_id,
+    refetchInterval: 5 * 60 * 1000,
   });
 }
 
@@ -31,5 +32,6 @@ export function useCallsPerDay(dateFrom: string, dateTo: string) {
       return data || [];
     },
     enabled: !!user?.tenant_id,
+    refetchInterval: 5 * 60 * 1000,
   });
 }
