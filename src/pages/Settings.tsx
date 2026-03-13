@@ -156,6 +156,7 @@ function ApiKeysSection() {
       </Dialog>
     </Card>
   );
+}
 
 export default function Settings() {
   const { toast } = useToast();
