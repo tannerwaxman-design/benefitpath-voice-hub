@@ -1,4 +1,4 @@
-import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp } from "lucide-react";
+import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -6,7 +6,7 @@ import { useCampaigns } from "@/hooks/use-campaigns";
 import { useRecentCalls } from "@/hooks/use-calls";
 import { useAnalyticsSummary, useCallsPerDay } from "@/hooks/use-analytics";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { subDays, format } from "date-fns";
 
@@ -34,10 +34,17 @@ export default function Overview() {
   const dateFrom = subDays(now, chartRange).toISOString();
   const dateTo = now.toISOString();
 
-  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary(dateFrom, dateTo);
-  const { data: callsPerDay } = useCallsPerDay(dateFrom, dateTo);
-  const { data: campaigns } = useCampaigns();
-  const { data: recentCalls } = useRecentCalls(8);
+  const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useAnalyticsSummary(dateFrom, dateTo);
+  const { data: callsPerDay, refetch: refetchChart } = useCallsPerDay(dateFrom, dateTo);
+  const { data: campaigns, refetch: refetchCampaigns } = useCampaigns();
+  const { data: recentCalls, refetch: refetchCalls } = useRecentCalls(8);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchSummary(), refetchChart(), refetchCampaigns(), refetchCalls()]);
+    setRefreshing(false);
+  }, [refetchSummary, refetchChart, refetchCampaigns, refetchCalls]);
 
   const activeCampaigns = useMemo(() => {
     return (campaigns || []).filter(c => c.status === "active" || c.status === "paused").slice(0, 4);
@@ -85,7 +92,17 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      <h1 className="page-title">Overview</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="page-title">Overview</h1>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
