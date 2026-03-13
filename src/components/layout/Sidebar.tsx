@@ -20,6 +20,7 @@ const navItems = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const creditBalance = user?.tenant?.credit_balance ?? 0;
