@@ -2,6 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Bell, Search, LogOut, Settings, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
