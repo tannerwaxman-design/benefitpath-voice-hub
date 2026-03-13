@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Bot, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import logo from "@/assets/benefit_path_icon.svg";
 
 const navItems = [
   { label: "Overview", icon: LayoutDashboard, path: "/" },
