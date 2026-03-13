@@ -16,6 +16,7 @@ export function useCampaigns() {
       return data;
     },
     enabled: !!user?.tenant_id,
+    refetchInterval: 5 * 60 * 1000,
   });
 }
 
