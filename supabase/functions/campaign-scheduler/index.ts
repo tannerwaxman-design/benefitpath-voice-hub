@@ -51,12 +51,17 @@ Deno.serve(async (req: Request) => {
         hour: "2-digit", 
         minute: "2-digit" 
       });
-      const currentTime = localTimeStr; // "HH:MM" format
 
-      const windowStart = campaign.calling_window_start || "09:00";
-      const windowEnd = campaign.calling_window_end || "18:00";
+      // Strip seconds from window values if present (e.g. "09:00:00" -> "09:00")
+      const windowStart = (campaign.calling_window_start || "09:00").substring(0, 5);
+      const windowEnd = (campaign.calling_window_end || "18:00").substring(0, 5);
 
-      if (currentTime < windowStart || currentTime > windowEnd) continue;
+      console.log(`Campaign ${campaign.name}: localTime=${localTimeStr}, window=${windowStart}-${windowEnd}, tz=${tz}`);
+
+      if (localTimeStr < windowStart || localTimeStr > windowEnd) {
+        console.log(`Campaign ${campaign.name}: outside calling window, skipping`);
+        continue;
+      }
 
       // Check calling days
       const dayNames = [
