@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Bot, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import logo from "@/assets/benefit_path_icon.svg";
 
 const navItems = [
   { label: "Overview", icon: LayoutDashboard, path: "/" },
@@ -27,12 +28,15 @@ export function Sidebar() {
     <aside className={`${collapsed ? "w-16" : "w-[260px]"} bg-slate-900 text-slate-400 flex flex-col min-h-screen transition-all duration-200 shrink-0`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-16 border-b border-slate-800">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-white tracking-tight">BenefitPath</span>
-            <span className="text-[10px] font-semibold bg-primary/20 text-primary-foreground px-1.5 py-0.5 rounded" style={{ color: "#818CF8" }}>Voice AI</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <img src={logo} alt="BenefitPath" className="h-8 w-auto" />
+          {!collapsed && (
+            <>
+              <span className="text-lg font-bold text-white tracking-tight">BenefitPath</span>
+              <span className="text-[10px] font-semibold bg-primary/20 text-primary-foreground px-1.5 py-0.5 rounded" style={{ color: "#818CF8" }}>Voice AI</span>
+            </>
+          )}
+        </div>
         <button onClick={() => setCollapsed(!collapsed)} className="text-slate-500 hover:text-white transition-colors p-1">
           <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
         </button>

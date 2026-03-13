@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import logo from "@/assets/benefit_path_icon.svg";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -34,9 +35,7 @@ export default function ForgotPassword() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center">
-            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-              <Bot className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="BenefitPath" className="h-14 w-auto" />
           </div>
           <CardTitle className="text-2xl font-semibold text-foreground">Reset password</CardTitle>
           <CardDescription>We'll send you a link to reset your password</CardDescription>
