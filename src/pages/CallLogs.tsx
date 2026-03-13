@@ -44,6 +44,8 @@ type CallWithRelations = {
   extracted_data: Json | null;
   end_reason: string | null;
   was_transferred: boolean;
+  cost_with_margin: number | null;
+  cost_total: number | null;
   agents: { agent_name: string } | null;
   campaigns: { name: string } | null;
 };
@@ -118,7 +120,7 @@ export default function CallLogs() {
             <table className="w-full">
               <thead>
                 <tr className="bg-secondary/50">
-                  {["Date / Time", "Contact", "Campaign", "Agent", "Duration", "Outcome", "Sentiment", ""].map(h => (
+                  {["Date / Time", "Contact", "Campaign", "Agent", "Duration", "Cost", "Outcome", "Sentiment", ""].map(h => (
                     <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
                   ))}
                 </tr>
@@ -131,6 +133,7 @@ export default function CallLogs() {
                     <td className="px-4 py-3 text-sm text-muted-foreground">{call.campaigns?.name || "—"}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{call.agents?.agent_name || "—"}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(call.duration_seconds)}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{call.cost_with_margin ? `$${Number(call.cost_with_margin).toFixed(2)}` : "—"}</td>
                     <td className="px-4 py-3"><Badge variant="secondary" className={`${outcomeColors[call.outcome] || "bg-secondary"} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge></td>
                     <td className="px-4 py-3">{call.sentiment && <span className={`h-2.5 w-2.5 rounded-full inline-block ${sentimentColors[call.sentiment] || ""}`} />}</td>
                     <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
