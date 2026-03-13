@@ -307,30 +307,7 @@ export default function Settings() {
                   </div>
 
                   {/* Controls */}
-                  <div className="mt-6 space-y-3 border-t pt-4">
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={billing.tenant.hard_stop_enabled}
-                        onCheckedChange={(checked) => updateSettings.mutate({ hard_stop_enabled: checked })}
-                      />
-                      <span className="text-sm text-foreground">Hard stop — block calls when minute limit is reached</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Label className="text-sm text-foreground whitespace-nowrap">Alert at</Label>
-                      <Select
-                        value={String(billing.tenant.usage_alert_threshold || 80)}
-                        onValueChange={(v) => updateSettings.mutate({ usage_alert_threshold: Number(v) })}
-                      >
-                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="50">50%</SelectItem>
-                          <SelectItem value="70">70%</SelectItem>
-                          <SelectItem value="80">80%</SelectItem>
-                          <SelectItem value="90">90%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">of monthly limit</span>
-                    </div>
+                   <div className="mt-6 space-y-3 border-t pt-4">
                     <div className="flex items-center gap-3">
                       <Label className="text-sm text-foreground whitespace-nowrap">Margin</Label>
                       <Select

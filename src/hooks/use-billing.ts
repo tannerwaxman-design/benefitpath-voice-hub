@@ -82,9 +82,6 @@ export function useBillingUsage() {
         costSummary,
         usageLogs: usageLogs || [],
         usageHistory,
-        usagePercent: tenant.monthly_minute_limit > 0
-          ? parseFloat(((tenant.minutes_used_this_cycle / tenant.monthly_minute_limit) * 100).toFixed(1))
-          : 0,
       };
     },
     enabled: !!user?.tenant_id,
