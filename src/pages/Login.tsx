@@ -34,9 +34,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center">
-            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-              <Bot className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="BenefitPath" className="h-14 w-auto" />
           </div>
           <CardTitle className="text-2xl font-semibold text-foreground">Welcome back</CardTitle>
           <CardDescription>Sign in to BenefitPath Voice AI</CardDescription>
