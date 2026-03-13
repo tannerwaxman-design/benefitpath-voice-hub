@@ -1,32 +1,33 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+// ============================================================
+// EDGE FUNCTION: campaign-scheduler
+// Triggered by pg_cron every 60 seconds. Finds active campaigns
+// and launches calls for pending contacts.
+// ============================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { createAdminClient } from "../_shared/supabase-admin.ts";
+import { vapiRequest } from "../_shared/vapi-client.ts";
+import {
+  corsHeaders,
+  errorResponse,
+  successResponse,
+} from "../_shared/auth-helpers.ts";
 
-const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY")!;
-const VAPI_BASE_URL = "https://api.vapi.ai";
-
-// This function is triggered by pg_cron every 60 seconds
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders() });
+  }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createAdminClient();
 
     // Get all active campaigns
     const { data: campaigns, error } = await supabase
       .from("campaigns")
-      .select("*, agents!inner(vapi_assistant_id, greeting_script)")
+      .select("*, agents!inner(vapi_assistant_id, greeting_script, delay_between_calls_seconds)")
       .eq("status", "active");
 
     if (error || !campaigns?.length) {
-      return new Response(JSON.stringify({ processed: 0 }), { headers: corsHeaders });
+      return successResponse({ processed: 0 });
     }
 
     let totalLaunched = 0;
@@ -44,9 +45,23 @@ Deno.serve(async (req) => {
       if (currentTime < windowStart || currentTime > windowEnd) continue;
 
       // Check calling days
-      const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const dayNames = [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+      ];
       const today = dayNames[now.getDay()];
-      const callingDays = campaign.calling_days || ["monday", "tuesday", "wednesday", "thursday", "friday"];
+      const callingDays = campaign.calling_days || [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+      ];
       if (!callingDays.includes(today)) continue;
 
       // Count in-progress calls for this campaign
@@ -58,7 +73,6 @@ Deno.serve(async (req) => {
 
       const maxConcurrent = campaign.max_concurrent_calls || 5;
       const slotsAvailable = maxConcurrent - (activeCalls || 0);
-
       if (slotsAvailable <= 0) continue;
 
       // Check daily call limit
@@ -80,11 +94,15 @@ Deno.serve(async (req) => {
       // Find contacts to call
       const { data: contactsToCall } = await supabase
         .from("campaign_contacts")
-        .select("*, contacts!inner(phone, first_name, last_name, dnc_status)")
+        .select(
+          "*, contacts!inner(phone, first_name, last_name, dnc_status)"
+        )
         .eq("campaign_id", campaign.id)
         .in("status", ["pending", "callback_scheduled"])
         .eq("contacts.dnc_status", false)
-        .or(`next_attempt_at.is.null,next_attempt_at.lte.${now.toISOString()}`)
+        .or(
+          `next_attempt_at.is.null,next_attempt_at.lte.${now.toISOString()}`
+        )
         .order("priority", { ascending: true })
         .order("next_attempt_at", { ascending: true, nullsFirst: true })
         .limit(toFetch);
@@ -95,20 +113,31 @@ Deno.serve(async (req) => {
           .from("campaign_contacts")
           .select("id", { count: "exact", head: true })
           .eq("campaign_id", campaign.id)
-          .in("status", ["pending", "queued", "calling", "callback_scheduled"]);
+          .in("status", [
+            "pending",
+            "queued",
+            "calling",
+            "callback_scheduled",
+          ]);
 
         if (pendingCount === 0) {
-          await supabase.from("campaigns").update({
-            status: "completed",
-            actual_end: now.toISOString(),
-          }).eq("id", campaign.id);
+          await supabase
+            .from("campaigns")
+            .update({
+              status: "completed",
+              actual_end: now.toISOString(),
+            })
+            .eq("id", campaign.id);
         }
         continue;
       }
 
       // Launch calls
       for (const cc of contactsToCall) {
-        const contact = (cc as any).contacts;
+        const contact = (cc as Record<string, unknown>).contacts as Record<
+          string,
+          string
+        >;
         const contactName = `${contact.first_name} ${contact.last_name}`;
 
         // Get a phone number
@@ -119,24 +148,26 @@ Deno.serve(async (req) => {
           .eq("status", "active")
           .order("is_default", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (!phoneNumber) continue;
 
-        const personalizedGreeting = (campaign.agents?.greeting_script || "")
-          .replace(/\[Contact Name\]/gi, contact.first_name);
+        const personalizedGreeting = (
+          (campaign.agents as Record<string, string>)?.greeting_script || ""
+        ).replace(/\[Contact Name\]/gi, contact.first_name);
 
-        const vapiPayload: any = {
-          assistantId: campaign.agents?.vapi_assistant_id,
+        const vapiPayload: Record<string, unknown> = {
+          assistantId: (campaign.agents as Record<string, string>)
+            ?.vapi_assistant_id,
           customer: { number: contact.phone, name: contactName },
           assistantOverrides: {
             metadata: {
-              tenant_id: campaign.tenant_id,
-              agent_id: campaign.agent_id,
-              campaign_id: campaign.id,
-              campaign_contact_id: cc.id,
-              contact_id: cc.contact_id,
-              phone_number_id: phoneNumber.id,
+              benefitpath_tenant_id: campaign.tenant_id,
+              benefitpath_agent_id: campaign.agent_id,
+              benefitpath_campaign_id: campaign.id,
+              benefitpath_campaign_contact_id: cc.id,
+              benefitpath_contact_id: cc.contact_id,
+              benefitpath_is_test_call: false,
             },
             firstMessage: personalizedGreeting,
           },
@@ -147,21 +178,16 @@ Deno.serve(async (req) => {
         }
 
         try {
-          const vapiRes = await fetch(`${VAPI_BASE_URL}/call`, {
+          const vapiResult = await vapiRequest<{ id: string }>({
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${VAPI_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(vapiPayload),
+            endpoint: "/call",
+            body: vapiPayload,
           });
 
-          if (vapiRes.ok) {
-            const vapiCall = await vapiRes.json();
-
+          if (vapiResult.ok && vapiResult.data) {
             await supabase.from("calls").insert({
               tenant_id: campaign.tenant_id,
-              vapi_call_id: vapiCall.id,
+              vapi_call_id: vapiResult.data.id,
               agent_id: campaign.agent_id,
               campaign_id: campaign.id,
               campaign_contact_id: cc.id,
@@ -175,29 +201,38 @@ Deno.serve(async (req) => {
               outcome: "in_progress",
             });
 
-            await supabase.from("campaign_contacts").update({
-              status: "calling",
-              last_attempt_at: new Date().toISOString(),
-              total_attempts: (cc.total_attempts || 0) + 1,
-            }).eq("id", cc.id);
+            await supabase
+              .from("campaign_contacts")
+              .update({
+                status: "calling",
+                last_attempt_at: new Date().toISOString(),
+                total_attempts: (cc.total_attempts || 0) + 1,
+              })
+              .eq("id", cc.id);
 
             totalLaunched++;
           }
         } catch (callErr) {
-          console.error(`Failed to launch call for contact ${cc.contact_id}:`, callErr);
+          console.error(
+            `Failed to launch call for contact ${cc.contact_id}:`,
+            callErr
+          );
         }
 
         // Delay between calls
-        const delay = campaign.agents?.delay_between_calls_seconds || 3;
-        if (delay > 0) await new Promise(r => setTimeout(r, delay * 1000));
+        const delay =
+          (campaign.agents as Record<string, number>)
+            ?.delay_between_calls_seconds || 3;
+        if (delay > 0) await new Promise((r) => setTimeout(r, delay * 1000));
       }
     }
 
-    return new Response(JSON.stringify({ processed: totalLaunched }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return successResponse({ processed: totalLaunched });
   } catch (err) {
     console.error("Campaign scheduler error:", err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    return errorResponse(
+      err instanceof Error ? err.message : "Internal server error",
+      500
+    );
   }
 });

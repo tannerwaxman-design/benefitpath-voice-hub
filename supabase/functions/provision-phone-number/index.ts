@@ -1,103 +1,97 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+// ============================================================
+// EDGE FUNCTION: provision-phone-number
+// Provisions a new phone number via VAPI/Twilio
+// ============================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { vapiRequest } from "../_shared/vapi-client.ts";
+import {
+  getAuthContext,
+  corsHeaders,
+  errorResponse,
+  successResponse,
+} from "../_shared/auth-helpers.ts";
 
-const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY")!;
-const VAPI_BASE_URL = "https://api.vapi.ai";
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders() });
+  }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
+    const auth = await getAuthContext(req);
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    if (auth.role !== "admin") {
+      return errorResponse("Admin access required", 403);
     }
-    const userId = claimsData.claims.sub;
 
     const body = await req.json();
     const { number_type, area_code, friendly_name } = body;
 
-    // Get tenant
-    const { data: tenantUser } = await supabase
-      .from("tenant_users")
-      .select("tenant_id, role")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .single();
-
-    if (!tenantUser || tenantUser.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Admin access required" }), { status: 403, headers: corsHeaders });
-    }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
+      }
+    );
 
     // Request number from VAPI
-    const vapiPayload: any = {
+    const vapiPayload: Record<string, unknown> = {
       provider: "twilio",
-      numberDesiredAreaCode: area_code || undefined,
+      ...(area_code && { numberDesiredAreaCode: area_code }),
+      ...(number_type === "toll_free" && { numberType: "toll-free" }),
     };
 
-    if (number_type === "toll_free") {
-      vapiPayload.numberType = "toll-free";
-    }
-
-    const vapiRes = await fetch(`${VAPI_BASE_URL}/phone-number`, {
+    const vapiResult = await vapiRequest<{
+      id: string;
+      number?: string;
+      phoneNumber?: string;
+    }>({
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${VAPI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(vapiPayload),
+      endpoint: "/phone-number",
+      body: vapiPayload,
     });
 
-    if (!vapiRes.ok) {
-      const errText = await vapiRes.text();
-      return new Response(JSON.stringify({ error: "Failed to provision number", details: errText }), {
-        status: 502, headers: corsHeaders,
-      });
+    if (!vapiResult.ok || !vapiResult.data) {
+      return errorResponse(
+        "Failed to provision number: " + (vapiResult.error || "Unknown error"),
+        502
+      );
     }
 
-    const vapiNumber = await vapiRes.json();
+    const vapiNumber = vapiResult.data;
 
     // Save to our DB
     const { data: phoneRecord, error: insertErr } = await supabase
       .from("phone_numbers")
       .insert({
-        tenant_id: tenantUser.tenant_id,
+        tenant_id: auth.tenantId,
         vapi_phone_id: vapiNumber.id,
-        phone_number: vapiNumber.number || vapiNumber.phoneNumber,
+        phone_number: vapiNumber.number || vapiNumber.phoneNumber || "",
         friendly_name: friendly_name || null,
         area_code: area_code || null,
         number_type: number_type || "local",
         status: "active",
-        monthly_cost: number_type === "toll_free" ? 3.00 : 1.50,
+        monthly_cost: number_type === "toll_free" ? 3.0 : 1.5,
       })
       .select()
       .single();
 
     if (insertErr) {
-      return new Response(JSON.stringify({ error: insertErr.message }), { status: 400, headers: corsHeaders });
+      return errorResponse(
+        "Failed to save phone number: " + insertErr.message,
+        500
+      );
     }
 
-    return new Response(JSON.stringify(phoneRecord), {
-      status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return successResponse(phoneRecord, 201);
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    console.error("provision-phone-number error:", err);
+    return errorResponse(
+      err instanceof Error ? err.message : "Internal server error",
+      500
+    );
   }
 });

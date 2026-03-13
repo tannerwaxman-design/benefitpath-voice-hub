@@ -3,8 +3,7 @@
 // Used by all edge functions to communicate with VAPI
 // ============================================================
 
-const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY")!;
-const VAPI_BASE_URL = Deno.env.get("VAPI_BASE_URL") || "https://api.vapi.ai";
+const VAPI_BASE_URL = "https://api.vapi.ai";
 
 export interface VapiRequestOptions {
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -24,11 +23,22 @@ export async function vapiRequest<T = Record<string, unknown>>(
 ): Promise<VapiResponse<T>> {
   const { method, endpoint, body } = options;
 
+  const apiKey = Deno.env.get("VAPI_API_KEY");
+  if (!apiKey) {
+    console.error("VAPI_API_KEY is not configured");
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      error: "VAPI_API_KEY is not configured",
+    };
+  }
+
   try {
     const response = await fetch(`${VAPI_BASE_URL}${endpoint}`, {
       method,
       headers: {
-        Authorization: `Bearer ${VAPI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       ...(body && { body: JSON.stringify(body) }),
