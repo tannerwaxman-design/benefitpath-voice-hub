@@ -686,8 +686,8 @@ async function fetchAndStoreCosts(
   tenantId: string
 ): Promise<{ totalCost: number }> {
   try {
-    // Give VAPI a moment to finalize cost data
-    await new Promise((r) => setTimeout(r, 2000));
+    // Give VAPI time to finalize cost data
+    await new Promise((r) => setTimeout(r, 5000));
 
     const result = await vapiRequest<{
       id: string;
