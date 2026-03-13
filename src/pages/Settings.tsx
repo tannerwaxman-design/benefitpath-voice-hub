@@ -369,16 +369,19 @@ export default function Settings() {
             <CardContent className="p-0">
               <table className="w-full">
                 <thead><tr className="bg-secondary/50">
-                  {["Name", "Email", "Role", "Status", "Last Active"].map(h => <th key={h} className="px-4 py-3 text-left section-label">{h}</th>)}
+                  {["Email", "Role", "Status", "Joined"].map(h => <th key={h} className="px-4 py-3 text-left section-label">{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {teamMembers.map(m => (
+                  {teamLoading ? (
+                    <tr><td colSpan={4} className="px-4 py-6 text-center"><Skeleton className="h-4 w-48 mx-auto" /></td></tr>
+                  ) : teamMembers.length === 0 ? (
+                    <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">No team members found</td></tr>
+                  ) : teamMembers.map(m => (
                     <tr key={m.email} className="border-t">
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{m.name}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{m.email}</td>
-                      <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{m.role}</Badge></td>
-                      <td className="px-4 py-3"><Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px]">{m.status}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{m.lastActive}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">{m.email}</td>
+                      <td className="px-4 py-3"><Badge variant="outline" className="text-[10px] capitalize">{m.role}</Badge></td>
+                      <td className="px-4 py-3"><Badge variant="secondary" className={`text-[10px] border-0 ${m.status === 'active' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{m.status}</Badge></td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(m.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
