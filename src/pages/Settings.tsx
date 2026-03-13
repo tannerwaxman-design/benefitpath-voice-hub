@@ -156,9 +156,8 @@ function ApiKeysSection() {
       </Dialog>
     </Card>
   );
-}
 
-
+export default function Settings() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: billing, isLoading: billingLoading } = useBillingUsage();
