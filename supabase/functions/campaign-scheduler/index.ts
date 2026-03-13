@@ -34,16 +34,34 @@ Deno.serve(async (req: Request) => {
     let totalLaunched = 0;
 
     for (const campaign of campaigns) {
-      // Check calling window
+      // Check calling window using campaign timezone
       const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const currentTime = `${String(currentHour).padStart(2, "0")}:${String(currentMinute).padStart(2, "0")}`;
+      
+      // Get tenant timezone for this campaign
+      const { data: tenant } = await supabase
+        .from("tenants")
+        .select("default_timezone")
+        .eq("id", campaign.tenant_id)
+        .single();
+      
+      const tz = tenant?.default_timezone || "America/New_York";
+      const localTimeStr = now.toLocaleTimeString("en-US", { 
+        timeZone: tz, 
+        hour12: false, 
+        hour: "2-digit", 
+        minute: "2-digit" 
+      });
 
-      const windowStart = campaign.calling_window_start || "09:00";
-      const windowEnd = campaign.calling_window_end || "18:00";
+      // Strip seconds from window values if present (e.g. "09:00:00" -> "09:00")
+      const windowStart = (campaign.calling_window_start || "09:00").substring(0, 5);
+      const windowEnd = (campaign.calling_window_end || "18:00").substring(0, 5);
 
-      if (currentTime < windowStart || currentTime > windowEnd) continue;
+      console.log(`Campaign ${campaign.name}: localTime=${localTimeStr}, window=${windowStart}-${windowEnd}, tz=${tz}`);
+
+      if (localTimeStr < windowStart || localTimeStr > windowEnd) {
+        console.log(`Campaign ${campaign.name}: outside calling window, skipping`);
+        continue;
+      }
 
       // Check calling days
       const dayNames = [

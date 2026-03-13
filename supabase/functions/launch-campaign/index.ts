@@ -165,7 +165,6 @@ Deno.serve(async (req: Request) => {
             assistantId: agent.vapi_assistant_id,
             phoneNumberId: phoneNumber.vapi_phone_id,
             customers: vapiCustomers,
-            maxConcurrentCalls: campaign.max_concurrent_calls || 5,
             ...(campaign.scheduled_start && {
               scheduledAt: campaign.scheduled_start,
             }),
