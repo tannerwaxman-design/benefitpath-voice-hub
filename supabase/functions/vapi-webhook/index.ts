@@ -227,21 +227,26 @@ Deno.serve(async (req: Request) => {
                 .update({ cost_with_margin: parseFloat(costWithMargin.toFixed(4)) })
                 .eq("vapi_call_id", vapiCallId);
 
-              // Increment tenant total cost
+              // Deduct credits from tenant balance
+              await supabase.rpc("deduct_tenant_credits", {
+                p_tenant_id: tenantId,
+                p_amount: parseFloat(costWithMargin.toFixed(4)),
+              });
+
+              // Also update total cost for reporting
               await supabase
                 .from("tenants")
                 .update({
                   total_cost_this_cycle: parseFloat(
                     ((tenant.total_cost_this_cycle || 0) + costWithMargin).toFixed(4)
                   ),
-                  usage_alert_sent: false, // reset for next threshold check
                 })
                 .eq("id", tenantId);
 
               // Create usage log
               await supabase.from("usage_logs").insert({
                 tenant_id: tenantId,
-                call_id: null, // we'll link by time
+                call_id: null,
                 event_type: "call_minutes",
                 quantity: durationMinutes,
                 unit_cost: costData.totalCost > 0 ? parseFloat((costData.totalCost / Math.max(durationMinutes, 0.1)).toFixed(4)) : 0.05,
@@ -250,25 +255,22 @@ Deno.serve(async (req: Request) => {
                 billing_cycle_end: tenant.billing_cycle_end,
               });
 
-              // Usage alert check
-              const usagePercent = ((tenant.minutes_used_this_cycle || 0) + durationMinutes) / tenant.monthly_minute_limit * 100;
-              if (usagePercent >= (tenant.usage_alert_threshold || 80) && !tenant.usage_alert_sent) {
+              // Low balance alert
+              const newBalance = (tenant.credit_balance || 0) - costWithMargin;
+              if (newBalance <= 5 && !tenant.usage_alert_sent) {
                 await supabase
                   .from("tenants")
                   .update({ usage_alert_sent: true })
                   .eq("id", tenantId);
 
-                // Fire usage alert webhook
                 if (tenant.webhook_url && tenant.webhook_events?.includes("usage_alert")) {
                   fetch(tenant.webhook_url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       event: "usage_alert",
-                      level: usagePercent >= 100 ? "limit_reached" : "approaching_limit",
-                      minutes_used: Math.round((tenant.minutes_used_this_cycle || 0) + durationMinutes),
-                      monthly_limit: tenant.monthly_minute_limit,
-                      usage_percent: Math.round(usagePercent),
+                      level: newBalance <= 0 ? "balance_depleted" : "low_balance",
+                      credit_balance: parseFloat(newBalance.toFixed(2)),
                       total_cost_this_cycle: parseFloat(((tenant.total_cost_this_cycle || 0) + costWithMargin).toFixed(2)),
                     }),
                   }).catch(() => {});
