@@ -10,6 +10,7 @@ import logo from "@/assets/benefit_path_icon.svg";
 const navItems = [
   { label: "Overview", icon: LayoutDashboard, path: "/" },
   { label: "Agent Builder", icon: Bot, path: "/agents" },
+  { label: "Tools", icon: Wrench, path: "/tools" },
   { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
   { label: "Contact Lists", icon: Users, path: "/contacts" },
   { label: "Call Logs", icon: Phone, path: "/call-logs" },
