@@ -12,6 +12,7 @@ export interface TenantInfo {
   industry: string;
   status: string;
   default_timezone: string;
+  onboarding_completed: boolean;
 }
 
 export interface UserProfile {
