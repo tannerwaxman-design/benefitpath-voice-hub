@@ -23,7 +23,142 @@ const planNames: Record<string, string> = {
   voice_ai_enterprise: "Voice AI Enterprise",
 };
 
-export default function Settings() {
+const API_SERVICES = [
+  { id: "ghl", label: "GoHighLevel" },
+  { id: "hubspot", label: "HubSpot" },
+  { id: "google_calendar", label: "Google Calendar" },
+  { id: "salesforce", label: "Salesforce" },
+  { id: "zapier", label: "Zapier" },
+  { id: "custom", label: "Custom" },
+];
+
+function ApiKeysSection() {
+  const { toast } = useToast();
+  const { data: apiKeys = [], isLoading } = useToolApiKeys();
+  const connectMutation = useConnectApiKey();
+  const disconnectMutation = useDisconnectApiKey();
+  const [addOpen, setAddOpen] = useState(false);
+  const [service, setService] = useState("custom");
+  const [keyName, setKeyName] = useState("");
+  const [keyValue, setKeyValue] = useState("");
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+
+  const toggleVisibility = (id: string) => {
+    setVisibleKeys(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const maskKey = (key: string) => key.length > 8 ? key.slice(0, 4) + "•".repeat(key.length - 8) + key.slice(-4) : "••••••••";
+
+  const handleAdd = async () => {
+    if (!keyValue.trim()) return;
+    const svc = API_SERVICES.find(s => s.id === service);
+    await connectMutation.mutateAsync({
+      service,
+      api_key: keyValue.trim(),
+      display_name: keyName.trim() || svc?.label || service,
+    });
+    setAddOpen(false);
+    setKeyName("");
+    setKeyValue("");
+    setService("custom");
+  };
+
+  const handleCopy = (key: string) => {
+    navigator.clipboard.writeText(key);
+    toast({ title: "Copied to clipboard" });
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="section-title">API Keys</CardTitle>
+        <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-2" />Add API Key</Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        <table className="w-full">
+          <thead><tr className="bg-secondary/50">
+            {["Name", "Service", "Key", "Status", "Connected", ""].map(h => <th key={h} className="px-4 py-3 text-left section-label">{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {isLoading ? (
+              <tr><td colSpan={6} className="px-4 py-6 text-center"><Skeleton className="h-4 w-48 mx-auto" /></td></tr>
+            ) : apiKeys.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                <Key className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                No API keys configured. Add one to connect external services.
+              </td></tr>
+            ) : apiKeys.map(k => (
+              <tr key={k.id} className="border-t">
+                <td className="px-4 py-3 text-sm font-medium text-foreground">{k.display_name || k.service}</td>
+                <td className="px-4 py-3"><Badge variant="outline" className="text-[10px] capitalize">{k.service}</Badge></td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <code className="text-xs font-mono bg-secondary/50 px-2 py-1 rounded text-foreground">
+                      {visibleKeys.has(k.id) ? k.api_key : maskKey(k.api_key)}
+                    </code>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => toggleVisibility(k.id)}>
+                      {visibleKeys.has(k.id) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleCopy(k.api_key)}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <Badge variant="secondary" className="text-[10px] border-0 bg-success/10 text-success capitalize">{k.status}</Badge>
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(k.connected_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3">
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => disconnectMutation.mutate(k.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Add API Key</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Service</Label>
+              <Select value={service} onValueChange={setService}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {API_SERVICES.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Display Name (optional)</Label>
+              <Input placeholder="e.g. Production HubSpot Key" value={keyName} onChange={e => setKeyName(e.target.value)} />
+            </div>
+            <div>
+              <Label>API Key</Label>
+              <Input type="password" placeholder="Paste your API key..." value={keyValue} onChange={e => setKeyValue(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">Your API key will be stored securely and used by your AI agents to interact with external services.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button onClick={handleAdd} disabled={!keyValue.trim() || connectMutation.isPending}>
+              {connectMutation.isPending ? "Saving..." : "Save Key"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: billing, isLoading: billingLoading } = useBillingUsage();
