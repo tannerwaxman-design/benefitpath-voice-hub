@@ -21,10 +21,7 @@ export function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const minutesUsed = user?.tenant?.minutes_used_this_cycle ?? 0;
-  const minutesLimit = user?.tenant?.monthly_minute_limit ?? 10000;
-  const usagePercent = (minutesUsed / minutesLimit) * 100;
-  const usageColor = usagePercent > 90 ? "bg-destructive" : usagePercent > 70 ? "bg-warning" : "bg-success";
+  const creditBalance = user?.tenant?.credit_balance ?? 0;
 
   return (
     <aside className={`${collapsed ? "w-16" : "w-[260px]"} bg-slate-900 text-slate-400 flex flex-col min-h-screen transition-all duration-200 shrink-0`}>
@@ -61,12 +58,11 @@ export function Sidebar() {
       {/* Usage Meter */}
       {!collapsed && (
         <div className="p-4 border-t border-slate-800">
-          <p className="text-xs text-slate-500 mb-2">Minutes Used</p>
-          <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-1">
-            <div className={`h-full rounded-full transition-all ${usageColor}`} style={{ width: `${usagePercent}%` }} />
-          </div>
-          <p className="text-xs text-slate-500">{minutesUsed.toLocaleString()} / {minutesLimit.toLocaleString()} min</p>
-          <button className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Upgrade Plan</button>
+          <p className="text-xs text-slate-500 mb-2">Credit Balance</p>
+          <p className={`text-lg font-bold ${creditBalance <= 1 ? "text-red-400" : creditBalance <= 5 ? "text-yellow-400" : "text-emerald-400"}`}>
+            ${creditBalance.toFixed(2)}
+          </p>
+          <button className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Add Credits</button>
         </div>
       )}
     </aside>

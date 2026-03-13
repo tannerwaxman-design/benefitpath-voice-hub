@@ -58,39 +58,26 @@ Deno.serve(async (req: Request) => {
     }
 
     // === BILLING ENFORCEMENT ===
-    if (tenant.minutes_used_this_cycle >= tenant.monthly_minute_limit) {
-      if (tenant.hard_stop_enabled) {
-        return errorResponse(
-          "Monthly minute limit reached. Upgrade your plan to continue.",
-          429
-        );
-      }
-      // If hard stop not enabled, allow but log warning
-      console.warn(`Tenant ${auth.tenantId} exceeded limit but hard_stop_enabled=false`);
+    if ((tenant.credit_balance ?? 0) <= 0) {
+      return errorResponse(
+        "Insufficient credit balance. Please add credits to continue.",
+        429
+      );
     }
 
     const serviceClient = createAdminClient();
 
-    // Usage warning at 80%
-    const usagePercent =
-      tenant.minutes_used_this_cycle / tenant.monthly_minute_limit;
-    if (usagePercent >= 0.8 && usagePercent < 1.0) {
-      if (
-        tenant.webhook_url &&
-        tenant.webhook_events?.includes("usage_alert")
-      ) {
-        fetch(tenant.webhook_url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event: "usage_alert",
-            level: "approaching_limit",
-            minutes_used: tenant.minutes_used_this_cycle,
-            monthly_limit: tenant.monthly_minute_limit,
-            usage_percent: Math.round(usagePercent * 100),
-          }),
-        }).catch(() => {});
-      }
+    // Low balance warning
+    if ((tenant.credit_balance ?? 0) <= 5 && tenant.webhook_url && tenant.webhook_events?.includes("usage_alert")) {
+      fetch(tenant.webhook_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "usage_alert",
+          level: "low_balance",
+          credit_balance: tenant.credit_balance,
+        }),
+      }).catch(() => {});
     }
 
     // Fetch agent
@@ -265,8 +252,7 @@ Deno.serve(async (req: Request) => {
       {
         call_id: callRecord?.id,
         vapi_call_id: vapiResult.data.id,
-        minutes_remaining:
-          tenant.monthly_minute_limit - tenant.minutes_used_this_cycle,
+        credit_balance: tenant.credit_balance,
       },
       201
     );

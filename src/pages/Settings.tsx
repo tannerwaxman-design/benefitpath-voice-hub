@@ -162,24 +162,24 @@ export default function Settings() {
             </div>
           ) : billing ? (
             <>
-              {/* Current Plan */}
+              {/* Credit Balance */}
               <Card>
-                <CardHeader><CardTitle className="section-title">Current Plan</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="section-title">Credit Balance</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
                     <div>
-                      <p className="text-lg font-semibold text-foreground">
-                        {planNames[billing.tenant.plan] || billing.tenant.plan}
+                      <p className="text-3xl font-bold text-foreground">
+                        ${(billing.tenant.credit_balance ?? 0).toFixed(2)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {billing.tenant.monthly_minute_limit.toLocaleString()} minutes/month
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {planNames[billing.tenant.plan] || billing.tenant.plan}
                         {billing.tenant.margin_percent > 0 && ` • ${billing.tenant.margin_percent}% margin`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Billing cycle: {new Date(billing.tenant.billing_cycle_start).toLocaleDateString()} – {new Date(billing.tenant.billing_cycle_end).toLocaleDateString()}
                       </p>
                     </div>
-                    <Button variant="outline" onClick={() => toast({ title: "Plan upgrade coming soon" })}>Change Plan</Button>
+                    <Button variant="outline" onClick={() => toast({ title: "Add credits coming soon" })}>Add Credits</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -202,8 +202,7 @@ export default function Settings() {
                       <span className="text-xs text-muted-foreground">Minutes Used</span>
                     </div>
                     <p className="text-2xl font-bold text-foreground">
-                      {billing.tenant.minutes_used_this_cycle.toLocaleString()}
-                      <span className="text-sm font-normal text-muted-foreground"> / {billing.tenant.monthly_minute_limit.toLocaleString()}</span>
+                      {billing.costSummary.totalMinutes.toFixed(1)}
                     </p>
                   </CardContent>
                 </Card>
@@ -232,29 +231,20 @@ export default function Settings() {
                 <CardHeader><CardTitle className="section-title">Usage & Cost Breakdown</CardTitle></CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Usage gauge */}
+                    {/* Credit balance display */}
                     <div>
                       <div className="relative w-40 h-40 mx-auto">
-                        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                          <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
-                          <circle
-                            cx="50" cy="50" r="40" fill="none"
-                            stroke={billing.usagePercent >= 90 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
-                            strokeWidth="8"
-                            strokeDasharray={`${Math.min(billing.usagePercent, 100) * 2.51} ${100 * 2.51}`}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-2xl font-bold text-foreground">{billing.usagePercent}%</span>
-                          <span className="text-xs text-muted-foreground">used</span>
+                        <div className="w-full h-full rounded-full border-8 border-secondary flex flex-col items-center justify-center"
+                          style={{ borderColor: (billing.tenant.credit_balance ?? 0) <= 1 ? "hsl(var(--destructive))" : "hsl(var(--primary))" }}>
+                          <span className="text-2xl font-bold text-foreground">${(billing.tenant.credit_balance ?? 0).toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">balance</span>
                         </div>
                       </div>
 
-                      {billing.usagePercent >= 80 && (
+                      {(billing.tenant.credit_balance ?? 0) <= 5 && (
                         <div className="mt-3 flex items-center gap-2 text-xs bg-destructive/10 text-destructive p-2 rounded-md">
                           <AlertTriangle className="h-3 w-3" />
-                          {billing.usagePercent >= 100 ? "Minute limit reached!" : "Approaching minute limit"}
+                          {(billing.tenant.credit_balance ?? 0) <= 0 ? "Balance depleted!" : "Low balance — add credits soon"}
                         </div>
                       )}
 
@@ -317,30 +307,7 @@ export default function Settings() {
                   </div>
 
                   {/* Controls */}
-                  <div className="mt-6 space-y-3 border-t pt-4">
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={billing.tenant.hard_stop_enabled}
-                        onCheckedChange={(checked) => updateSettings.mutate({ hard_stop_enabled: checked })}
-                      />
-                      <span className="text-sm text-foreground">Hard stop — block calls when minute limit is reached</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Label className="text-sm text-foreground whitespace-nowrap">Alert at</Label>
-                      <Select
-                        value={String(billing.tenant.usage_alert_threshold || 80)}
-                        onValueChange={(v) => updateSettings.mutate({ usage_alert_threshold: Number(v) })}
-                      >
-                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="50">50%</SelectItem>
-                          <SelectItem value="70">70%</SelectItem>
-                          <SelectItem value="80">80%</SelectItem>
-                          <SelectItem value="90">90%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">of monthly limit</span>
-                    </div>
+                   <div className="mt-6 space-y-3 border-t pt-4">
                     <div className="flex items-center gap-3">
                       <Label className="text-sm text-foreground whitespace-nowrap">Margin</Label>
                       <Select

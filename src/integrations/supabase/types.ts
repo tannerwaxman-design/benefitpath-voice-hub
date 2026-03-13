@@ -1026,6 +1026,7 @@ export type Database = {
           contact_email: string
           contact_phone: string | null
           created_at: string
+          credit_balance: number
           crm_webhook_url: string | null
           default_calling_hours_end: string
           default_calling_hours_start: string
@@ -1067,6 +1068,7 @@ export type Database = {
           contact_email: string
           contact_phone?: string | null
           created_at?: string
+          credit_balance?: number
           crm_webhook_url?: string | null
           default_calling_hours_end?: string
           default_calling_hours_start?: string
@@ -1108,6 +1110,7 @@ export type Database = {
           contact_email?: string
           contact_phone?: string | null
           created_at?: string
+          credit_balance?: number
           crm_webhook_url?: string | null
           default_calling_hours_end?: string
           default_calling_hours_start?: string
@@ -1200,6 +1203,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deduct_tenant_credits: {
+        Args: { p_amount: number; p_tenant_id: string }
+        Returns: number
+      }
       get_agent_performance: {
         Args: { date_from: string; date_to: string }
         Returns: {
