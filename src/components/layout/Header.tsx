@@ -1,7 +1,14 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, Search } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { Bell, Search, LogOut, Settings, User } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const pathNames: Record<string, string> = {
   "/": "Overview",
@@ -15,9 +22,19 @@ const pathNames: Record<string, string> = {
 };
 
 export function Header() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const title = pathNames[location.pathname] || "Dashboard";
+
+  const initials = user?.email
+    ? user.email.substring(0, 2).toUpperCase()
+    : "??";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/welcome");
+  };
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-8 shrink-0">
@@ -35,15 +52,30 @@ export function Header() {
           <Bell className="h-5 w-5 text-muted-foreground" />
           <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />
         </button>
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">MT</AvatarFallback>
-          </Avatar>
-          <div className="hidden md:block">
-            <p className="text-sm font-medium text-foreground leading-none">{user?.email ?? ""}</p>
-            <p className="text-xs text-muted-foreground">{user?.tenant?.company_name ?? ""}</p>
-          </div>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-3 rounded-md p-1.5 hover:bg-secondary transition-colors outline-none">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-medium text-foreground leading-none">{user?.email ?? ""}</p>
+                <p className="text-xs text-muted-foreground">{user?.tenant?.company_name ?? ""}</p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
