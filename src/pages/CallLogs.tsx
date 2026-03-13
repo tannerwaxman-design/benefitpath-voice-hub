@@ -120,7 +120,7 @@ export default function CallLogs() {
             <table className="w-full">
               <thead>
                 <tr className="bg-secondary/50">
-                  {["Date / Time", "Contact", "Campaign", "Agent", "Duration", "Outcome", "Sentiment", ""].map(h => (
+                  {["Date / Time", "Contact", "Campaign", "Agent", "Duration", "Cost", "Outcome", "Sentiment", ""].map(h => (
                     <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
                   ))}
                 </tr>
