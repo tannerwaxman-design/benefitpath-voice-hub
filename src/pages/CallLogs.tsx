@@ -44,6 +44,8 @@ type CallWithRelations = {
   extracted_data: Json | null;
   end_reason: string | null;
   was_transferred: boolean;
+  cost_with_margin: number | null;
+  cost_total: number | null;
   agents: { agent_name: string } | null;
   campaigns: { name: string } | null;
 };
