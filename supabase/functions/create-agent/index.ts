@@ -239,7 +239,7 @@ Deno.serve(async (req: Request) => {
         status: body.status || "draft",
 
         voice_provider: body.voice_provider || "eleven_labs",
-        voice_id: body.voice_id || "burt",
+        voice_id: body.voice_id || "aria",
         voice_name: body.voice_name || null,
         speaking_speed: body.speaking_speed || 1.0,
         tone: body.tone || "professional",
