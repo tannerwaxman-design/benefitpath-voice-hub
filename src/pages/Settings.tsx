@@ -28,31 +28,59 @@ export default function Settings() {
   const { data: billing, isLoading: billingLoading } = useBillingUsage();
   const updateSettings = useUpdateBillingSettings();
 
-  const [teamMembers, setTeamMembers] = useState<{ email: string; role: string; status: string; created_at: string }[]>([]);
+  const [teamMembers, setTeamMembers] = useState<{ id: string; user_id: string; email: string; role: string; status: string; created_at: string }[]>([]);
   const [teamLoading, setTeamLoading] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("viewer");
+  const [inviting, setInviting] = useState(false);
+
+  const fetchTeamMembers = async () => {
+    if (!user?.tenant_id) return;
+    setTeamLoading(true);
+    const { data, error } = await supabase.functions.invoke("invite-team-member", {
+      body: { action: "list" },
+    });
+    if (data?.members) {
+      setTeamMembers(data.members);
+    }
+    setTeamLoading(false);
+  };
 
   useEffect(() => {
-    if (!user?.tenant_id) return;
-    (async () => {
-      setTeamLoading(true);
-      const { data } = await supabase
-        .from("tenant_users")
-        .select("user_id, role, status, created_at")
-        .eq("tenant_id", user.tenant_id);
-
-      if (data) {
-        // Get emails from auth - we only have user_id, so show user_id-based info
-        const members = data.map((m) => ({
-          email: m.user_id === user.id ? (user.email ?? m.user_id) : m.user_id.slice(0, 8) + "...",
-          role: m.role,
-          status: m.status,
-          created_at: m.created_at,
-        }));
-        setTeamMembers(members);
-      }
-      setTeamLoading(false);
-    })();
+    fetchTeamMembers();
   }, [user?.tenant_id]);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    const { data, error } = await supabase.functions.invoke("invite-team-member", {
+      body: { action: "invite", email: inviteEmail.trim(), role: inviteRole },
+    });
+    setInviting(false);
+    if (error || data?.error) {
+      toast({ title: "Failed to invite", description: data?.error || error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "Invitation sent!", description: `${inviteEmail} has been invited as ${inviteRole}.` });
+      setInviteOpen(false);
+      setInviteEmail("");
+      setInviteRole("viewer");
+      fetchTeamMembers();
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string, email: string) => {
+    if (!confirm(`Remove ${email} from the team?`)) return;
+    const { data, error } = await supabase.functions.invoke("invite-team-member", {
+      body: { action: "remove", member_id: memberId },
+    });
+    if (error || data?.error) {
+      toast({ title: "Failed to remove", description: data?.error || error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "Member removed" });
+      fetchTeamMembers();
+    }
+  };
 
   return (
     <div className="space-y-6">
