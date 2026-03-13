@@ -34,10 +34,17 @@ export default function Overview() {
   const dateFrom = subDays(now, chartRange).toISOString();
   const dateTo = now.toISOString();
 
-  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary(dateFrom, dateTo);
-  const { data: callsPerDay } = useCallsPerDay(dateFrom, dateTo);
-  const { data: campaigns } = useCampaigns();
-  const { data: recentCalls } = useRecentCalls(8);
+  const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useAnalyticsSummary(dateFrom, dateTo);
+  const { data: callsPerDay, refetch: refetchChart } = useCallsPerDay(dateFrom, dateTo);
+  const { data: campaigns, refetch: refetchCampaigns } = useCampaigns();
+  const { data: recentCalls, refetch: refetchCalls } = useRecentCalls(8);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchSummary(), refetchChart(), refetchCampaigns(), refetchCalls()]);
+    setRefreshing(false);
+  }, [refetchSummary, refetchChart, refetchCampaigns, refetchCalls]);
 
   const activeCampaigns = useMemo(() => {
     return (campaigns || []).filter(c => c.status === "active" || c.status === "paused").slice(0, 4);
