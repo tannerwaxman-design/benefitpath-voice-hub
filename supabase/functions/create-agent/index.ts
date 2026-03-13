@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
       voice: {
         provider: body.voice_provider === "eleven_labs" ? "11labs" : (body.voice_provider || "11labs"),
-        voiceId: body.voice_id || "burt",
+        voiceId: body.voice_id || "aria",
         speed: body.speaking_speed || 1.0,
         ...(body.filler_words_enabled && {
           fillerInjectionEnabled: true,
