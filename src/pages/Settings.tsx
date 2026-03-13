@@ -173,7 +173,6 @@ export default function Settings() {
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         {planNames[billing.tenant.plan] || billing.tenant.plan}
-                        {billing.tenant.margin_percent > 0 && ` • ${billing.tenant.margin_percent}% margin`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Billing cycle: {new Date(billing.tenant.billing_cycle_start).toLocaleDateString()} – {new Date(billing.tenant.billing_cycle_end).toLocaleDateString()}
@@ -256,7 +255,7 @@ export default function Settings() {
                         <div className="flex justify-between"><span className="text-muted-foreground">LLM</span><span className="text-foreground">${billing.costSummary.llm.toFixed(2)}</span></div>
                         <div className="flex justify-between"><span className="text-muted-foreground">Text-to-Speech</span><span className="text-foreground">${billing.costSummary.tts.toFixed(2)}</span></div>
                         <div className="flex justify-between border-t pt-2"><span className="font-medium text-foreground">Total at-cost</span><span className="font-bold text-foreground">${billing.costSummary.total.toFixed(2)}</span></div>
-                        <div className="flex justify-between"><span className="font-medium text-foreground">Your revenue (+{billing.tenant.margin_percent}%)</span><span className="font-bold text-primary">${(billing.tenant.total_cost_this_cycle || 0).toFixed(2)}</span></div>
+                        
                       </div>
                     </div>
 
@@ -292,13 +291,7 @@ export default function Settings() {
                               <span className="text-lg font-bold text-foreground">
                                 ${(billing.costSummary.total / billing.costSummary.totalMinutes).toFixed(3)}
                               </span>
-                              <span className="text-xs text-muted-foreground"> at-cost</span>
-                            </div>
-                            <div>
-                              <span className="text-lg font-bold text-primary">
-                                ${((billing.tenant.total_cost_this_cycle || 0) / billing.costSummary.totalMinutes).toFixed(3)}
-                              </span>
-                              <span className="text-xs text-muted-foreground"> w/ margin</span>
+                              <span className="text-xs text-muted-foreground"> per minute</span>
                             </div>
                           </div>
                         </div>
@@ -306,28 +299,6 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Controls */}
-                   <div className="mt-6 space-y-3 border-t pt-4">
-                    <div className="flex items-center gap-3">
-                      <Label className="text-sm text-foreground whitespace-nowrap">Margin</Label>
-                      <Select
-                        value={String(billing.tenant.margin_percent || 20)}
-                        onValueChange={(v) => updateSettings.mutate({ margin_percent: Number(v) })}
-                      >
-                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">0%</SelectItem>
-                          <SelectItem value="10">10%</SelectItem>
-                          <SelectItem value="15">15%</SelectItem>
-                          <SelectItem value="20">20%</SelectItem>
-                          <SelectItem value="25">25%</SelectItem>
-                          <SelectItem value="30">30%</SelectItem>
-                          <SelectItem value="50">50%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">markup on VAPI costs</span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
 
