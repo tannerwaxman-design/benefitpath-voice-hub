@@ -673,6 +673,78 @@ async function incrementCampaignStat(
   }
 }
 
+// Fetch cost breakdown from VAPI API and store on call record
+async function fetchAndStoreCosts(
+  supabase: ReturnType<typeof createAdminClient>,
+  vapiCallId: string,
+  tenantId: string
+): Promise<{ totalCost: number }> {
+  try {
+    // Give VAPI a moment to finalize cost data
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const result = await vapiRequest<{
+      id: string;
+      costs?: Array<{ type: string; cost: number; minutes?: number; characters?: number; promptTokens?: number; completionTokens?: number }>;
+      costBreakdown?: { transport?: number; stt?: number; llm?: number; tts?: number; vapi?: number; total?: number };
+    }>({
+      method: "GET",
+      endpoint: `/call/${vapiCallId}`,
+    });
+
+    if (!result.ok || !result.data) {
+      console.warn(`Failed to fetch VAPI call costs for ${vapiCallId}`);
+      return { totalCost: 0 };
+    }
+
+    const costs = result.data.costs || [];
+    const breakdown = result.data.costBreakdown || {};
+
+    let costVapi = 0, costTransport = 0, costStt = 0, costLlm = 0, costTts = 0;
+
+    for (const c of costs) {
+      const amount = c.cost || 0;
+      switch (c.type) {
+        case "vapi": costVapi += amount; break;
+        case "transport": costTransport += amount; break;
+        case "transcriber": costStt += amount; break;
+        case "model": costLlm += amount; break;
+        case "voice": costTts += amount; break;
+      }
+    }
+
+    // Fallback to costBreakdown if costs array is empty
+    if (costs.length === 0 && breakdown) {
+      costVapi = breakdown.vapi || 0;
+      costTransport = breakdown.transport || 0;
+      costStt = breakdown.stt || 0;
+      costLlm = breakdown.llm || 0;
+      costTts = breakdown.tts || 0;
+    }
+
+    const totalCost = costVapi + costTransport + costStt + costLlm + costTts;
+
+    await supabase
+      .from("calls")
+      .update({
+        cost_vapi: parseFloat(costVapi.toFixed(4)),
+        cost_transport: parseFloat(costTransport.toFixed(4)),
+        cost_stt: parseFloat(costStt.toFixed(4)),
+        cost_llm: parseFloat(costLlm.toFixed(4)),
+        cost_tts: parseFloat(costTts.toFixed(4)),
+        cost_breakdown: costs,
+        cost_total: parseFloat(totalCost.toFixed(4)),
+        cost_amount: parseFloat(totalCost.toFixed(4)),
+      })
+      .eq("vapi_call_id", vapiCallId);
+
+    return { totalCost };
+  } catch (err) {
+    console.error(`Error fetching costs for ${vapiCallId}:`, err);
+    return { totalCost: 0 };
+  }
+}
+
 async function fireTenantWebhook(
   supabase: ReturnType<typeof createAdminClient>,
   tenantId: string,
