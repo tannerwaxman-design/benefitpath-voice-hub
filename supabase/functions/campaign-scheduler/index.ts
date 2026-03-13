@@ -12,12 +12,6 @@ import {
   errorResponse,
   successResponse,
 } from "../_shared/auth-helpers.ts";
-import { vapiRequest } from "../_shared/vapi-client.ts";
-import {
-  corsHeaders,
-  errorResponse,
-  successResponse,
-} from "../_shared/auth-helpers.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
