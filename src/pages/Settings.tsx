@@ -393,24 +393,40 @@ export default function Settings() {
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="section-title">Team Members</CardTitle>
-              <Button size="sm" onClick={() => toast({ title: "Invite sent!" })}>Invite Team Member</Button>
+              <Button size="sm" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4 mr-2" />Invite Team Member</Button>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full">
                 <thead><tr className="bg-secondary/50">
-                  {["Email", "Role", "Status", "Joined"].map(h => <th key={h} className="px-4 py-3 text-left section-label">{h}</th>)}
+                  {["Email", "Role", "Status", "Joined", ""].map(h => <th key={h} className="px-4 py-3 text-left section-label">{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {teamLoading ? (
-                    <tr><td colSpan={4} className="px-4 py-6 text-center"><Skeleton className="h-4 w-48 mx-auto" /></td></tr>
+                    <tr><td colSpan={5} className="px-4 py-6 text-center"><Skeleton className="h-4 w-48 mx-auto" /></td></tr>
                   ) : teamMembers.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">No team members found</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">No team members found</td></tr>
                   ) : teamMembers.map(m => (
-                    <tr key={m.email} className="border-t">
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{m.email}</td>
+                    <tr key={m.id} className="border-t">
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                        {m.email}
+                        {m.user_id === user?.id && <span className="text-xs text-muted-foreground ml-2">(you)</span>}
+                      </td>
                       <td className="px-4 py-3"><Badge variant="outline" className="text-[10px] capitalize">{m.role}</Badge></td>
-                      <td className="px-4 py-3"><Badge variant="secondary" className={`text-[10px] border-0 ${m.status === 'active' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{m.status}</Badge></td>
+                      <td className="px-4 py-3">
+                        <Badge variant="secondary" className={`text-[10px] border-0 capitalize ${
+                          m.status === 'active' ? 'bg-success/10 text-success' :
+                          m.status === 'invited' ? 'bg-warning/10 text-warning' :
+                          'bg-muted text-muted-foreground'
+                        }`}>{m.status}</Badge>
+                      </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(m.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        {m.user_id !== user?.id && (
+                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleRemoveMember(m.id, m.email)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -418,15 +434,45 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="section-title">API Keys</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
-                <code className="text-sm text-foreground flex-1 font-mono">bp_live_sk•••••••••••4f2a</code>
-                <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText("bp_live_sk_example_key_4f2a"); toast({ title: "API key copied!" }); }}><Copy className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => toast({ title: "API key regenerated!" })}><RefreshCw className="h-4 w-4" /></Button>
+          {/* Invite Modal */}
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Invite Team Member</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div>
+                  <Label>Email Address</Label>
+                  <Input
+                    type="email"
+                    placeholder="teammate@company.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Role</Label>
+                  <Select value={inviteRole} onValueChange={setInviteRole}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin — Full access</SelectItem>
+                      <SelectItem value="manager">Manager — Can manage agents & campaigns</SelectItem>
+                      <SelectItem value="viewer">Viewer — Read-only access</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  They'll receive an email invitation to join your team. If they already have an account, they'll be added immediately.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">Use this key to integrate with your own systems.</p>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+                <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
+                  {inviting ? "Sending..." : "Send Invite"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
