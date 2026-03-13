@@ -173,7 +173,6 @@ export default function Settings() {
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         {planNames[billing.tenant.plan] || billing.tenant.plan}
-                        {billing.tenant.margin_percent > 0 && ` • ${billing.tenant.margin_percent}% margin`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Billing cycle: {new Date(billing.tenant.billing_cycle_start).toLocaleDateString()} – {new Date(billing.tenant.billing_cycle_end).toLocaleDateString()}
