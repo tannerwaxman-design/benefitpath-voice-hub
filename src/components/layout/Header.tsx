@@ -49,10 +49,23 @@ export function Header() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input placeholder="Search..." className="pl-9 pr-4 py-2 text-sm bg-secondary/50 rounded-md border-0 focus:ring-2 focus:ring-primary/30 outline-none w-64" />
         </div>
-        <button className="relative p-2 rounded-md hover:bg-secondary transition-colors">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-          <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />
-        </button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="relative p-2 rounded-md hover:bg-secondary transition-colors">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 p-0">
+            <div className="p-4 border-b border-border">
+              <h4 className="text-sm font-semibold text-foreground">Notifications</h4>
+            </div>
+            <div className="p-6 text-center">
+              <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No notifications yet</p>
+              <p className="text-xs text-muted-foreground mt-1">You'll see call alerts and campaign updates here.</p>
+            </div>
+          </PopoverContent>
+        </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-3 rounded-md p-1.5 hover:bg-secondary transition-colors outline-none">
