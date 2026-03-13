@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Overview from "./pages/Overview";
+import LandingPage from "./pages/LandingPage";
 import AgentBuilder from "./pages/AgentBuilder";
 import AgentEditor from "./pages/AgentEditor";
 import Campaigns from "./pages/Campaigns";
@@ -33,6 +34,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Public routes */}
+            <Route path="/welcome" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
