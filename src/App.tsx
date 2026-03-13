@@ -17,6 +17,7 @@ import CallLogs from "./pages/CallLogs";
 import Analytics from "./pages/Analytics";
 import PhoneNumbers from "./pages/PhoneNumbers";
 import Settings from "./pages/Settings";
+import Tools from "./pages/Tools";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
