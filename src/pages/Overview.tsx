@@ -6,7 +6,7 @@ import { useCampaigns } from "@/hooks/use-campaigns";
 import { useRecentCalls } from "@/hooks/use-calls";
 import { useAnalyticsSummary, useCallsPerDay } from "@/hooks/use-analytics";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { subDays, format } from "date-fns";
 
@@ -30,9 +30,15 @@ const sentimentDot: Record<string, string> = {
 export default function Overview() {
   const { user } = useAuth();
   const [chartRange, setChartRange] = useState(30);
-  const now = new Date();
-  const dateFrom = subDays(now, chartRange).toISOString();
-  const dateTo = now.toISOString();
+  const [queryNow, setQueryNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setQueryNow(new Date()), 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dateFrom = useMemo(() => subDays(queryNow, chartRange).toISOString(), [queryNow, chartRange]);
+  const dateTo = useMemo(() => queryNow.toISOString(), [queryNow]);
 
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useAnalyticsSummary(dateFrom, dateTo);
   const { data: callsPerDay, refetch: refetchChart } = useCallsPerDay(dateFrom, dateTo);
@@ -42,8 +48,12 @@ export default function Overview() {
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchSummary(), refetchChart(), refetchCampaigns(), refetchCalls()]);
-    setRefreshing(false);
+    setQueryNow(new Date());
+    try {
+      await Promise.all([refetchSummary(), refetchChart(), refetchCampaigns(), refetchCalls()]);
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetchSummary, refetchChart, refetchCampaigns, refetchCalls]);
 
   const activeCampaigns = useMemo(() => {
