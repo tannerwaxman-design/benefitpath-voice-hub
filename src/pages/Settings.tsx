@@ -473,8 +473,6 @@ export default function Settings() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>
