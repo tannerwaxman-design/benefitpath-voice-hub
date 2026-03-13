@@ -92,7 +92,17 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      <h1 className="page-title">Overview</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="page-title">Overview</h1>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
