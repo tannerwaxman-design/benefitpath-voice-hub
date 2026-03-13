@@ -1,46 +1,35 @@
 project_id = "kpsilbmmedonhxjofixm"
 
-[functions.create-agent]
-verify_jwt = false
-
-[functions.update-agent]
-verify_jwt = false
-
-[functions.delete-agent]
-verify_jwt = false
-
-[functions.launch-call]
-verify_jwt = false
-
-[functions.vapi-webhook]
-verify_jwt = false
-
-[functions.campaign-scheduler]
-verify_jwt = false
-
-[functions.start-campaign]
-verify_jwt = false
-
-[functions.launch-campaign]
-verify_jwt = false
-
-[functions.provision-phone-number]
-verify_jwt = false
-
-[functions.upload-document]
-verify_jwt = false
-
-[functions.billing-cycle-reset]
-verify_jwt = false
-
-[functions.list-voices]
-verify_jwt = false
-
-[functions.import-twilio-number]
-verify_jwt = false
-
-[functions.buy-twilio-number]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.billing-cycle-reset]
+    verify_jwt = false
+  [functions.buy-twilio-number]
+    verify_jwt = false
+  [functions.campaign-scheduler]
+    verify_jwt = false
+  [functions.create-agent]
+    verify_jwt = false
+  [functions.delete-agent]
+    verify_jwt = false
+  [functions.import-twilio-number]
+    verify_jwt = false
+  [functions.launch-call]
+    verify_jwt = false
+  [functions.launch-campaign]
+    verify_jwt = false
+  [functions.list-voices]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.provision-phone-number]
+    verify_jwt = false
+  [functions.start-campaign]
+    verify_jwt = false
+  [functions.update-agent]
+    verify_jwt = false
+  [functions.upload-document]
+    verify_jwt = false
+  [functions.vapi-webhook]
+    verify_jwt = false
