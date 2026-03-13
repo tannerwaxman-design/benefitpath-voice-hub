@@ -10,13 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, CreditCard, Phone, Bot, Check, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { Building2, CreditCard, Phone, Bot, Check, ArrowRight, ArrowLeft, Loader2, ExternalLink, ShieldCheck } from "lucide-react";
 import logo from "@/assets/benefit_path_icon.svg";
 
 const STEPS = [
   { id: 1, label: "Company", icon: Building2 },
   { id: 2, label: "Plan", icon: CreditCard },
-  { id: 3, label: "Phone", icon: Phone },
+  { id: 3, label: "Twilio", icon: Phone },
   { id: 4, label: "Agent", icon: Bot },
 ];
 
@@ -61,10 +61,11 @@ export default function Onboarding() {
   // Step 2 state
   const [selectedPlan, setSelectedPlan] = useState("voice_ai_pro");
 
-  // Step 3 state
-  const [areaCode, setAreaCode] = useState("");
-  const [phoneProvisioning, setPhoneProvisioning] = useState(false);
-  const [phoneProvisioned, setPhoneProvisioned] = useState(false);
+  // Step 3 state — Twilio credentials
+  const [twilioSid, setTwilioSid] = useState("");
+  const [twilioToken, setTwilioToken] = useState("");
+  const [twilioSaving, setTwilioSaving] = useState(false);
+  const [twilioConnected, setTwilioConnected] = useState(false);
 
   // Step 4 state
   const [agentName, setAgentName] = useState("");
@@ -121,20 +122,26 @@ export default function Onboarding() {
     setStep(3);
   };
 
-  const handleProvisionPhone = async () => {
-    setPhoneProvisioning(true);
-    try {
-      const { error } = await supabase.functions.invoke("provision-phone-number", {
-        body: { area_code: areaCode || "212", number_type: "local" },
-      });
-      if (error) throw error;
-      setPhoneProvisioned(true);
-      toast({ title: "Phone number provisioned!" });
-    } catch (err: any) {
-      toast({ title: "Could not provision number", description: err.message, variant: "destructive" });
-    } finally {
-      setPhoneProvisioning(false);
+  const handleConnectTwilio = async () => {
+    if (!twilioSid.trim() || !twilioToken.trim()) {
+      toast({ title: "Both Account SID and Auth Token are required", variant: "destructive" });
+      return;
     }
+    setTwilioSaving(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({
+        twilio_account_sid: twilioSid.trim(),
+        twilio_auth_token: twilioToken.trim(),
+      })
+      .eq("id", user!.tenant_id);
+    setTwilioSaving(false);
+    if (error) {
+      toast({ title: "Failed to save Twilio credentials", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTwilioConnected(true);
+    toast({ title: "Twilio connected successfully!" });
   };
 
   const handleCreateAgent = async () => {
@@ -314,42 +321,68 @@ export default function Onboarding() {
             </Card>
           )}
 
-          {/* Step 3: Phone Number */}
+          {/* Step 3: Connect Twilio */}
           {step === 3 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">Get your first phone number</CardTitle>
-                <CardDescription>We'll provision a local number for your AI agents to call from.</CardDescription>
+                <CardTitle className="text-xl">Connect your Twilio account</CardTitle>
+                <CardDescription>
+                  Link your Twilio account to provision and manage phone numbers for your AI agents.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="area-code">Preferred Area Code (optional)</Label>
-                  <Input
-                    id="area-code"
-                    value={areaCode}
-                    onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))}
-                    placeholder="212"
-                    maxLength={3}
-                    className="w-32"
-                  />
-                  <p className="text-xs text-muted-foreground">Leave blank for auto-assigned.</p>
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                  <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    Where to find your credentials
+                  </p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>Log in to your <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Twilio Console <ExternalLink className="h-3 w-3" /></a></li>
+                    <li>Your <strong>Account SID</strong> and <strong>Auth Token</strong> are on the dashboard home page</li>
+                    <li>Copy and paste them below</li>
+                  </ol>
                 </div>
-                {phoneProvisioned ? (
+
+                {twilioConnected ? (
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary" />
-                    Phone number provisioned successfully!
+                    Twilio account connected successfully!
                   </div>
                 ) : (
-                  <Button onClick={handleProvisionPhone} disabled={phoneProvisioning} variant="outline">
-                    {phoneProvisioning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Phone className="h-4 w-4 mr-2" />}
-                    Provision Number
-                  </Button>
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="twilio-sid">Account SID *</Label>
+                      <Input
+                        id="twilio-sid"
+                        value={twilioSid}
+                        onChange={(e) => setTwilioSid(e.target.value)}
+                        placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="twilio-token">Auth Token *</Label>
+                      <Input
+                        id="twilio-token"
+                        type="password"
+                        value={twilioToken}
+                        onChange={(e) => setTwilioToken(e.target.value)}
+                        placeholder="Your Twilio Auth Token"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <Button onClick={handleConnectTwilio} disabled={twilioSaving || !twilioSid.trim() || !twilioToken.trim()} variant="outline">
+                      {twilioSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Phone className="h-4 w-4 mr-2" />}
+                      Connect Twilio
+                    </Button>
+                  </>
                 )}
+
                 <div className="pt-2 flex justify-between">
                   <Button variant="ghost" onClick={() => setStep(2)}>
                     <ArrowLeft className="h-4 w-4 mr-1" /> Back
                   </Button>
-                  <Button onClick={() => setStep(4)} disabled={!phoneProvisioned}>
+                  <Button onClick={() => setStep(4)} disabled={!twilioConnected}>
                     Continue <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
