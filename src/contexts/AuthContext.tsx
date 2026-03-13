@@ -8,6 +8,7 @@ export interface TenantInfo {
   plan: string;
   monthly_minute_limit: number;
   minutes_used_this_cycle: number;
+  credit_balance: number;
   industry: string;
   status: string;
   default_timezone: string;
