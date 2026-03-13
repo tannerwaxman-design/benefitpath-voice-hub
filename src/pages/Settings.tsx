@@ -435,6 +435,9 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          {/* API Keys */}
+          <ApiKeysSection />
+
           {/* Invite Modal */}
           <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogContent className="sm:max-w-md">
