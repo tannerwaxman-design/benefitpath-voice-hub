@@ -41,6 +41,83 @@ export function useProvisionPhoneNumber() {
   });
 }
 
+export function useImportTwilioNumber() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: {
+      phone_number: string;
+      twilio_account_sid: string;
+      twilio_auth_token: string;
+      friendly_name?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("import-twilio-number", {
+        body: params,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["phone-numbers"] });
+      toast({ title: "Twilio number imported!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to import number", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+export function useSearchTwilioNumbers() {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: {
+      area_code?: string;
+      number_type: string;
+      twilio_account_sid: string;
+      twilio_auth_token: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("buy-twilio-number", {
+        body: { ...params, action: "search" },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to search numbers", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+export function useBuyTwilioNumber() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: {
+      phone_number: string;
+      number_type: string;
+      twilio_account_sid: string;
+      twilio_auth_token: string;
+      friendly_name?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("buy-twilio-number", {
+        body: { ...params, action: "buy" },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["phone-numbers"] });
+      toast({ title: "Twilio number purchased and registered!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to buy number", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
 export function useAssignPhoneNumber() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -77,7 +154,6 @@ export function useSetDefaultPhoneNumber() {
 
   return useMutation({
     mutationFn: async (phoneId: string) => {
-      // Unset all defaults first, then set the new one
       await supabase
         .from("phone_numbers")
         .update({ is_default: false })
