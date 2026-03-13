@@ -30,9 +30,15 @@ const sentimentDot: Record<string, string> = {
 export default function Overview() {
   const { user } = useAuth();
   const [chartRange, setChartRange] = useState(30);
-  const now = new Date();
-  const dateFrom = subDays(now, chartRange).toISOString();
-  const dateTo = now.toISOString();
+  const [queryNow, setQueryNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setQueryNow(new Date()), 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dateFrom = useMemo(() => subDays(queryNow, chartRange).toISOString(), [queryNow, chartRange]);
+  const dateTo = useMemo(() => queryNow.toISOString(), [queryNow]);
 
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useAnalyticsSummary(dateFrom, dateTo);
   const { data: callsPerDay, refetch: refetchChart } = useCallsPerDay(dateFrom, dateTo);
