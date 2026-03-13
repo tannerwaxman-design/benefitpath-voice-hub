@@ -48,8 +48,12 @@ export default function Overview() {
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchSummary(), refetchChart(), refetchCampaigns(), refetchCalls()]);
-    setRefreshing(false);
+    setQueryNow(new Date());
+    try {
+      await Promise.all([refetchSummary(), refetchChart(), refetchCampaigns(), refetchCalls()]);
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetchSummary, refetchChart, refetchCampaigns, refetchCalls]);
 
   const activeCampaigns = useMemo(() => {
