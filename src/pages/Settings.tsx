@@ -202,8 +202,7 @@ export default function Settings() {
                       <span className="text-xs text-muted-foreground">Minutes Used</span>
                     </div>
                     <p className="text-2xl font-bold text-foreground">
-                      {billing.tenant.minutes_used_this_cycle.toLocaleString()}
-                      <span className="text-sm font-normal text-muted-foreground"> / {billing.tenant.monthly_minute_limit.toLocaleString()}</span>
+                      {billing.costSummary.totalMinutes.toFixed(1)}
                     </p>
                   </CardContent>
                 </Card>
