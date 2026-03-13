@@ -67,26 +67,17 @@ Deno.serve(async (req: Request) => {
 
     const serviceClient = createAdminClient();
 
-    // Usage warning at 80%
-    const usagePercent =
-      tenant.minutes_used_this_cycle / tenant.monthly_minute_limit;
-    if (usagePercent >= 0.8 && usagePercent < 1.0) {
-      if (
-        tenant.webhook_url &&
-        tenant.webhook_events?.includes("usage_alert")
-      ) {
-        fetch(tenant.webhook_url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event: "usage_alert",
-            level: "approaching_limit",
-            minutes_used: tenant.minutes_used_this_cycle,
-            monthly_limit: tenant.monthly_minute_limit,
-            usage_percent: Math.round(usagePercent * 100),
-          }),
-        }).catch(() => {});
-      }
+    // Low balance warning
+    if ((tenant.credit_balance ?? 0) <= 5 && tenant.webhook_url && tenant.webhook_events?.includes("usage_alert")) {
+      fetch(tenant.webhook_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "usage_alert",
+          level: "low_balance",
+          credit_balance: tenant.credit_balance,
+        }),
+      }).catch(() => {});
     }
 
     // Fetch agent
