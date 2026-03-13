@@ -87,6 +87,16 @@ export default {
           800: "#1E293B",
           900: "#0F172A",
         },
+        landing: {
+          navy: "hsl(var(--landing-navy))",
+          "navy-deep": "hsl(var(--landing-navy-deep))",
+          green: "hsl(var(--landing-green))",
+          "green-hover": "hsl(var(--landing-green-hover))",
+          "green-foreground": "hsl(var(--landing-green-foreground))",
+          "gray-bg": "hsl(var(--landing-gray-bg))",
+          "text-dark": "hsl(var(--landing-text-dark))",
+          "text-muted": "hsl(var(--landing-text-muted))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

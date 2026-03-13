@@ -55,6 +55,16 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 17%;
     --sidebar-ring: 239 84% 67%;
+
+    /* Landing page tokens */
+    --landing-navy: 214 30% 15%;
+    --landing-navy-deep: 220 26% 14%;
+    --landing-green: 145 63% 49%;
+    --landing-green-hover: 145 63% 42%;
+    --landing-green-foreground: 0 0% 100%;
+    --landing-gray-bg: 210 20% 96%;
+    --landing-text-dark: 240 33% 14%;
+    --landing-text-muted: 215 14% 45%;
   }
 }
 
