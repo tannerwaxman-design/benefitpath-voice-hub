@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import logo from "@/assets/benefit_path_icon.svg";
 
 export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -15,29 +13,29 @@ export default function LandingNav() {
   return (
     <nav
       className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${
-        scrolled ? "shadow-md" : "border-b border-gray-100"
+        scrolled ? "shadow-md" : ""
       }`}
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
-        <Link to="/welcome" className="flex items-center gap-2.5">
-          <img src={logo} alt="BenefitPath" className="h-9 w-auto" />
-          <span className="text-xl font-bold tracking-tight text-landing-text-dark">
-            BenefitPath
-          </span>
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+        <Link to="/welcome" className="flex items-center gap-2">
+          <img
+            src="/benefit-path-logo.svg"
+            alt="Benefit Path"
+            className="h-10 w-auto"
+          />
         </Link>
-        <div className="flex items-center gap-3">
-          <Link to="/login">
-            <Button
-              variant="ghost"
-              className="text-landing-text-muted hover:text-landing-text-dark font-medium"
-            >
-              Login
-            </Button>
+        <div className="flex items-center gap-5">
+          <Link
+            to="/login"
+            className="text-[15px] font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            Login
           </Link>
-          <Link to="/signup">
-            <Button className="bg-landing-green hover:bg-landing-green-hover text-landing-green-foreground font-semibold rounded-lg px-6">
-              Get Started
-            </Button>
+          <Link
+            to="/signup"
+            className="inline-block bg-[#5046E5] hover:bg-[#4338CA] text-white font-semibold text-[15px] px-7 py-2.5 rounded-full transition-colors"
+          >
+            Get Started
           </Link>
         </div>
       </div>
