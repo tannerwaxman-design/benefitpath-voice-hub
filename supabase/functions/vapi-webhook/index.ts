@@ -214,7 +214,7 @@ Deno.serve(async (req: Request) => {
             // Get tenant for billing cycle + margin
             const { data: tenant } = await supabase
               .from("tenants")
-              .select("billing_cycle_start, billing_cycle_end, margin_percent, total_cost_this_cycle, usage_alert_threshold, usage_alert_sent, hard_stop_enabled, monthly_minute_limit, minutes_used_this_cycle, webhook_url, webhook_events")
+              .select("billing_cycle_start, billing_cycle_end, margin_percent, total_cost_this_cycle, credit_balance, usage_alert_sent, webhook_url, webhook_events")
               .eq("id", tenantId)
               .single();
 
