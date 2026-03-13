@@ -32,7 +32,7 @@ export const RecoveryEmail = ({
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>We received a request to reset your password for BenefitPath Voice AI. Click the button below to choose a new password.</Text>
         <Button style={button} href={confirmationUrl}>Reset Password</Button>
-        <Text style={footer}>If you didn't request a password reset, you can safely ignore this email. Your password will not be changed.</Text>
+        <Text style={footer}>If you didn't request a password reset, you can safely ignore this email.</Text>
       </Container>
     </Body>
   </Html>

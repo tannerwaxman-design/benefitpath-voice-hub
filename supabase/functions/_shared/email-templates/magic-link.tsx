@@ -30,8 +30,8 @@ export const MagicLinkEmail = ({
       <Container style={container}>
         <Img src="https://kpsilbmmedonhxjofixm.supabase.co/storage/v1/object/public/email-assets/logo.svg" alt="BenefitPath" height="40" style={{ marginBottom: '24px' }} />
         <Heading style={h1}>Your login link</Heading>
-        <Text style={text}>Click the button below to sign in to BenefitPath Voice AI. This link will expire shortly.</Text>
-        <Button style={button} href={confirmationUrl}>Sign In</Button>
+        <Text style={text}>Click the button below to log in to BenefitPath Voice AI. This link will expire shortly.</Text>
+        <Button style={button} href={confirmationUrl}>Log In</Button>
         <Text style={footer}>If you didn't request this link, you can safely ignore this email.</Text>
       </Container>
     </Body>
