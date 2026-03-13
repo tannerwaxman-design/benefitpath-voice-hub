@@ -1311,6 +1311,176 @@ export type Database = {
         }
         Relationships: []
       }
+      tool_activity_log: {
+        Row: {
+          call_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          status: string
+          summary: string | null
+          tenant_id: string
+          tool_id: string
+        }
+        Insert: {
+          call_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          status?: string
+          summary?: string | null
+          tenant_id: string
+          tool_id: string
+        }
+        Update: {
+          call_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          status?: string
+          summary?: string | null
+          tenant_id?: string
+          tool_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_activity_log_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_activity_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_activity_log_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tool_api_keys: {
+        Row: {
+          additional_config: Json
+          api_key: string
+          connected_at: string
+          display_name: string | null
+          id: string
+          last_verified_at: string | null
+          service: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          additional_config?: Json
+          api_key: string
+          connected_at?: string
+          display_name?: string | null
+          id?: string
+          last_verified_at?: string | null
+          service: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          additional_config?: Json
+          api_key?: string
+          connected_at?: string
+          display_name?: string | null
+          id?: string
+          last_verified_at?: string | null
+          service?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_api_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tools: {
+        Row: {
+          assigned_agent_ids: Json
+          created_at: string
+          description: string
+          id: string
+          last_used_at: string | null
+          message_complete: string | null
+          message_failed: string | null
+          message_start: string | null
+          name: string
+          parameters: Json
+          service: string
+          service_config: Json
+          status: string
+          template: string | null
+          tenant_id: string
+          total_uses: number
+          updated_at: string
+          vapi_tool_id: string | null
+        }
+        Insert: {
+          assigned_agent_ids?: Json
+          created_at?: string
+          description: string
+          id?: string
+          last_used_at?: string | null
+          message_complete?: string | null
+          message_failed?: string | null
+          message_start?: string | null
+          name: string
+          parameters?: Json
+          service: string
+          service_config?: Json
+          status?: string
+          template?: string | null
+          tenant_id: string
+          total_uses?: number
+          updated_at?: string
+          vapi_tool_id?: string | null
+        }
+        Update: {
+          assigned_agent_ids?: Json
+          created_at?: string
+          description?: string
+          id?: string
+          last_used_at?: string | null
+          message_complete?: string | null
+          message_failed?: string | null
+          message_start?: string | null
+          name?: string
+          parameters?: Json
+          service?: string
+          service_config?: Json
+          status?: string
+          template?: string | null
+          tenant_id?: string
+          total_uses?: number
+          updated_at?: string
+          vapi_tool_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tools_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usage_logs: {
         Row: {
           billing_cycle_end: string

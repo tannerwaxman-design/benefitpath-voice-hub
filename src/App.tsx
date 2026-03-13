@@ -17,6 +17,7 @@ import CallLogs from "./pages/CallLogs";
 import Analytics from "./pages/Analytics";
 import PhoneNumbers from "./pages/PhoneNumbers";
 import Settings from "./pages/Settings";
+import Tools from "./pages/Tools";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/" element={<Overview />} />
                 <Route path="/agents" element={<AgentBuilder />} />
                 <Route path="/agents/:id" element={<AgentEditor />} />
+                <Route path="/tools" element={<Tools />} />
                 <Route path="/campaigns" element={<Campaigns />} />
                 <Route path="/campaigns/new" element={<CampaignWizard />} />
                 <Route path="/campaigns/:id" element={<Campaigns />} />
