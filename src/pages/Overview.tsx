@@ -6,7 +6,7 @@ import { useCampaigns } from "@/hooks/use-campaigns";
 import { useRecentCalls } from "@/hooks/use-calls";
 import { useAnalyticsSummary, useCallsPerDay } from "@/hooks/use-analytics";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { subDays, format } from "date-fns";
 
