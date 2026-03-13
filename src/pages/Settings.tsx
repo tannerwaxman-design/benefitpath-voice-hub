@@ -714,7 +714,10 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* API Keys */}
+          {/* Platform API Key */}
+          <PlatformApiKeySection />
+
+          {/* Integration API Keys */}
           <ApiKeysSection />
 
           {/* Invite Modal */}
