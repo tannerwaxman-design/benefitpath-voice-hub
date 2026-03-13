@@ -40,7 +40,6 @@ Deno.serve(async (req: Request) => {
           method: "PATCH",
           endpoint: `/credential/${existing.id}`,
           body: {
-            provider: "11labs",
             apiKey: elevenLabsKey,
           },
         });
