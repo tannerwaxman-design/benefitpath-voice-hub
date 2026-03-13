@@ -187,8 +187,6 @@ Deno.serve(async (req: Request) => {
             ],
           },
         ];
-      } else {
-        vapiUpdate.tools = [];
       }
 
       const vapiResult = await vapiRequest({
