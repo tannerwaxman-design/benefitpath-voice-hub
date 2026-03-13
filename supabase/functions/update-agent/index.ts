@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
         },
         voice: {
           provider: updatedConfig.voice_provider === "eleven_labs" ? "11labs" : (updatedConfig.voice_provider || "11labs"),
-          voiceId: updatedConfig.voice_id || "burt",
+          voiceId: updatedConfig.voice_id || "aria",
           speed: updatedConfig.speaking_speed || 1.0,
         },
         firstMessage: updatedConfig.greeting_script,
