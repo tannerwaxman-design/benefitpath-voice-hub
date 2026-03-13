@@ -27,6 +27,32 @@ export default function Settings() {
   const { data: billing, isLoading: billingLoading } = useBillingUsage();
   const updateSettings = useUpdateBillingSettings();
 
+  const [teamMembers, setTeamMembers] = useState<{ email: string; role: string; status: string; created_at: string }[]>([]);
+  const [teamLoading, setTeamLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.tenant_id) return;
+    (async () => {
+      setTeamLoading(true);
+      const { data } = await supabase
+        .from("tenant_users")
+        .select("user_id, role, status, created_at")
+        .eq("tenant_id", user.tenant_id);
+
+      if (data) {
+        // Get emails from auth - we only have user_id, so show user_id-based info
+        const members = data.map((m) => ({
+          email: m.user_id === user.id ? (user.email ?? m.user_id) : m.user_id.slice(0, 8) + "...",
+          role: m.role,
+          status: m.status,
+          created_at: m.created_at,
+        }));
+        setTeamMembers(members);
+      }
+      setTeamLoading(false);
+    })();
+  }, [user?.tenant_id]);
+
   return (
     <div className="space-y-6">
       <h1 className="page-title">Settings</h1>
