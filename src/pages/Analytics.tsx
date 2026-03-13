@@ -63,7 +63,6 @@ export default function Analytics() {
     { label: "Avg Duration", value: formatDuration(summary.avg_duration_seconds) },
     { label: "Appointments Set", value: (summary.appointments_set || 0).toLocaleString() },
     { label: "Conversion Rate", value: `${summary.conversion_rate || 0}%` },
-    { label: "Minutes Used", value: tenant ? `${tenant.minutes_used_this_cycle.toLocaleString()} / ${tenant.monthly_minute_limit.toLocaleString()}` : "—" },
   ] : [];
 
   const funnelData = funnel ? [
