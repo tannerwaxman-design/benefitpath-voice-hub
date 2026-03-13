@@ -37,11 +37,10 @@ Deno.serve(async (req: Request) => {
       }
     );
 
-    // Request number from VAPI
+    // Request number from VAPI (free Vapi numbers)
     const vapiPayload: Record<string, unknown> = {
-      provider: "twilio",
+      provider: "vapi",
       ...(area_code && { numberDesiredAreaCode: area_code }),
-      ...(number_type === "toll_free" && { numberType: "toll-free" }),
     };
 
     const vapiResult = await vapiRequest<{
