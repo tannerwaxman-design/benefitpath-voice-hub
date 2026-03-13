@@ -306,28 +306,6 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Controls */}
-                   <div className="mt-6 space-y-3 border-t pt-4">
-                    <div className="flex items-center gap-3">
-                      <Label className="text-sm text-foreground whitespace-nowrap">Margin</Label>
-                      <Select
-                        value={String(billing.tenant.margin_percent || 20)}
-                        onValueChange={(v) => updateSettings.mutate({ margin_percent: Number(v) })}
-                      >
-                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">0%</SelectItem>
-                          <SelectItem value="10">10%</SelectItem>
-                          <SelectItem value="15">15%</SelectItem>
-                          <SelectItem value="20">20%</SelectItem>
-                          <SelectItem value="25">25%</SelectItem>
-                          <SelectItem value="30">30%</SelectItem>
-                          <SelectItem value="50">50%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">markup on VAPI costs</span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
 
