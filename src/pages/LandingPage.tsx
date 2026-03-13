@@ -113,10 +113,8 @@ export default function LandingPage() {
         <div className="absolute top-20 right-1/4 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium mb-8">
-            <Sparkles className="h-4 w-4" />
-            AI-Powered Outbound Calling
-          </div>
+
+
 
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
             Your AI Sales Team
