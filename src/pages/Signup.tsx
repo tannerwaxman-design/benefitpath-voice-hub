@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Bot } from "lucide-react";
+import logo from "@/assets/benefit_path_icon.svg";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
