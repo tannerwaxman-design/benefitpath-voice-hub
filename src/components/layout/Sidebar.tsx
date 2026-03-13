@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Bot, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft
@@ -20,6 +20,7 @@ const navItems = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const creditBalance = user?.tenant?.credit_balance ?? 0;
@@ -66,7 +67,7 @@ export function Sidebar() {
           <p className={`text-lg font-bold ${creditBalance <= 1 ? "text-red-400" : creditBalance <= 5 ? "text-yellow-400" : "text-emerald-400"}`}>
             ${creditBalance.toFixed(2)}
           </p>
-          <button className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Add Credits</button>
+          <button onClick={() => navigate("/settings")} className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Add Credits</button>
         </div>
       )}
     </aside>
