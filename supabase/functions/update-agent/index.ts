@@ -215,6 +215,16 @@ Deno.serve(async (req: Request) => {
             vapi_sync_error: vapiResult.error,
           })
           .eq("id", agentId);
+
+        // Notify about sync error
+        const adminClient = createAdminClient();
+        await insertNotification(adminClient, auth.tenantId, {
+          type: "error",
+          title: "Agent sync failed",
+          body: `"${updatedConfig.agent_name}" update couldn't sync with the voice engine.`,
+          icon: "warning",
+          link: "/agents",
+        });
       }
     }
 
