@@ -256,7 +256,7 @@ export default function Settings() {
                         <div className="flex justify-between"><span className="text-muted-foreground">LLM</span><span className="text-foreground">${billing.costSummary.llm.toFixed(2)}</span></div>
                         <div className="flex justify-between"><span className="text-muted-foreground">Text-to-Speech</span><span className="text-foreground">${billing.costSummary.tts.toFixed(2)}</span></div>
                         <div className="flex justify-between border-t pt-2"><span className="font-medium text-foreground">Total at-cost</span><span className="font-bold text-foreground">${billing.costSummary.total.toFixed(2)}</span></div>
-                        <div className="flex justify-between"><span className="font-medium text-foreground">Your revenue (+{billing.tenant.margin_percent}%)</span><span className="font-bold text-primary">${(billing.tenant.total_cost_this_cycle || 0).toFixed(2)}</span></div>
+                        
                       </div>
                     </div>
 
