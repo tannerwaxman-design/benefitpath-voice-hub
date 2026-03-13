@@ -158,6 +158,150 @@ function ApiKeysSection() {
   );
 }
 
+function PlatformApiKeySection() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [apiKey, setApiKey] = useState<{ id: string; api_key: string; status: string; last_used_at: string | null; created_at: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
+
+  const fetchKey = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("tenant_api_keys" as any)
+      .select("*")
+      .maybeSingle();
+    setApiKey(data as any);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchKey(); }, [user?.tenant_id]);
+
+  const generateKey = async () => {
+    setGenerating(true);
+    const newKey = `bp_${crypto.randomUUID().replace(/-/g, "")}`;
+    if (apiKey) {
+      await supabase
+        .from("tenant_api_keys" as any)
+        .update({ api_key: newKey, updated_at: new Date().toISOString() })
+        .eq("id", apiKey.id);
+    } else {
+      await supabase
+        .from("tenant_api_keys" as any)
+        .insert({ tenant_id: user!.tenant_id, api_key: newKey });
+    }
+    setGenerating(false);
+    setVisible(true);
+    fetchKey();
+    toast({ title: apiKey ? "API key regenerated" : "API key generated", description: "Copy it now — you can reveal it later from this page." });
+  };
+
+  const revokeKey = async () => {
+    if (!apiKey || !confirm("Revoke this API key? Any integrations using it will stop working.")) return;
+    await supabase.from("tenant_api_keys" as any).delete().eq("id", apiKey.id);
+    setApiKey(null);
+    toast({ title: "API key revoked" });
+  };
+
+  const maskKey = (key: string) => key.slice(0, 6) + "•".repeat(24) + key.slice(-4);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied to clipboard" });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="section-title">Platform API Key</CardTitle>
+        <p className="text-sm text-muted-foreground">Use this key to integrate with Make, GoHighLevel, Zapier, or any HTTP client.</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <Skeleton className="h-12 w-full" />
+        ) : apiKey ? (
+          <>
+            <div className="p-4 bg-secondary/30 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Your API Key</Label>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setVisible(!visible)}>
+                    {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyToClipboard(apiKey.api_key)}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <code className="block text-sm font-mono bg-background px-3 py-2 rounded border text-foreground break-all">
+                {visible ? apiKey.api_key : maskKey(apiKey.api_key)}
+              </code>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>Created: {new Date(apiKey.created_at).toLocaleDateString()}</span>
+                {apiKey.last_used_at && <span>Last used: {new Date(apiKey.last_used_at).toLocaleDateString()}</span>}
+                <Badge variant="secondary" className="text-[10px] border-0 bg-success/10 text-success">{apiKey.status}</Badge>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={generateKey} disabled={generating}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />{generating ? "Regenerating..." : "Regenerate Key"}
+              </Button>
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={revokeKey}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />Revoke
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-6">
+            <Key className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground mb-3">No API key generated yet.</p>
+            <Button onClick={generateKey} disabled={generating}>
+              <Key className="h-4 w-4 mr-2" />{generating ? "Generating..." : "Generate API Key"}
+            </Button>
+          </div>
+        )}
+
+        <div className="border rounded-lg p-4 space-y-3">
+          <p className="text-sm font-medium text-foreground">Quick Reference</p>
+          <div className="space-y-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">Base URL</Label>
+              <div className="flex items-center gap-2">
+                <code className="text-xs font-mono bg-secondary/50 px-2 py-1 rounded text-foreground break-all flex-1">{baseUrl}</code>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => copyToClipboard(baseUrl)}>
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Authentication Header</Label>
+              <code className="block text-xs font-mono bg-secondary/50 px-2 py-1 rounded text-foreground">Authorization: Bearer {"<your_api_key>"}</code>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            {[
+              { method: "GET /contacts", desc: "List contacts (limit, offset)" },
+              { method: "POST /contacts", desc: "Create a contact" },
+              { method: "GET /calls", desc: "List call history" },
+              { method: "POST /calls/trigger", desc: "Trigger a call (agent_id, phone_number)" },
+              { method: "GET /agents", desc: "List active agents" },
+              { method: "GET /calls/:id", desc: "Get call details + transcript" },
+            ].map(ep => (
+              <div key={ep.method} className="bg-secondary/20 rounded p-2">
+                <span className="font-mono font-medium text-foreground">{ep.method}</span>
+                <p className="text-muted-foreground mt-0.5">{ep.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -570,7 +714,10 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* API Keys */}
+          {/* Platform API Key */}
+          <PlatformApiKeySection />
+
+          {/* Integration API Keys */}
           <ApiKeysSection />
 
           {/* Invite Modal */}

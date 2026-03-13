@@ -33,3 +33,5 @@ project_id = "kpsilbmmedonhxjofixm"
     verify_jwt = false
   [functions.vapi-webhook]
     verify_jwt = false
+  [functions.public-api]
+    verify_jwt = false
