@@ -231,29 +231,20 @@ export default function Settings() {
                 <CardHeader><CardTitle className="section-title">Usage & Cost Breakdown</CardTitle></CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Usage gauge */}
+                    {/* Credit balance display */}
                     <div>
                       <div className="relative w-40 h-40 mx-auto">
-                        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                          <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
-                          <circle
-                            cx="50" cy="50" r="40" fill="none"
-                            stroke={billing.usagePercent >= 90 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
-                            strokeWidth="8"
-                            strokeDasharray={`${Math.min(billing.usagePercent, 100) * 2.51} ${100 * 2.51}`}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-2xl font-bold text-foreground">{billing.usagePercent}%</span>
-                          <span className="text-xs text-muted-foreground">used</span>
+                        <div className="w-full h-full rounded-full border-8 border-secondary flex flex-col items-center justify-center"
+                          style={{ borderColor: (billing.tenant.credit_balance ?? 0) <= 1 ? "hsl(var(--destructive))" : "hsl(var(--primary))" }}>
+                          <span className="text-2xl font-bold text-foreground">${(billing.tenant.credit_balance ?? 0).toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">balance</span>
                         </div>
                       </div>
 
-                      {billing.usagePercent >= 80 && (
+                      {(billing.tenant.credit_balance ?? 0) <= 5 && (
                         <div className="mt-3 flex items-center gap-2 text-xs bg-destructive/10 text-destructive p-2 rounded-md">
                           <AlertTriangle className="h-3 w-3" />
-                          {billing.usagePercent >= 100 ? "Minute limit reached!" : "Approaching minute limit"}
+                          {(billing.tenant.credit_balance ?? 0) <= 0 ? "Balance depleted!" : "Low balance — add credits soon"}
                         </div>
                       )}
 
