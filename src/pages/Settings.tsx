@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,7 @@ import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTri
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const teamMembers = [
-  { name: "Michael Torres", email: "michael@benefitsfirst.com", role: "Admin", status: "Active", lastActive: "Today" },
-  { name: "Jessica Lin", email: "jessica@benefitsfirst.com", role: "Manager", status: "Active", lastActive: "Yesterday" },
-  { name: "David Park", email: "david@benefitsfirst.com", role: "Viewer", status: "Active", lastActive: "3 days ago" },
-];
+import { supabase } from "@/integrations/supabase/client";
 
 const planNames: Record<string, string> = {
   voice_ai_starter: "Voice AI Starter",
