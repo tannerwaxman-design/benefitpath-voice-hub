@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.list-voices]
 verify_jwt = false
+
+[functions.import-twilio-number]
+verify_jwt = false
+
+[functions.buy-twilio-number]
+verify_jwt = false

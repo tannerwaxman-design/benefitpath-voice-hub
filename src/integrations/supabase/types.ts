@@ -909,6 +909,7 @@ export type Database = {
           monthly_cost: number
           number_type: string
           phone_number: string
+          provider: string
           spam_score: string | null
           status: string
           stir_shaken_status: string | null
@@ -928,6 +929,7 @@ export type Database = {
           monthly_cost?: number
           number_type?: string
           phone_number: string
+          provider?: string
           spam_score?: string | null
           status?: string
           stir_shaken_status?: string | null
@@ -947,6 +949,7 @@ export type Database = {
           monthly_cost?: number
           number_type?: string
           phone_number?: string
+          provider?: string
           spam_score?: string | null
           status?: string
           stir_shaken_status?: string | null
@@ -1052,6 +1055,8 @@ export type Database = {
           tcpa_compliance_mode: string
           total_cost_this_cycle: number
           trial_ends_at: string | null
+          twilio_account_sid: string | null
+          twilio_auth_token: string | null
           updated_at: string
           usage_alert_sent: boolean
           usage_alert_threshold: number
@@ -1094,6 +1099,8 @@ export type Database = {
           tcpa_compliance_mode?: string
           total_cost_this_cycle?: number
           trial_ends_at?: string | null
+          twilio_account_sid?: string | null
+          twilio_auth_token?: string | null
           updated_at?: string
           usage_alert_sent?: boolean
           usage_alert_threshold?: number
@@ -1136,6 +1143,8 @@ export type Database = {
           tcpa_compliance_mode?: string
           total_cost_this_cycle?: number
           trial_ends_at?: string | null
+          twilio_account_sid?: string | null
+          twilio_auth_token?: string | null
           updated_at?: string
           usage_alert_sent?: boolean
           usage_alert_threshold?: number
