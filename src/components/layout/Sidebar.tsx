@@ -21,10 +21,7 @@ export function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const minutesUsed = user?.tenant?.minutes_used_this_cycle ?? 0;
-  const minutesLimit = user?.tenant?.monthly_minute_limit ?? 10000;
-  const usagePercent = (minutesUsed / minutesLimit) * 100;
-  const usageColor = usagePercent > 90 ? "bg-destructive" : usagePercent > 70 ? "bg-warning" : "bg-success";
+  const creditBalance = user?.tenant?.credit_balance ?? 0;
 
   return (
     <aside className={`${collapsed ? "w-16" : "w-[260px]"} bg-slate-900 text-slate-400 flex flex-col min-h-screen transition-all duration-200 shrink-0`}>
