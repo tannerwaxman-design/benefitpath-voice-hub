@@ -67,7 +67,7 @@ export function Sidebar() {
           <p className={`text-lg font-bold ${creditBalance <= 1 ? "text-red-400" : creditBalance <= 5 ? "text-yellow-400" : "text-emerald-400"}`}>
             ${creditBalance.toFixed(2)}
           </p>
-          <button className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Add Credits</button>
+          <button onClick={() => navigate("/settings")} className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Add Credits</button>
         </div>
       )}
     </aside>
