@@ -292,13 +292,7 @@ export default function Settings() {
                               <span className="text-lg font-bold text-foreground">
                                 ${(billing.costSummary.total / billing.costSummary.totalMinutes).toFixed(3)}
                               </span>
-                              <span className="text-xs text-muted-foreground"> at-cost</span>
-                            </div>
-                            <div>
-                              <span className="text-lg font-bold text-primary">
-                                ${((billing.tenant.total_cost_this_cycle || 0) / billing.costSummary.totalMinutes).toFixed(3)}
-                              </span>
-                              <span className="text-xs text-muted-foreground"> w/ margin</span>
+                              <span className="text-xs text-muted-foreground"> per minute</span>
                             </div>
                           </div>
                         </div>
