@@ -29,7 +29,7 @@ export default function PhoneNumbers() {
   const provisionNumber = useProvisionPhoneNumber();
   const [showNewModal, setShowNewModal] = useState(false);
   const [newType, setNewType] = useState<"local" | "toll_free">("local");
-  const [areaCode, setAreaCode] = useState("555");
+  const [areaCode, setAreaCode] = useState("720");
 
   if (isLoading) {
     return (
