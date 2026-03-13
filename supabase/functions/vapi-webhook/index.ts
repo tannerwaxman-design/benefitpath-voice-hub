@@ -248,6 +248,18 @@ Deno.serve(async (req: Request) => {
               campaign_id: campaignId,
             });
           }
+
+          // Create notification for call recording
+          if (tenantId && (message.call?.recordingUrl)) {
+            const contactName = message.call?.customer?.name || "Unknown";
+            await insertNotification(supabase, tenantId, {
+              type: "success",
+              title: "New call recording available",
+              body: `Call with ${contactName} (${Math.round(duration)}s) — ${outcome}`,
+              icon: "phone",
+              link: "/call-logs",
+            });
+          }
         }
 
         break;
