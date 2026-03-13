@@ -252,8 +252,7 @@ Deno.serve(async (req: Request) => {
       {
         call_id: callRecord?.id,
         vapi_call_id: vapiResult.data.id,
-        minutes_remaining:
-          tenant.monthly_minute_limit - tenant.minutes_used_this_cycle,
+        credit_balance: tenant.credit_balance,
       },
       201
     );

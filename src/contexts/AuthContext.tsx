@@ -61,7 +61,7 @@ async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
   // Get tenant info
   const { data: tenant, error: tError } = await supabase
     .from("tenants")
-    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, industry, status, default_timezone")
+    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, credit_balance, industry, status, default_timezone")
     .eq("id", tenantUser.tenant_id)
     .single();
 
