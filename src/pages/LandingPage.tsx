@@ -139,15 +139,8 @@ export default function LandingPage() {
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
               </Button>
             </Link>
-            <Link to="/login">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-slate-700 text-slate-300 hover:bg-white/5 hover:text-white text-base px-8 py-6"
-              >
-                View Demo
-              </Button>
-            </Link>
+
+
           </div>
 
           <div className="flex items-center justify-center gap-6 mt-8 text-sm text-slate-500">
