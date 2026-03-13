@@ -10,6 +10,7 @@
 
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { vapiRequest } from "../_shared/vapi-client.ts";
+import { insertNotification } from "../_shared/notifications.ts";
 
 const WEBHOOK_SECRET = Deno.env.get("VAPI_WEBHOOK_SECRET");
 
@@ -246,6 +247,18 @@ Deno.serve(async (req: Request) => {
               duration,
               contact_id: contactId,
               campaign_id: campaignId,
+            });
+          }
+
+          // Create notification for call recording
+          if (tenantId && (message.call?.recordingUrl)) {
+            const contactName = message.call?.customer?.name || "Unknown";
+            await insertNotification(supabase, tenantId, {
+              type: "success",
+              title: "New call recording available",
+              body: `Call with ${contactName} (${Math.round(duration)}s) — ${outcome}`,
+              icon: "phone",
+              link: "/call-logs",
             });
           }
         }

@@ -11,6 +11,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { vapiRequest } from "../_shared/vapi-client.ts";
 import { compileSystemPrompt } from "../_shared/prompt-compiler.ts";
+import { insertNotification } from "../_shared/notifications.ts";
+import { createAdminClient } from "../_shared/supabase-admin.ts";
 import {
   getAuthContext,
   corsHeaders,
@@ -325,6 +327,18 @@ Deno.serve(async (req: Request) => {
             environment: "production",
           },
         },
+      });
+    }
+
+    // 11. Send notification about sync result
+    const adminClient = createAdminClient();
+    if (!vapiResult.ok) {
+      await insertNotification(adminClient, auth.tenantId, {
+        type: "error",
+        title: "Agent sync failed",
+        body: `"${body.agent_name}" was saved but couldn't sync with the voice engine.`,
+        icon: "warning",
+        link: "/agents",
       });
     }
 

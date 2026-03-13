@@ -6,6 +6,13 @@
 
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { vapiRequest } from "../_shared/vapi-client.ts";
+import { insertNotification } from "../_shared/notifications.ts";
+import {
+  corsHeaders,
+  errorResponse,
+  successResponse,
+} from "../_shared/auth-helpers.ts";
+import { vapiRequest } from "../_shared/vapi-client.ts";
 import {
   corsHeaders,
   errorResponse,
@@ -128,6 +135,15 @@ Deno.serve(async (req: Request) => {
               actual_end: now.toISOString(),
             })
             .eq("id", campaign.id);
+
+          // Notify: campaign completed
+          await insertNotification(supabase, campaign.tenant_id, {
+            type: "success",
+            title: "Campaign completed",
+            body: `"${campaign.name}" has finished calling all contacts.`,
+            icon: "campaign",
+            link: "/campaigns",
+          });
         }
         continue;
       }
