@@ -10,6 +10,7 @@
 
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { vapiRequest } from "../_shared/vapi-client.ts";
+import { insertNotification } from "../_shared/notifications.ts";
 
 const WEBHOOK_SECRET = Deno.env.get("VAPI_WEBHOOK_SECRET");
 
