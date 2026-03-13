@@ -162,24 +162,24 @@ export default function Settings() {
             </div>
           ) : billing ? (
             <>
-              {/* Current Plan */}
+              {/* Credit Balance */}
               <Card>
-                <CardHeader><CardTitle className="section-title">Current Plan</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="section-title">Credit Balance</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
                     <div>
-                      <p className="text-lg font-semibold text-foreground">
-                        {planNames[billing.tenant.plan] || billing.tenant.plan}
+                      <p className="text-3xl font-bold text-foreground">
+                        ${(billing.tenant.credit_balance ?? 0).toFixed(2)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {billing.tenant.monthly_minute_limit.toLocaleString()} minutes/month
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {planNames[billing.tenant.plan] || billing.tenant.plan}
                         {billing.tenant.margin_percent > 0 && ` • ${billing.tenant.margin_percent}% margin`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Billing cycle: {new Date(billing.tenant.billing_cycle_start).toLocaleDateString()} – {new Date(billing.tenant.billing_cycle_end).toLocaleDateString()}
                       </p>
                     </div>
-                    <Button variant="outline" onClick={() => toast({ title: "Plan upgrade coming soon" })}>Change Plan</Button>
+                    <Button variant="outline" onClick={() => toast({ title: "Add credits coming soon" })}>Add Credits</Button>
                   </div>
                 </CardContent>
               </Card>
