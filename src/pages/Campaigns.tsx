@@ -7,8 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, MoreVertical, Plus, Search } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success",
@@ -21,10 +31,12 @@ const statusColors: Record<string, string> = {
 
 export default function Campaigns() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: campaigns, isLoading } = useCampaigns();
   const launchCampaign = useLaunchCampaign();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [confirmAction, setConfirmAction] = useState<{ id: string; action: string } | null>(null);
 
   const filtered = useMemo(() => {
     let result = campaigns || [];
@@ -32,6 +44,57 @@ export default function Campaigns() {
     if (statusFilter !== "all") result = result.filter(c => c.status === statusFilter);
     return result;
   }, [campaigns, search, statusFilter]);
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("campaigns").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete campaign"); return; }
+    toast.success("Campaign deleted");
+    queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+  };
+
+  const handleCancel = async (id: string) => {
+    const { error } = await supabase.from("campaigns").update({ status: "cancelled" }).eq("id", id);
+    if (error) { toast.error("Failed to cancel campaign"); return; }
+    toast.success("Campaign cancelled");
+    queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+  };
+
+  const handleDuplicate = async (id: string) => {
+    const original = campaigns?.find(c => c.id === id);
+    if (!original) return;
+    const { id: _id, created_at, updated_at, actual_start, actual_end, status, contacts_called, contacts_connected, contacts_no_answer, contacts_voicemail, contacts_failed, contacts_callback, contacts_transferred, appointments_set, conversion_rate, total_minutes_used, avg_call_duration_seconds, ...rest } = original as any;
+    const { error } = await supabase.from("campaigns").insert({ ...rest, name: `${original.name} (Copy)`, status: "draft" });
+    if (error) { toast.error("Failed to duplicate"); return; }
+    toast.success("Campaign duplicated as draft");
+    queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+  };
+
+  const handleExport = async (id: string) => {
+    const { data } = await supabase
+      .from("campaign_contacts")
+      .select("*, contacts(first_name, last_name, phone, email, company)")
+      .eq("campaign_id", id);
+    if (!data?.length) { toast.info("No contacts to export"); return; }
+    const headers = ["First Name", "Last Name", "Phone", "Email", "Company", "Status", "Attempts", "Last Outcome", "Sentiment"];
+    const rows = data.map((cc: any) => [
+      cc.contacts?.first_name, cc.contacts?.last_name, cc.contacts?.phone,
+      cc.contacts?.email, cc.contacts?.company, cc.status, cc.total_attempts,
+      cc.last_outcome, cc.sentiment
+    ]);
+    const csv = [headers, ...rows].map(r => r.map((v: any) => `"${v || ""}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `campaign-results-${id}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV exported");
+  };
+
+  const onConfirm = () => {
+    if (!confirmAction) return;
+    if (confirmAction.action === "delete") handleDelete(confirmAction.id);
+    else if (confirmAction.action === "cancel") handleCancel(confirmAction.id);
+    setConfirmAction(null);
+  };
 
   if (isLoading) {
     return (
@@ -105,23 +168,71 @@ export default function Campaigns() {
                           {(c.conversion_rate || 0).toFixed(1)}%
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
-                          <DropdownMenuTrigger onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-secondary"><MoreVertical className="h-4 w-4 text-muted-foreground" /></DropdownMenuTrigger>
-                          <DropdownMenuContent>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {/* DRAFT */}
                             {c.status === "draft" && (
-                              <DropdownMenuItem onClick={() => launchCampaign.mutate({ campaign_id: c.id, action: "start" })}>
-                                {launchCampaign.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Launch
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => navigate(`/campaigns/${c.id}/edit`)}>✏️ Edit Campaign</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => launchCampaign.mutate({ campaign_id: c.id, action: "start" })}>
+                                  🚀 Launch Campaign
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(c.id)}>📋 Duplicate</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => setConfirmAction({ id: c.id, action: "delete" })}>
+                                  🗑️ Delete
+                                </DropdownMenuItem>
+                              </>
                             )}
+                            {/* ACTIVE */}
                             {c.status === "active" && (
-                              <DropdownMenuItem onClick={() => launchCampaign.mutate({ campaign_id: c.id, action: "pause" })}>Pause</DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => navigate(`/campaigns/${c.id}`)}>👁️ View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => launchCampaign.mutate({ campaign_id: c.id, action: "pause" })}>⏸️ Pause Campaign</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(c.id)}>📋 Duplicate</DropdownMenuItem>
+                              </>
                             )}
+                            {/* PAUSED */}
                             {c.status === "paused" && (
-                              <DropdownMenuItem onClick={() => launchCampaign.mutate({ campaign_id: c.id, action: "resume" })}>Resume</DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => navigate(`/campaigns/${c.id}`)}>👁️ View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => launchCampaign.mutate({ campaign_id: c.id, action: "resume" })}>▶️ Resume Campaign</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/campaigns/${c.id}/edit`)}>✏️ Edit Campaign</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(c.id)}>📋 Duplicate</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => setConfirmAction({ id: c.id, action: "cancel" })}>
+                                  ❌ Cancel Campaign
+                                </DropdownMenuItem>
+                              </>
                             )}
-                            {["active", "paused"].includes(c.status) && (
-                              <DropdownMenuItem className="text-destructive" onClick={() => launchCampaign.mutate({ campaign_id: c.id, action: "cancel" })}>Cancel</DropdownMenuItem>
+                            {/* COMPLETED */}
+                            {c.status === "completed" && (
+                              <>
+                                <DropdownMenuItem onClick={() => navigate(`/campaigns/${c.id}`)}>👁️ View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(c.id)}>📋 Duplicate</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport(c.id)}>📥 Export Results</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => setConfirmAction({ id: c.id, action: "delete" })}>
+                                  🗑️ Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {/* CANCELLED / SCHEDULED fallback */}
+                            {["cancelled", "scheduled"].includes(c.status) && (
+                              <>
+                                <DropdownMenuItem onClick={() => navigate(`/campaigns/${c.id}`)}>👁️ View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(c.id)}>📋 Duplicate</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => setConfirmAction({ id: c.id, action: "delete" })}>
+                                  🗑️ Delete
+                                </DropdownMenuItem>
+                              </>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -134,6 +245,27 @@ export default function Campaigns() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={!!confirmAction} onOpenChange={open => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.action === "delete" ? "Delete Campaign" : "Cancel Campaign"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.action === "delete"
+                ? "This will permanently delete this campaign and its data. This cannot be undone."
+                : "This will cancel the campaign. No further calls will be made. This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {confirmAction?.action === "delete" ? "Delete" : "Cancel Campaign"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
