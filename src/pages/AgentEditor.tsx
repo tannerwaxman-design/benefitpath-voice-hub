@@ -98,6 +98,11 @@ export default function AgentEditor() {
     setTransferPhone(existingAgent.transfer_phone_number || "");
     setBackupTransfer(existingAgent.backup_transfer_number || "");
     setTransferAnnouncement(existingAgent.transfer_announcement || "");
+    setCallDirection((existingAgent as any).call_direction || "outbound");
+    setInboundGreeting((existingAgent as any).inbound_greeting || "Thank you for calling. How can I help you today?");
+    setAnswerAfterRings((existingAgent as any).answer_after_rings ?? 2);
+    setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
+    setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
     setInitialized(true);
   }
 
