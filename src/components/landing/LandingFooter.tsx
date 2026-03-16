@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function LandingFooter() {
   return (
     <footer className="bg-white border-t border-gray-200 py-10">
@@ -7,15 +9,15 @@ export default function LandingFooter() {
             <img src="/benefit-path-logo.svg" alt="Benefit Path" className="h-8 w-auto" />
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-500">
-            <a href="#" className="hover:text-gray-700 transition-colors">
+            <Link to="/cookies" className="hover:text-gray-700 transition-colors">
               Cookies
-            </a>
-            <a href="#" className="hover:text-gray-700 transition-colors">
+            </Link>
+            <Link to="/privacy" className="hover:text-gray-700 transition-colors">
               Privacy Policy
-            </a>
-            <a href="#" className="hover:text-gray-700 transition-colors">
+            </Link>
+            <Link to="/terms" className="hover:text-gray-700 transition-colors">
               Terms &amp; Conditions
-            </a>
+            </Link>
           </div>
         </div>
         <p className="text-center text-xs text-gray-400 leading-relaxed max-w-4xl mx-auto mb-3">
