@@ -190,6 +190,7 @@ export default function AgentEditor() {
     return () => observer.disconnect();
   }, []);
 
+  if (isNew && showTemplatePicker) {
     return <AgentTemplatePicker onSelect={applyTemplate} />;
   }
 
