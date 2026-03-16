@@ -125,6 +125,10 @@ export default function AgentEditor() {
     setInitialized(true);
   }
 
+  if (isNew && showTemplatePicker) {
+    return <AgentTemplatePicker onSelect={applyTemplate} />;
+  }
+
   if (isLoading && !isNew) {
     return (
       <div className="space-y-6">
