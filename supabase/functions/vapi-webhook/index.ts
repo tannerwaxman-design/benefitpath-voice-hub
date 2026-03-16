@@ -46,8 +46,8 @@ Deno.serve(async (req: Request) => {
       message.metadata ||
       {};
 
-    const tenantId = metadata.benefitpath_tenant_id;
-    const agentId = metadata.benefitpath_agent_id;
+    let tenantId = metadata.benefitpath_tenant_id;
+    let agentId = metadata.benefitpath_agent_id;
     const contactId = metadata.benefitpath_contact_id;
     const campaignId = metadata.benefitpath_campaign_id;
     const campaignContactId = metadata.benefitpath_campaign_contact_id;
@@ -65,6 +65,33 @@ Deno.serve(async (req: Request) => {
 
     // Use admin client (bypasses RLS — server-to-server)
     const supabase = createAdminClient();
+
+    // ── INBOUND FALLBACK ──
+    // For inbound calls, VAPI routes via assistantId on the phone number,
+    // so our custom metadata won't be present. Look up tenant & agent
+    // from the called phone number in our DB.
+    const callType = message.call?.type || "";
+    const isInboundCall = callType === "inboundPhoneCall";
+
+    if (!tenantId && isInboundCall) {
+      const calledNumber = message.call?.phoneNumber?.number || "";
+      if (calledNumber) {
+        const { data: phoneRecord } = await supabase
+          .from("phone_numbers")
+          .select("tenant_id, assigned_agent_id")
+          .eq("phone_number", calledNumber)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (phoneRecord) {
+          tenantId = phoneRecord.tenant_id;
+          agentId = agentId || phoneRecord.assigned_agent_id;
+          console.log(`[webhook] Inbound fallback: resolved tenant=${tenantId} agent=${agentId} from number=${calledNumber}`);
+        } else {
+          console.warn(`[webhook] Inbound call to ${calledNumber} but no matching phone_number record found`);
+        }
+      }
+    }
 
     // 4. Route based on message type
     switch (message.type) {
