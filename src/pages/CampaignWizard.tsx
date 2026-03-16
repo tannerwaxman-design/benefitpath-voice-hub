@@ -48,6 +48,7 @@ export default function CampaignWizard() {
   const [startDate, setStartDate] = useState("");
   const [maxCallsPerDay, setMaxCallsPerDay] = useState(200);
   const [maxConcurrent, setMaxConcurrent] = useState(5);
+  const [smartScheduleEnabled, setSmartScheduleEnabled] = useState(false);
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
