@@ -249,6 +249,45 @@ export default function Overview() {
         </Card>
       </div>
 
+      {/* AI Follow-Up Tasks */}
+      {tasks && tasks.length > 0 && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="card-title">AI Follow-Up Tasks</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {tasks.map((task: any) => (
+              <div key={task.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+                <button
+                  onClick={() => updateTask.mutate({ taskId: task.id, status: task.status === "done" ? "pending" : "done" })}
+                  className="mt-0.5 shrink-0"
+                >
+                  {task.status === "done"
+                    ? <CheckCircle2 className="h-5 w-5 text-success" />
+                    : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+                  }
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm ${task.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                    {task.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {task.contact_name && `${task.contact_name} · `}
+                    {task.call_date ? format(new Date(task.call_date), "MMM d 'at' h:mm a") : format(new Date(task.created_at), "MMM d 'at' h:mm a")}
+                    {task.status === "done" && task.completed_by && ` · Completed by ${task.completed_by}`}
+                  </p>
+                </div>
+                {task.call_id && (
+                  <a href={`/call-logs?call=${task.call_id}`} className="text-xs text-primary hover:underline shrink-0 flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" /> View Call
+                  </a>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Minutes Usage */}
       {user?.tenant && (
         <Card>
