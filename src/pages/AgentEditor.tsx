@@ -18,6 +18,7 @@ import { ArrowLeft, Check, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOut
 import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
+import { VoiceCloneSection } from "@/components/agents/VoiceCloneSection";
 
 const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "After the Call", "Compliance", "Review & Save"];
 
