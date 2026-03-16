@@ -360,17 +360,34 @@ Deno.serve(async (req: Request) => {
         const artifact = message.artifact || {};
         const messages = artifact.messages || [];
 
-        // Build structured transcript
+        // Debug: log raw message structure to diagnose missing assistant messages
+        if (messages.length > 0) {
+          const sampleRoles = messages.map((m: Record<string, unknown>) => ({
+            role: m.role,
+            hasMessage: !!m.message,
+            hasContent: !!m.content,
+            hasText: !!m.text,
+            type: m.type || "none",
+            keys: Object.keys(m).join(","),
+          }));
+          console.log(`[webhook] Raw message roles/fields:`, JSON.stringify(sampleRoles.slice(0, 8)));
+        }
+
+        // Build structured transcript — include assistant, bot, and user roles
+        // VAPI may use "bot" in some versions, and text may be in message, content, or text fields
         const transcript = messages
           .filter(
             (m: Record<string, unknown>) =>
-              m.role === "assistant" || m.role === "user"
+              m.role === "assistant" || m.role === "user" || m.role === "bot"
           )
           .map((m: Record<string, unknown>) => ({
-            role: m.role,
-            text: m.message || m.content || "",
-            timestamp: m.secondsFromStart || m.time || 0,
-          }));
+            role: m.role === "bot" ? "assistant" : m.role,
+            text: (m.message || m.content || m.text || "") as string,
+            timestamp: (m.secondsFromStart || m.time || 0) as number,
+          }))
+          .filter((m: { text: string }) => m.text.length > 0);
+
+        console.log(`[webhook] Transcript built: ${transcript.length} messages (assistant: ${transcript.filter((t: {role: string}) => t.role === "assistant").length}, user: ${transcript.filter((t: {role: string}) => t.role === "user").length})`);
 
         // Determine sentiment
         const sentimentResult = analyzeSentiment(
