@@ -315,7 +315,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 2: Voice & Persona */}
-          <Card>
+          <Card id="section-voice-persona">
             <CardHeader><CardTitle className="section-title">Voice & Persona</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <VoiceCloneSection
