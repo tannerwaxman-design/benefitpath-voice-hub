@@ -437,7 +437,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 5: Call Direction */}
-          <Card>
+          <Card id="section-call-direction">
             <CardHeader><CardTitle className="section-title">Call Direction</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
