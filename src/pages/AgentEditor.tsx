@@ -20,7 +20,18 @@ import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTem
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 import { VoiceCloneSection } from "@/components/agents/VoiceCloneSection";
 
-const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "After the Call", "Compliance", "Review & Save"];
+const sectionDefs = [
+  { id: "section-basic-info", label: "Basic Info" },
+  { id: "section-voice-persona", label: "Voice & Persona" },
+  { id: "section-conversation-flow", label: "Conversation Flow" },
+  { id: "section-knowledge-base", label: "Knowledge Base" },
+  { id: "section-call-direction", label: "Call Direction" },
+  { id: "section-call-handling", label: "Call Handling Rules" },
+  { id: "section-transfer", label: "Transfer & Escalation" },
+  { id: "section-after-call", label: "After the Call" },
+  { id: "section-compliance", label: "Compliance" },
+  { id: "section-review", label: "Review & Save" },
+];
 
 const industries = ["Insurance", "Employee Benefits", "Health & Wellness", "Human Resources", "Financial Services", "Medicare", "Dental/Vision", "Life Insurance", "Workers' Comp", "Other"];
 
