@@ -15,10 +15,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
-import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
-import { VoiceCloneSection } from "@/components/agents/VoiceCloneSection";
+import { useAvailableVoices, useTtsPreview, Voice } from "@/hooks/use-voice-management";
+import { Link } from "react-router-dom";
 
 const sectionDefs = [
   { id: "section-basic-info", label: "Basic Info" },
