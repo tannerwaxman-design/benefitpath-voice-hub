@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
 import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
+import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 
 const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "Compliance", "Review & Save"];
 
@@ -69,11 +70,29 @@ export default function AgentEditor() {
   const [showTestCallDialog, setShowTestCallDialog] = useState(false);
   const [testPhoneNumber, setTestPhoneNumber] = useState("");
   const [initialized, setInitialized] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(isNew);
   const [callDirection, setCallDirection] = useState("outbound");
   const [inboundGreeting, setInboundGreeting] = useState("Thank you for calling. How can I help you today?");
   const [answerAfterRings, setAnswerAfterRings] = useState(2);
   const [afterHoursBehavior, setAfterHoursBehavior] = useState("voicemail");
   const [afterHoursVoicemailMessage, setAfterHoursVoicemailMessage] = useState("Thank you for calling. Our office is currently closed. Please leave a message and we'll call you back on the next business day.");
+
+  const applyTemplate = (template: AgentTemplate | null) => {
+    if (template) {
+      const d = template.defaults;
+      setName(d.agent_name);
+      setTitle(d.agent_title);
+      setTone(d.tone);
+      setEnthusiasm([d.enthusiasm_level]);
+      setGreeting(d.greeting_script);
+      setCallObjective(d.call_objective);
+      setCallDirection(d.call_direction);
+      setInboundGreeting(d.inbound_greeting || "Thank you for calling. How can I help you today?");
+      setVoicemailScript(d.voicemail_script);
+      setKnowledgeBase(d.knowledge_base_text);
+    }
+    setShowTemplatePicker(false);
+  };
 
   // Populate form with existing agent data
   if (existingAgent && !initialized) {
@@ -104,6 +123,10 @@ export default function AgentEditor() {
     setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
     setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
     setInitialized(true);
+  }
+
+  if (isNew && showTemplatePicker) {
+    return <AgentTemplatePicker onSelect={applyTemplate} />;
   }
 
   if (isLoading && !isNew) {
