@@ -983,6 +983,53 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_base: {
+        Row: {
+          assigned_agent_ids: Json
+          company_info: string | null
+          created_at: string
+          faq_pairs: Json
+          id: string
+          tenant_id: string
+          updated_at: string
+          website_content: string | null
+          website_imported_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          assigned_agent_ids?: Json
+          company_info?: string | null
+          created_at?: string
+          faq_pairs?: Json
+          id?: string
+          tenant_id: string
+          updated_at?: string
+          website_content?: string | null
+          website_imported_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          assigned_agent_ids?: Json
+          company_info?: string | null
+          created_at?: string
+          faq_pairs?: Json
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+          website_content?: string | null
+          website_imported_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_base_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
