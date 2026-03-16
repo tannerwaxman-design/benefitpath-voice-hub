@@ -139,6 +139,9 @@ export default function AgentEditor() {
     setInboundGreeting((existingAgent as any).inbound_greeting || "Thank you for calling. How can I help you today?");
     setAnswerAfterRings((existingAgent as any).answer_after_rings ?? 2);
     setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
+    setVoiceSource((existingAgent as any).voice_source || "preset");
+    setClonedVoiceId((existingAgent as any).cloned_voice_id || null);
+    setVoiceCloneStatus((existingAgent as any).voice_clone_status || null);
     setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
     const ea = existingAgent as any;
     setPostCallActions({
