@@ -272,9 +272,10 @@ export default function AgentEditor() {
       toast({ title: "Enter a phone number", variant: "destructive" });
       return;
     }
+    const formatted = formatPhoneE164(testPhoneNumber);
     testCall.mutate({
       agent_id: id!,
-      contact_phone: testPhoneNumber,
+      contact_phone: formatted,
       contact_name: "Test Call",
     });
     setShowTestCallDialog(false);
