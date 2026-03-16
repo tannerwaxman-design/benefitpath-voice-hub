@@ -262,6 +262,7 @@ function CallDetailPanel({ call, onClose }: { call: CallWithRelations; onClose: 
             )}
           </CardContent>
         </Card>
+      )}
 
       {/* Transcript with inline comments */}
       {call.transcript && Array.isArray(call.transcript) && (call.transcript as Array<{ role: string; text: string; timestamp: number }>).length > 0 && (
