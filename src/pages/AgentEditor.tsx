@@ -341,40 +341,47 @@ export default function AgentEditor() {
           <Card id="section-voice-persona">
             <CardHeader><CardTitle className="section-title">Voice & Persona</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              <VoiceCloneSection
-                voiceSource={voiceSource}
-                onVoiceSourceChange={setVoiceSource}
-                clonedVoiceId={clonedVoiceId}
-                onClonedVoiceId={(id) => { setClonedVoiceId(id); setVoiceCloneStatus("ready"); }}
-                cloneStatus={voiceCloneStatus}
-                agentId={id}
-                plan={user?.tenant?.plan}
-              />
-
-              {voiceSource === "preset" && (
+              {/* Simple voice dropdown */}
               <div>
-                <Label className="mb-3 block">Voice Selection {voicesLoading && <span className="text-xs text-muted-foreground">(loading...)</span>}</Label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto">
-                  {voiceOptions.map(v => (
-                    <button key={v.voice_id} onClick={() => setSelectedVoice(v.voice_id)}
-                      className={`p-3 rounded-lg border-2 text-left transition-all ${selectedVoice === v.voice_id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-foreground">{v.name}</span>
-                        {selectedVoice === v.voice_id && <Check className="h-4 w-4 text-primary" />}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">{v.labels?.gender || v.category}</p>
-                      <p className="text-[10px] text-muted-foreground">{v.labels?.accent || ""}</p>
-                      {v.preview_url && (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); new Audio(v.preview_url!).play(); }}
-                          className="mt-1 flex items-center gap-1 text-[10px] text-primary hover:underline">
-                          <Volume2 className="h-3 w-3" /> Preview
-                        </button>
-                      )}
-                    </button>
-                  ))}
+                <Label className="mb-2 block">Voice {voicesLoading && <span className="text-xs text-muted-foreground">(loading...)</span>}</Label>
+                <p className="text-xs text-muted-foreground mb-3">Select a voice for this agent:</p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Select value={selectedVoice} onValueChange={(val) => { setSelectedVoice(val); setVoiceSource("preset"); }}>
+                      <SelectTrigger><SelectValue placeholder="Select a voice..." /></SelectTrigger>
+                      <SelectContent>
+                        {(availableVoices || []).map(v => (
+                          <SelectItem key={v.id} value={v.provider_voice_id}>
+                            {v.name}{v.type === "cloned" ? " — Cloned" : ""}{v.style ? ` — ${v.gender}, ${v.style}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 shrink-0"
+                    disabled={!selectedVoice || ttsPreviewLoading}
+                    onClick={async () => {
+                      if (!selectedVoice || !greeting) return;
+                      setTtsPreviewLoading(true);
+                      try {
+                        await playTts(greeting, selectedVoice);
+                      } catch {} finally {
+                        setTtsPreviewLoading(false);
+                      }
+                    }}
+                  >
+                    {ttsPreviewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                    Preview
+                  </Button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Don't see the right voice?{" "}
+                  <Link to="/voices" className="text-primary hover:underline">Go to Voices →</Link>
+                </p>
               </div>
-              )}
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <Label>Speaking Speed: {speed[0]}x</Label>
