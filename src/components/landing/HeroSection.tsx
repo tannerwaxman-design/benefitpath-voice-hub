@@ -52,7 +52,7 @@ export default function HeroSection() {
           >
             Get Started
           </Link>
-          <p className="mt-3 text-sm opacity-60">No credit card required.</p>
+          
         </div>
 
         <div className="flex-1 flex justify-center md:justify-end">
