@@ -2017,7 +2017,7 @@ export type Database = {
           provider_voice_id: string
           recording_url: string | null
           style: string | null
-          tenant_id: string
+          tenant_id: string | null
           type: string
           updated_at: string
         }
@@ -2036,7 +2036,7 @@ export type Database = {
           provider_voice_id: string
           recording_url?: string | null
           style?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           type?: string
           updated_at?: string
         }
@@ -2055,7 +2055,7 @@ export type Database = {
           provider_voice_id?: string
           recording_url?: string | null
           style?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           type?: string
           updated_at?: string
         }
