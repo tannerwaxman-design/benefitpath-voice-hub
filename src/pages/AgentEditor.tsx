@@ -475,7 +475,10 @@ export default function AgentEditor() {
             </CardContent>
           </Card>
 
-          {/* Section 6: Compliance */}
+          {/* Section 8: After the Call */}
+          <PostCallActionsSection config={postCallActions} onChange={setPostCallActions} />
+
+          {/* Section 9: Compliance */}
           <Card>
             <CardHeader><CardTitle className="section-title">Compliance</CardTitle></CardHeader>
             <CardContent className="space-y-4">

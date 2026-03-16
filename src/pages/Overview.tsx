@@ -1,11 +1,13 @@
-import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, RefreshCw } from "lucide-react";
+import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, RefreshCw, CheckCircle2, Circle, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCampaigns } from "@/hooks/use-campaigns";
 import { useRecentCalls } from "@/hooks/use-calls";
 import { useAnalyticsSummary, useCallsPerDay } from "@/hooks/use-analytics";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePostCallTasks, useUpdateTaskStatus } from "@/hooks/use-post-call-tasks";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { subDays, format } from "date-fns";
