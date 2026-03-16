@@ -23,6 +23,7 @@ import BillingUsage from "./pages/BillingUsage";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Team from "./pages/Team";
 import CoachingDashboard from "./pages/CoachingDashboard";
+import Voices from "./pages/Voices";
 import Training from "./pages/Training";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
