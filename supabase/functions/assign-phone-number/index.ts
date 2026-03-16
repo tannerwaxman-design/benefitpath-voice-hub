@@ -1,0 +1,110 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { vapiRequest } from "../_shared/vapi-client.ts";
+import {
+  getAuthContext,
+  corsHeaders,
+  errorResponse,
+  successResponse,
+} from "../_shared/auth-helpers.ts";
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders() });
+  }
+
+  try {
+    const auth = await getAuthContext(req);
+
+    if (auth.role !== "admin") {
+      return errorResponse("Admin access required", 403);
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
+        auth: { autoRefreshToken: false, persistSession: false },
+      }
+    );
+
+    const body = await req.json();
+    const phoneId = body.phone_id;
+    const agentId = body.agent_id ?? null;
+
+    if (!phoneId) {
+      return errorResponse("phone_id is required");
+    }
+
+    const { data: phoneNumber, error: phoneError } = await supabase
+      .from("phone_numbers")
+      .select("id, phone_number, vapi_phone_id, assigned_agent_id, tenant_id")
+      .eq("id", phoneId)
+      .single();
+
+    if (phoneError || !phoneNumber) {
+      return errorResponse("Phone number not found", 404);
+    }
+
+    let assistantId: string | null = null;
+
+    if (agentId) {
+      const { data: agent, error: agentError } = await supabase
+        .from("agents")
+        .select("id, agent_name, vapi_assistant_id, tenant_id")
+        .eq("id", agentId)
+        .single();
+
+      if (agentError || !agent) {
+        return errorResponse("Agent not found", 404);
+      }
+
+      if (!agent.vapi_assistant_id) {
+        return errorResponse("Agent is not synced with voice engine", 400);
+      }
+
+      assistantId = agent.vapi_assistant_id;
+    }
+
+    if (!phoneNumber.vapi_phone_id) {
+      return errorResponse("Phone number is not synced with voice engine", 400);
+    }
+
+    const vapiResult = await vapiRequest({
+      method: "PATCH",
+      endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
+      body: {
+        assistantId,
+      },
+    });
+
+    if (!vapiResult.ok) {
+      return errorResponse(
+        "Failed to sync phone number assignment with voice engine: " +
+          (vapiResult.error || "Unknown error"),
+        502
+      );
+    }
+
+    const { data: updatedPhone, error: updateError } = await supabase
+      .from("phone_numbers")
+      .update({ assigned_agent_id: agentId })
+      .eq("id", phoneId)
+      .select("*, agents(id, agent_name)")
+      .single();
+
+    if (updateError || !updatedPhone) {
+      return errorResponse("Failed to update phone number assignment", 500);
+    }
+
+    return successResponse(updatedPhone);
+  } catch (err) {
+    console.error("assign-phone-number error:", err);
+    return errorResponse(
+      err instanceof Error ? err.message : "Internal server error",
+      500
+    );
+  }
+});

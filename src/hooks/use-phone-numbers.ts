@@ -124,12 +124,9 @@ export function useAssignPhoneNumber() {
 
   return useMutation({
     mutationFn: async ({ phoneId, agentId }: { phoneId: string; agentId: string | null }) => {
-      const { data, error } = await supabase
-        .from("phone_numbers")
-        .update({ assigned_agent_id: agentId })
-        .eq("id", phoneId)
-        .select("*, agents(id, agent_name)")
-        .single();
+      const { data, error } = await supabase.functions.invoke("assign-phone-number", {
+        body: { phone_id: phoneId, agent_id: agentId },
+      });
       if (error) throw error;
       return data;
     },
