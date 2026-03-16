@@ -136,6 +136,20 @@ export default function AgentEditor() {
     setAnswerAfterRings((existingAgent as any).answer_after_rings ?? 2);
     setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
     setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
+    const ea = existingAgent as any;
+    setPostCallActions({
+      post_call_email_enabled: ea.post_call_email_enabled ?? false,
+      post_call_email_subject: ea.post_call_email_subject || "Thanks for chatting with us!",
+      post_call_email_body: ea.post_call_email_body || "",
+      post_call_email_trigger: ea.post_call_email_trigger || "connected_only",
+      post_call_sms_enabled: ea.post_call_sms_enabled ?? false,
+      post_call_sms_body: ea.post_call_sms_body || "",
+      post_call_notification_enabled: ea.post_call_notification_enabled ?? false,
+      post_call_notification_email: ea.post_call_notification_email || "",
+      post_call_notification_triggers: ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"],
+      post_call_notification_includes: ea.post_call_notification_includes || ["call_summary", "contact_info"],
+      post_call_task_enabled: ea.post_call_task_enabled ?? false,
+    });
     setInitialized(true);
   }
 
