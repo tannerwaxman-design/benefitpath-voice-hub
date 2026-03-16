@@ -62,6 +62,7 @@ const App = () => (
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/phone-numbers" element={<PhoneNumbers />} />
                 <Route path="/billing" element={<BillingUsage />} />
+                <Route path="/team" element={<Team />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>
