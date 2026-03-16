@@ -196,6 +196,7 @@ export default function AgentEditor() {
     answer_after_rings: answerAfterRings,
     after_hours_behavior: afterHoursBehavior,
     after_hours_voicemail_message: afterHoursVoicemailMessage || null,
+    ...postCallActions,
   });
 
   const handleSave = async (activate: boolean) => {
