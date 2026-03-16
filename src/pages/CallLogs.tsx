@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Download, Flag, Play, Search, SkipBack, SkipForward } from "lucide-react";
+import { Download, Flag, Play, Search, SkipBack, SkipForward, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 const outcomeColors: Record<string, string> = {
