@@ -409,11 +409,36 @@ Deno.serve(async (req: Request) => {
           reportUpdate.cost_minutes = reportDurationMinutes;
         }
 
-        // Update call record with rich data
-        await supabase
+        // Upsert: if call record doesn't exist yet (e.g. inbound where status-update was missed), create it
+        const { data: existingCallForReport } = await supabase
           .from("calls")
-          .update(reportUpdate)
-          .eq("vapi_call_id", vapiCallId);
+          .select("id")
+          .eq("vapi_call_id", vapiCallId)
+          .maybeSingle();
+
+        if (!existingCallForReport && tenantId) {
+          const customerNumber = message.call?.customer?.number || "";
+          const phoneNumber = message.call?.phoneNumber?.number || "";
+          await supabase.from("calls").insert({
+            vapi_call_id: vapiCallId,
+            tenant_id: tenantId,
+            agent_id: agentId || null,
+            direction: isInboundCall ? "inbound" : "outbound",
+            from_number: isInboundCall ? customerNumber : phoneNumber,
+            to_number: isInboundCall ? phoneNumber : customerNumber,
+            started_at: new Date().toISOString(),
+            outcome: "completed",
+            contact_name: message.call?.customer?.name || null,
+            ...reportUpdate,
+          });
+          console.log(`[webhook] Created missing call record in end-of-call-report: vapi=${vapiCallId}`);
+        } else {
+          // Update call record with rich data
+          await supabase
+            .from("calls")
+            .update(reportUpdate)
+            .eq("vapi_call_id", vapiCallId);
+        }
 
         // Fetch and store costs (end-of-call-report arrives after VAPI has finalized costs)
         if (tenantId && !isTestCall) {
