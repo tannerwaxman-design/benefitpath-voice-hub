@@ -16,6 +16,7 @@ const navItems = [
   { label: "Call Logs", icon: Phone, path: "/call-logs" },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
   { label: "Phone Numbers", icon: Hash, path: "/phone-numbers" },
+  { label: "Billing & Usage", icon: CreditCard, path: "/billing" },
   { label: "Settings", icon: Settings, path: "/settings" },
 ];
 
