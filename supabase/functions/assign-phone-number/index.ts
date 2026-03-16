@@ -7,6 +7,15 @@ import {
   successResponse,
 } from "../_shared/auth-helpers.ts";
 
+interface VapiPhoneNumberConfig {
+  assistantId?: string | null;
+  server?: {
+    url?: string | null;
+    credentialId?: string | null;
+  } | null;
+  serverUrl?: string | null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders() });
@@ -63,13 +72,49 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Phone number is not synced with voice engine", 400);
     }
 
-    const vapiResult = await vapiRequest({
+    const currentPhoneConfig = await vapiRequest<VapiPhoneNumberConfig>({
+      method: "GET",
+      endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
+    });
+
+    const patchBody: Record<string, unknown> = { assistantId };
+    const currentServerUrl = currentPhoneConfig.data?.server?.url;
+    const currentServerUrlAlias = currentPhoneConfig.data?.serverUrl;
+
+    if (currentServerUrl) {
+      patchBody.server = {
+        ...currentPhoneConfig.data?.server,
+        url: "",
+      };
+    }
+
+    if (currentServerUrlAlias) {
+      patchBody.serverUrl = "";
+    }
+
+    console.log("assign-phone-number sync", {
+      phoneId,
+      vapiPhoneId: phoneNumber.vapi_phone_id,
+      assistantId,
+      currentServerUrl,
+      currentServerUrlAlias,
+      clearingPhoneLevelServerRouting: Boolean(currentServerUrl || currentServerUrlAlias),
+    });
+
+    let vapiResult = await vapiRequest({
       method: "PATCH",
       endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
-      body: {
-        assistantId,
-      },
+      body: patchBody,
     });
+
+    if (!vapiResult.ok && (currentServerUrl || currentServerUrlAlias)) {
+      console.warn("assign-phone-number retrying without server clear", vapiResult.error);
+      vapiResult = await vapiRequest({
+        method: "PATCH",
+        endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
+        body: { assistantId },
+      });
+    }
 
     if (!vapiResult.ok) {
       return errorResponse(
