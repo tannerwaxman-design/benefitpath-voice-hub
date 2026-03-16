@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Check, Loader2, Upload } from "lucide-react";
 import Papa from "papaparse";
+import SmartSchedulePanel from "@/components/campaigns/SmartSchedulePanel";
 
 const steps = ["Campaign Basics", "Contact List", "Schedule & Pacing", "Review & Launch"];
 
