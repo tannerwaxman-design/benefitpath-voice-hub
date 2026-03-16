@@ -77,6 +77,19 @@ export default function AgentEditor() {
   const [answerAfterRings, setAnswerAfterRings] = useState(2);
   const [afterHoursBehavior, setAfterHoursBehavior] = useState("voicemail");
   const [afterHoursVoicemailMessage, setAfterHoursVoicemailMessage] = useState("Thank you for calling. Our office is currently closed. Please leave a message and we'll call you back on the next business day.");
+  const [postCallActions, setPostCallActions] = useState<PostCallActionsConfig>({
+    post_call_email_enabled: false,
+    post_call_email_subject: "Thanks for chatting with us!",
+    post_call_email_body: "",
+    post_call_email_trigger: "connected_only",
+    post_call_sms_enabled: false,
+    post_call_sms_body: "",
+    post_call_notification_enabled: false,
+    post_call_notification_email: "",
+    post_call_notification_triggers: ["appointment_booked", "lead_qualified", "callback_requested"],
+    post_call_notification_includes: ["call_summary", "contact_info"],
+    post_call_task_enabled: false,
+  });
 
   const applyTemplate = (template: AgentTemplate | null) => {
     if (template) {
