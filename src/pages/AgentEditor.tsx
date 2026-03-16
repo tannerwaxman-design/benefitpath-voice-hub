@@ -391,7 +391,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 3: Conversation Flow */}
-          <Card>
+          <Card id="section-conversation-flow">
             <CardHeader><CardTitle className="section-title">Conversation Flow</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
