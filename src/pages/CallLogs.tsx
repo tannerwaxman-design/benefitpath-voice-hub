@@ -193,6 +193,76 @@ function CallDetailPanel({ call, onClose }: { call: CallWithRelations; onClose: 
         </div>
       )}
 
+      {/* Call Quality Score Card */}
+      {(call as any).quality_score != null && (
+        <Card className="border-primary/20">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">Call Quality Score: {(call as any).quality_score}/100</span>
+              </div>
+              <span className={`text-lg font-bold ${
+                (call as any).quality_score >= 80 ? "text-success" :
+                (call as any).quality_score >= 60 ? "text-warning" : "text-destructive"
+              }`}>
+                {(call as any).quality_score}
+              </span>
+            </div>
+            <Progress value={(call as any).quality_score} className="h-2" />
+
+            {(call as any).score_feedback && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(call as any).score_feedback.went_well?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-success mb-1.5">✅ What went well</p>
+                    <ul className="space-y-1">
+                      {(call as any).score_feedback.went_well.map((item: string, i: number) => (
+                        <li key={i} className="text-xs text-muted-foreground">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {(call as any).score_feedback.could_improve?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-warning mb-1.5">⚡ Could improve</p>
+                    <ul className="space-y-1">
+                      {(call as any).score_feedback.could_improve.map((item: string, i: number) => (
+                        <li key={i} className="text-xs text-muted-foreground">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(call as any).score_breakdown && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">📊 Score Breakdown</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {[
+                    ["Opening & Hook", "opening_hook"],
+                    ["Value Proposition", "value_proposition"],
+                    ["Objection Handling", "objection_handling"],
+                    ["Discovery Questions", "discovery_questions"],
+                    ["Call-to-Action", "call_to_action"],
+                    ["Professionalism", "professionalism"],
+                    ["Compliance", "compliance"],
+                    ["Outcome Achievement", "outcome_achievement"],
+                    ["Conversation Flow", "conversation_flow"],
+                    ["Overall Effectiveness", "overall_effectiveness"],
+                  ].map(([label, key]) => (
+                    <div key={key} className="flex justify-between text-xs py-0.5">
+                      <span className="text-muted-foreground">{label}:</span>
+                      <span className="font-medium text-foreground">{(call as any).score_breakdown[key]}/10</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
       {/* Transcript with inline comments */}
       {call.transcript && Array.isArray(call.transcript) && (call.transcript as Array<{ role: string; text: string; timestamp: number }>).length > 0 && (
         <div>
