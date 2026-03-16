@@ -8,7 +8,10 @@ import {
 } from "../_shared/auth-helpers.ts";
 
 interface VapiPhoneNumberConfig {
+  id?: string;
   assistantId?: string | null;
+  number?: string | null;
+  provider?: string | null;
   server?: {
     url?: string | null;
     credentialId?: string | null;
