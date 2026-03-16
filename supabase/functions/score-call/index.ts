@@ -19,11 +19,92 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { call_id } = await req.json();
+    const body = await req.json();
+    const { call_id, action } = body;
 
     if (!call_id) {
       return new Response(JSON.stringify({ error: "call_id is required" }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createAdminClient();
+
+    // ── REFETCH TRANSCRIPT ACTION ──
+    if (action === "refetch_transcript") {
+      const { data: call, error: callErr } = await supabase
+        .from("calls")
+        .select("vapi_call_id")
+        .eq("id", call_id)
+        .single();
+
+      if (callErr || !call?.vapi_call_id) {
+        return new Response(JSON.stringify({ error: "Call not found or no VAPI ID" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { vapiRequest } = await import("../_shared/vapi-client.ts");
+      const vapiResult = await vapiRequest({
+        method: "GET",
+        endpoint: `/call/${call.vapi_call_id}`,
+      });
+
+      if (!vapiResult.ok || !vapiResult.data) {
+        return new Response(JSON.stringify({ error: "Failed to fetch from VAPI", detail: vapiResult.error }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const vapiCall = vapiResult.data as Record<string, unknown>;
+      const artifact = (vapiCall.artifact || {}) as Record<string, unknown>;
+      const rawMessages = (artifact.messages || []) as Record<string, unknown>[];
+
+      // Log raw structure for debugging
+      if (rawMessages.length > 0) {
+        console.log("[refetch] Raw message sample:", JSON.stringify(rawMessages.slice(0, 3)));
+        console.log("[refetch] All roles:", [...new Set(rawMessages.map(m => m.role))]);
+      }
+
+      const transcript = rawMessages
+        .filter((m) => m.role === "assistant" || m.role === "user" || m.role === "bot")
+        .map((m) => ({
+          role: m.role === "bot" ? "assistant" : m.role,
+          text: (m.message || m.content || m.text || "") as string,
+          timestamp: (m.secondsFromStart || m.time || 0) as number,
+        }))
+        .filter((m) => m.text.length > 0);
+
+      if (transcript.length > 0) {
+        const analysis = (vapiCall.analysis || {}) as Record<string, unknown>;
+        const updatePayload: Record<string, unknown> = { transcript };
+        if (analysis.summary) updatePayload.summary = analysis.summary;
+        const recordingUrl = artifact.recordingUrl || vapiCall.recordingUrl;
+        if (recordingUrl) updatePayload.recording_url = recordingUrl;
+
+        await supabase.from("calls").update(updatePayload).eq("id", call_id);
+
+        return new Response(JSON.stringify({
+          updated: true,
+          messages_found: transcript.length,
+          assistant_count: transcript.filter(m => m.role === "assistant").length,
+          user_count: transcript.filter(m => m.role === "user").length,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        updated: false,
+        reason: "No transcript messages found in VAPI response",
+        raw_count: rawMessages.length,
+        roles: [...new Set(rawMessages.map(m => m.role))],
+      }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
