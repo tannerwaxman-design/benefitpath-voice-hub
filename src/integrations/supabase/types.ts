@@ -1965,6 +1965,110 @@ export type Database = {
           },
         ]
       }
+      user_voice_collection: {
+        Row: {
+          added_at: string
+          id: string
+          tenant_id: string
+          voice_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          tenant_id: string
+          voice_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          tenant_id?: string
+          voice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_voice_collection_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_voice_collection_voice_id_fkey"
+            columns: ["voice_id"]
+            isOneToOne: false
+            referencedRelation: "voices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voices: {
+        Row: {
+          accent: string | null
+          clone_status: string | null
+          created_at: string
+          description: string | null
+          gender: string | null
+          id: string
+          is_default: boolean
+          is_global: boolean
+          language: string | null
+          name: string
+          provider: string
+          provider_voice_id: string
+          recording_url: string | null
+          style: string | null
+          tenant_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          accent?: string | null
+          clone_status?: string | null
+          created_at?: string
+          description?: string | null
+          gender?: string | null
+          id?: string
+          is_default?: boolean
+          is_global?: boolean
+          language?: string | null
+          name: string
+          provider?: string
+          provider_voice_id: string
+          recording_url?: string | null
+          style?: string | null
+          tenant_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          accent?: string | null
+          clone_status?: string | null
+          created_at?: string
+          description?: string | null
+          gender?: string | null
+          id?: string
+          is_default?: boolean
+          is_global?: boolean
+          language?: string | null
+          name?: string
+          provider?: string
+          provider_voice_id?: string
+          recording_url?: string | null
+          style?: string | null
+          tenant_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

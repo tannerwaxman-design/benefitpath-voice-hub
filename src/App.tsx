@@ -23,6 +23,7 @@ import BillingUsage from "./pages/BillingUsage";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Team from "./pages/Team";
 import CoachingDashboard from "./pages/CoachingDashboard";
+import Voices from "./pages/Voices";
 import Training from "./pages/Training";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/" element={<Overview />} />
                 <Route path="/agents" element={<AgentBuilder />} />
                 <Route path="/agents/:id" element={<AgentEditor />} />
+                <Route path="/voices" element={<Voices />} />
                 <Route path="/knowledge-base" element={<KnowledgeBase />} />
                 <Route path="/tools" element={<Tools />} />
                 <Route path="/campaigns" element={<Campaigns />} />

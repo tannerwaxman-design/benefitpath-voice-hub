@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, Bot, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap
+  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import logo from "@/assets/benefit_path_icon.svg";
@@ -10,6 +10,7 @@ import logo from "@/assets/benefit_path_icon.svg";
 const navItems = [
   { label: "Overview", icon: LayoutDashboard, path: "/" },
   { label: "Agent Builder", icon: Bot, path: "/agents" },
+  { label: "Voices", icon: AudioLines, path: "/voices" },
   { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base" },
   { label: "Tools", icon: Wrench, path: "/tools" },
   { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
