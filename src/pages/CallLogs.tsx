@@ -32,6 +32,7 @@ type CallWithRelations = {
   contact_name: string | null;
   to_number: string;
   from_number: string;
+  direction: string;
   started_at: string;
   duration_seconds: number | null;
   outcome: string;
