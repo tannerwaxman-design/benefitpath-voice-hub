@@ -137,6 +137,7 @@ Deno.serve(async (req: Request) => {
     // Get from number
     let fromNumber = "";
     let phoneNumberIdFinal = phone_number_id;
+    let vapiPhoneNumberId: string | null = null;
 
     if (phone_number_id) {
       const { data: pn } = await supabase
@@ -144,7 +145,10 @@ Deno.serve(async (req: Request) => {
         .select("*")
         .eq("id", phone_number_id)
         .single();
-      if (pn) fromNumber = pn.phone_number;
+      if (pn) {
+        fromNumber = pn.phone_number;
+        vapiPhoneNumberId = pn.vapi_phone_id;
+      }
     } else {
       const { data: pn } = await supabase
         .from("phone_numbers")
@@ -157,7 +161,12 @@ Deno.serve(async (req: Request) => {
       if (pn) {
         fromNumber = pn.phone_number;
         phoneNumberIdFinal = pn.id;
+        vapiPhoneNumberId = pn.vapi_phone_id;
       }
+    }
+
+    if (!vapiPhoneNumberId) {
+      return errorResponse("No active voice-enabled phone number found", 400);
     }
 
     // Personalize greeting
@@ -169,6 +178,7 @@ Deno.serve(async (req: Request) => {
     // Build VAPI call payload with correct metadata keys
     const vapiCallPayload: Record<string, unknown> = {
       assistantId: agent.vapi_assistant_id,
+      phoneNumberId: vapiPhoneNumberId,
       customer: {
         number: toNumber,
         name: contactName,
@@ -185,18 +195,6 @@ Deno.serve(async (req: Request) => {
         firstMessage: personalizedGreeting,
       },
     };
-
-    // Add VAPI phone ID if available
-    if (phone_number_id) {
-      const { data: pn } = await supabase
-        .from("phone_numbers")
-        .select("vapi_phone_id")
-        .eq("id", phone_number_id)
-        .single();
-      if (pn?.vapi_phone_id) {
-        vapiCallPayload.phoneNumberId = pn.vapi_phone_id;
-      }
-    }
 
     // Call VAPI
     const vapiResult = await vapiRequest<{ id: string }>({
