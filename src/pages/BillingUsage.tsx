@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,33 +10,32 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
-import { CreditCard, Clock, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2 } from "lucide-react";
+import { CreditCard, Clock, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
 
 const planNames: Record<string, string> = {
-  voice_ai_starter: "Voice AI Starter",
-  voice_ai_pro: "Voice AI Pro",
-  voice_ai_enterprise: "Voice AI Enterprise",
+  voice_ai_starter: "Starter",
+  voice_ai_pro: "Professional",
+  voice_ai_enterprise: "Agency",
 };
 
 const planPrices: Record<string, number> = {
   voice_ai_starter: 49,
-  voice_ai_pro: 99,
-  voice_ai_enterprise: 249,
+  voice_ai_pro: 149,
+  voice_ai_enterprise: 349,
 };
 
 const planLimits: Record<string, number> = {
-  voice_ai_starter: 2500,
+  voice_ai_starter: 1000,
   voice_ai_pro: 5000,
-  voice_ai_enterprise: 25000,
+  voice_ai_enterprise: 15000,
 };
 
-// Mock invoice data
 const invoices = [
-  { date: "Mar 1, 2026", description: "Voice AI Pro — Monthly", amount: 99.0, status: "Paid" },
-  { date: "Feb 1, 2026", description: "Voice AI Pro — Monthly", amount: 99.0, status: "Paid" },
-  { date: "Feb 1, 2026", description: "Overage — 312 minutes", amount: 15.6, status: "Paid" },
-  { date: "Jan 1, 2026", description: "Voice AI Pro — Monthly", amount: 99.0, status: "Paid" },
+  { date: "Mar 1, 2026", description: "Professional — Monthly", amount: 149.0, status: "Paid" },
+  { date: "Feb 1, 2026", description: "Professional — Monthly", amount: 149.0, status: "Paid" },
+  { date: "Feb 1, 2026", description: "Overage — 312 credits", amount: 15.6, status: "Paid" },
+  { date: "Jan 1, 2026", description: "Professional — Monthly", amount: 149.0, status: "Paid" },
 ];
 
 const plans = [
@@ -46,22 +44,68 @@ const plans = [
     name: "Starter",
     price: 49,
     icon: Zap,
-    features: ["2,500 minutes", "2 AI agents", "Basic analytics", "Email support"],
+    tagline: "Best for solo agents getting started",
+    features: [
+      "1,000 credits included",
+      "1 AI agent",
+      "Outbound calls only",
+      "Basic call logs (no transcripts)",
+      "CSV contact upload",
+      "Email support",
+    ],
   },
   {
     id: "voice_ai_pro",
-    name: "Pro",
-    price: 99,
+    name: "Professional",
+    price: 149,
     icon: Star,
     popular: true,
-    features: ["5,000 minutes", "Unlimited agents", "Full analytics & transcripts", "Priority support", "CRM & calendar tools"],
+    tagline: "Best for active agents and small teams",
+    features: [
+      "5,000 credits included",
+      "Unlimited AI agents",
+      "Outbound + inbound calls",
+      "Full transcripts & recordings",
+      "AI call scoring",
+      "Knowledge base",
+      "CRM & calendar integrations (Tools)",
+      "Smart scheduling",
+      "Priority email & chat support",
+    ],
   },
   {
     id: "voice_ai_enterprise",
-    name: "Enterprise",
-    price: 249,
+    name: "Agency",
+    price: 349,
     icon: Building2,
-    features: ["25,000 minutes", "Unlimited everything", "Custom voice cloning", "Dedicated account manager", "API access", "White-label option"],
+    tagline: "Best for agencies managing multiple agents",
+    features: [
+      "15,000 credits included",
+      "Everything in Professional",
+      "Voice cloning",
+      "AI objection trainer",
+      "Multi-language support (Spanish)",
+      "Team management (up to 10 users)",
+      "White-label reports",
+      "Dedicated account manager",
+      "Phone & video support",
+    ],
+  },
+  {
+    id: "voice_ai_custom",
+    name: "Enterprise",
+    price: -1,
+    icon: Crown,
+    tagline: "Contact us for a custom quote",
+    features: [
+      "Unlimited credits",
+      "Everything in Agency",
+      "Unlimited team members",
+      "Custom AI model training",
+      "API access",
+      "Custom integrations",
+      "SLA guarantee",
+    ],
   },
 ];
 
@@ -73,49 +117,43 @@ export default function BillingUsage() {
 
   const tenant = billing?.tenant || user?.tenant;
   const plan = tenant?.plan || "voice_ai_pro";
-  const minuteLimit = tenant?.monthly_minute_limit ?? 5000;
-  const minutesUsed = tenant?.minutes_used_this_cycle ?? 0;
-  const usagePercent = minuteLimit > 0 ? (minutesUsed / minuteLimit) * 100 : 0;
+  const creditLimit = tenant?.monthly_minute_limit ?? 5000;
+  const creditsUsed = tenant?.minutes_used_this_cycle ?? 0;
+  const usagePercent = creditLimit > 0 ? (creditsUsed / creditLimit) * 100 : 0;
   const overageRate = tenant?.overage_rate_per_minute ?? 0.05;
   const cycleStart = tenant?.billing_cycle_start;
   const cycleEnd = tenant?.billing_cycle_end;
-  const price = planPrices[plan] ?? 99;
+  const price = planPrices[plan] ?? 149;
 
-  // Usage alerts state
   const [alert80, setAlert80] = useState(true);
   const [alert100, setAlert100] = useState(true);
   const hardStop = tenant?.hard_stop_enabled ?? false;
   const alertEmail = user?.email ?? "";
 
-  // Projected usage
   const daysInCycle = cycleStart && cycleEnd
     ? Math.max(1, Math.ceil((new Date(cycleEnd).getTime() - new Date(cycleStart).getTime()) / 86400000))
     : 30;
   const daysPassed = cycleStart
     ? Math.max(1, Math.ceil((Date.now() - new Date(cycleStart).getTime()) / 86400000))
     : 1;
-  const projectedUsage = Math.round((minutesUsed / daysPassed) * daysInCycle);
+  const projectedUsage = Math.round((creditsUsed / daysPassed) * daysInCycle);
 
-  // Daily usage chart data from billing hook
   const dailyData = billing?.usageHistory?.map(h => ({
     name: h.month,
-    minutes: h.minutes,
+    credits: h.minutes,
   })) || [];
 
-  const dailyAvgTarget = minuteLimit / daysInCycle;
+  const dailyAvgTarget = creditLimit / daysInCycle;
 
-  // Usage breakdown (mock proportions based on real data)
-  const outboundMinutes = Math.round(minutesUsed * 0.847);
-  const voicemailMinutes = Math.round(minutesUsed * 0.105);
-  const transferMinutes = minutesUsed - outboundMinutes - voicemailMinutes;
+  const outboundCredits = Math.round(creditsUsed * 0.847);
+  const voicemailCredits = Math.round(creditsUsed * 0.105);
+  const transferCredits = creditsUsed - outboundCredits - voicemailCredits;
 
   const costSummary = billing?.costSummary;
   const totalCost = costSummary?.withMargin ?? price;
 
-  // Progress bar color
   const progressColor = usagePercent >= 90 ? "bg-red-500" : usagePercent >= 70 ? "bg-amber-500" : "bg-emerald-500";
 
-  // Format date range
   const formatDate = (d: string | undefined) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -137,13 +175,12 @@ export default function BillingUsage() {
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Billing & Usage</h1>
-        <p className="text-muted-foreground text-sm mt-1">Manage your plan, monitor usage, and view invoices.</p>
+        <p className="text-muted-foreground text-sm mt-1">Manage your plan, monitor credit usage, and view invoices.</p>
       </div>
 
-      {/* Section 1: Current Plan Card */}
+      {/* Current Plan */}
       <Card className="border-primary/20">
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
@@ -156,11 +193,10 @@ export default function BillingUsage() {
                 Billing cycle: {formatDate(cycleStart)} – {formatDate(cycleEnd)}
               </p>
 
-              {/* Usage Progress */}
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Minutes Used</span>
-                  <span className="font-medium text-foreground">{minutesUsed.toLocaleString()} / {minuteLimit.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Credits Used</span>
+                  <span className="font-medium text-foreground">{creditsUsed.toLocaleString()} / {creditLimit.toLocaleString()}</span>
                 </div>
                 <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
                   <div
@@ -168,13 +204,13 @@ export default function BillingUsage() {
                     style={{ width: `${Math.min(usagePercent, 100)}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">{usagePercent.toFixed(1)}% of monthly limit</p>
+                <p className="text-xs text-muted-foreground">{usagePercent.toFixed(1)}% of monthly credits • {(creditLimit - creditsUsed).toLocaleString()} remaining</p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 text-sm text-muted-foreground">
-                <span>Projected usage this cycle: ~{projectedUsage.toLocaleString()} minutes</span>
+                <span>Projected usage this cycle: ~{projectedUsage.toLocaleString()} credits</span>
                 <span className="hidden sm:inline">•</span>
-                <span>Overage rate: ${overageRate.toFixed(2)}/minute beyond {minuteLimit.toLocaleString()}</span>
+                <span>Overage rate: ${overageRate.toFixed(2)}/credit beyond {creditLimit.toLocaleString()}</span>
               </div>
             </div>
 
@@ -188,7 +224,7 @@ export default function BillingUsage() {
         </CardContent>
       </Card>
 
-      {/* Stat Cards Row */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
@@ -196,8 +232,8 @@ export default function BillingUsage() {
               <Clock className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Minutes Today</p>
-              <p className="text-lg font-bold text-foreground">{Math.round(minutesUsed / Math.max(daysPassed, 1))}</p>
+              <p className="text-xs text-muted-foreground">Credits Today</p>
+              <p className="text-lg font-bold text-foreground">{Math.round(creditsUsed / Math.max(daysPassed, 1))}</p>
             </div>
           </CardContent>
         </Card>
@@ -207,8 +243,8 @@ export default function BillingUsage() {
               <TrendingUp className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Minutes This Week</p>
-              <p className="text-lg font-bold text-foreground">{Math.round((minutesUsed / Math.max(daysPassed, 1)) * 7)}</p>
+              <p className="text-xs text-muted-foreground">Credits This Week</p>
+              <p className="text-lg font-bold text-foreground">{Math.round((creditsUsed / Math.max(daysPassed, 1)) * 7)}</p>
             </div>
           </CardContent>
         </Card>
@@ -225,11 +261,11 @@ export default function BillingUsage() {
         </Card>
       </div>
 
-      {/* Section 2: Usage Breakdown */}
+      {/* Usage Breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Usage Over Time</CardTitle>
-          <CardDescription>Monthly minute usage breakdown</CardDescription>
+          <CardTitle className="text-lg">Credit Usage Over Time</CardTitle>
+          <CardDescription>Monthly credit consumption breakdown</CardDescription>
         </CardHeader>
         <CardContent>
           {dailyData.length > 0 ? (
@@ -243,42 +279,41 @@ export default function BillingUsage() {
                   labelStyle={{ color: "hsl(var(--foreground))" }}
                 />
                 <ReferenceLine y={dailyAvgTarget} stroke="hsl(var(--destructive))" strokeDasharray="5 5" label={{ value: "Avg target", fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="credits" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-12">No usage data available yet.</p>
           )}
 
-          {/* Breakdown table */}
           <div className="mt-6">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Minutes</TableHead>
+                  <TableHead className="text-right">Credits</TableHead>
                   <TableHead className="text-right">% of Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow>
                   <TableCell>Outbound calls</TableCell>
-                  <TableCell className="text-right">{outboundMinutes.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{outboundCredits.toLocaleString()}</TableCell>
                   <TableCell className="text-right">84.7%</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Voicemail messages</TableCell>
-                  <TableCell className="text-right">{voicemailMinutes.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{voicemailCredits.toLocaleString()}</TableCell>
                   <TableCell className="text-right">10.5%</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Transferred calls (bridge time)</TableCell>
-                  <TableCell className="text-right">{transferMinutes.toLocaleString()}</TableCell>
+                  <TableCell>Transfer bridge time</TableCell>
+                  <TableCell className="text-right">{transferCredits.toLocaleString()}</TableCell>
                   <TableCell className="text-right">4.8%</TableCell>
                 </TableRow>
                 <TableRow className="font-semibold">
                   <TableCell>Total</TableCell>
-                  <TableCell className="text-right">{minutesUsed.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{creditsUsed.toLocaleString()}</TableCell>
                   <TableCell className="text-right">100%</TableCell>
                 </TableRow>
               </TableBody>
@@ -287,10 +322,10 @@ export default function BillingUsage() {
         </CardContent>
       </Card>
 
-      {/* Section 3: Plan Comparison */}
+      {/* Plan Comparison */}
       <div id="plans-section">
         <h2 className="text-lg font-semibold text-foreground mb-4">Compare Plans</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {plans.map(p => {
             const isCurrent = p.id === plan;
             return (
@@ -311,9 +346,16 @@ export default function BillingUsage() {
                     <h3 className="text-lg font-semibold text-foreground">{p.name}</h3>
                   </div>
                   <div>
-                    <span className="text-3xl font-bold text-foreground">${p.price}</span>
-                    <span className="text-muted-foreground text-sm">/mo</span>
+                    {p.price === -1 ? (
+                      <span className="text-2xl font-bold text-foreground">Custom Pricing</span>
+                    ) : (
+                      <>
+                        <span className="text-3xl font-bold text-foreground">${p.price}</span>
+                        <span className="text-muted-foreground text-sm">/mo</span>
+                      </>
+                    )}
                   </div>
+                  <p className="text-xs text-muted-foreground italic">{p.tagline}</p>
                   <ul className="space-y-2">
                     {p.features.map(f => (
                       <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -327,7 +369,7 @@ export default function BillingUsage() {
                     className="w-full"
                     disabled={isCurrent}
                   >
-                    {isCurrent ? "Current Plan" : p.id === "voice_ai_enterprise" ? "Contact Sales" : "Upgrade"}
+                    {isCurrent ? "Current Plan" : p.id === "voice_ai_custom" ? "Contact Sales" : "Upgrade"}
                   </Button>
                 </CardContent>
               </Card>
@@ -336,7 +378,7 @@ export default function BillingUsage() {
         </div>
       </div>
 
-      {/* Section 4: Invoice History */}
+      {/* Invoice History */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Invoice History</CardTitle>
@@ -373,15 +415,15 @@ export default function BillingUsage() {
         </CardContent>
       </Card>
 
-      {/* Section 5: Usage Alerts */}
+      {/* Usage Alerts */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Usage Alerts</CardTitle>
-          <CardDescription>Configure notifications for your usage thresholds.</CardDescription>
+          <CardDescription>Configure notifications for your credit usage thresholds.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex items-center justify-between">
-            <Label className="text-sm">Email me when I hit 80% of my monthly minutes</Label>
+            <Label className="text-sm">Email me when I hit 80% of my monthly credits</Label>
             <Switch checked={alert80} onCheckedChange={setAlert80} />
           </div>
           <div className="flex items-center justify-between">
@@ -390,7 +432,7 @@ export default function BillingUsage() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-sm">Hard stop — pause all campaigns when I hit my limit</Label>
+              <Label className="text-sm">Hard stop — pause all campaigns when I hit my credit limit</Label>
               <p className="text-xs text-muted-foreground mt-0.5">No overage charges will be incurred</p>
             </div>
             <Switch checked={hardStop} onCheckedChange={handleHardStopToggle} />
