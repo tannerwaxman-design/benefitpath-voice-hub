@@ -1845,6 +1845,72 @@ export type Database = {
           },
         ]
       }
+      training_sessions: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          difficulty: string
+          duration_seconds: number | null
+          feedback: Json | null
+          id: string
+          mode: string
+          scenario: string
+          score: number | null
+          score_breakdown: Json | null
+          status: string
+          tenant_id: string
+          transcript: Json | null
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          difficulty?: string
+          duration_seconds?: number | null
+          feedback?: Json | null
+          id?: string
+          mode?: string
+          scenario: string
+          score?: number | null
+          score_breakdown?: Json | null
+          status?: string
+          tenant_id: string
+          transcript?: Json | null
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          difficulty?: string
+          duration_seconds?: number | null
+          feedback?: Json | null
+          id?: string
+          mode?: string
+          scenario?: string
+          score?: number | null
+          score_breakdown?: Json | null
+          status?: string
+          tenant_id?: string
+          transcript?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_sessions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usage_logs: {
         Row: {
           billing_cycle_end: string
