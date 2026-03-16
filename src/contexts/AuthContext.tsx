@@ -13,6 +13,10 @@ export interface TenantInfo {
   status: string;
   default_timezone: string;
   onboarding_completed: boolean;
+  overage_rate_per_minute: number;
+  billing_cycle_start: string;
+  billing_cycle_end: string;
+  hard_stop_enabled: boolean;
 }
 
 export interface UserProfile {
