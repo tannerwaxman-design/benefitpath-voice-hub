@@ -148,7 +148,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (!contactsToCall?.length) {
+      if (!orderedContacts?.length) {
         // Check if campaign is done
         const { count: pendingCount } = await supabase
           .from("campaign_contacts")
