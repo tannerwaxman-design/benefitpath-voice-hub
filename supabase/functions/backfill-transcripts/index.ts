@@ -1,7 +1,3 @@
-// Temporary edge function to:
-// 1. Fetch a VAPI call to inspect the actual message structure
-// 2. Backfill transcripts for recent calls
-
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { vapiRequest } from "../_shared/vapi-client.ts";
 
@@ -19,7 +15,6 @@ Deno.serve(async (req: Request) => {
   try {
     const supabase = createAdminClient();
 
-    // Get recent calls that have transcripts with only user messages or empty transcripts
     const { data: calls, error } = await supabase
       .from("calls")
       .select("id, vapi_call_id")
@@ -33,50 +28,59 @@ Deno.serve(async (req: Request) => {
 
     for (const call of calls || []) {
       try {
-        // Fetch full call data from VAPI
-        const vapiCall = await vapiRequest(`/call/${call.vapi_call_id}`, {
+        const vapiResult = await vapiRequest({
           method: "GET",
+          endpoint: `/call/${call.vapi_call_id}`,
         });
 
-        // Log the first call's full message structure for debugging
-        if (results.length === 0) {
-          const sampleMessages = (vapiCall.artifact?.messages || vapiCall.messages || []).slice(0, 5);
-          console.log("[backfill] Sample VAPI messages structure:", JSON.stringify(sampleMessages, null, 2));
+        if (!vapiResult.ok || !vapiResult.data) {
+          results.push({
+            call_id: call.id,
+            vapi_call_id: call.vapi_call_id,
+            status: "vapi_error",
+            error: vapiResult.error,
+          });
+          continue;
         }
 
-        const rawMessages = vapiCall.artifact?.messages || vapiCall.messages || [];
+        const vapiCall = vapiResult.data as Record<string, unknown>;
+        const artifact = (vapiCall.artifact || {}) as Record<string, unknown>;
+        const rawMessages = (artifact.messages || []) as Record<string, unknown>[];
+
+        // Log the first call's message structure for debugging
+        if (results.length === 0 && rawMessages.length > 0) {
+          console.log("[backfill] Sample VAPI messages (first 5):", JSON.stringify(rawMessages.slice(0, 5), null, 2));
+          console.log("[backfill] All unique roles:", [...new Set(rawMessages.map(m => m.role))]);
+        }
 
         // Build transcript keeping both assistant and user messages
         const transcript = rawMessages
-          .filter(
-            (m: Record<string, unknown>) =>
-              m.role === "assistant" || m.role === "user" || m.role === "bot"
-          )
-          .map((m: Record<string, unknown>) => ({
+          .filter((m) => m.role === "assistant" || m.role === "user" || m.role === "bot")
+          .map((m) => ({
             role: m.role === "bot" ? "assistant" : m.role,
-            text: m.message || m.content || "",
-            timestamp: m.secondsFromStart || m.time || 0,
+            text: (m.message || m.content || "") as string,
+            timestamp: (m.secondsFromStart || m.time || 0) as number,
           }))
-          .filter((m: Record<string, unknown>) => (m.text as string).length > 0);
+          .filter((m) => m.text.length > 0);
+
+        const analysis = (vapiCall.analysis || {}) as Record<string, unknown>;
 
         if (transcript.length > 0) {
-          await supabase
-            .from("calls")
-            .update({
-              transcript,
-              // Also backfill summary and recording if missing
-              ...(vapiCall.analysis?.summary ? { summary: vapiCall.analysis.summary } : {}),
-              ...(vapiCall.artifact?.recordingUrl || vapiCall.recordingUrl
-                ? { recording_url: vapiCall.artifact?.recordingUrl || vapiCall.recordingUrl }
-                : {}),
-            })
-            .eq("id", call.id);
+          const updatePayload: Record<string, unknown> = { transcript };
+          if (analysis.summary) updatePayload.summary = analysis.summary;
+          
+          const recordingUrl = artifact.recordingUrl || vapiCall.recordingUrl;
+          if (recordingUrl) updatePayload.recording_url = recordingUrl;
+
+          await supabase.from("calls").update(updatePayload).eq("id", call.id);
 
           results.push({
             call_id: call.id,
             vapi_call_id: call.vapi_call_id,
             messages_found: transcript.length,
-            roles: [...new Set(rawMessages.map((m: Record<string, unknown>) => m.role))],
+            roles: [...new Set(rawMessages.map((m) => m.role))],
+            assistant_count: transcript.filter(m => m.role === "assistant").length,
+            user_count: transcript.filter(m => m.role === "user").length,
             status: "updated",
           });
         } else {
@@ -85,7 +89,7 @@ Deno.serve(async (req: Request) => {
             vapi_call_id: call.vapi_call_id,
             messages_found: 0,
             raw_count: rawMessages.length,
-            roles: [...new Set(rawMessages.map((m: Record<string, unknown>) => m.role))],
+            roles: [...new Set(rawMessages.map((m) => m.role))],
             status: "no_transcript",
           });
         }
