@@ -59,6 +59,17 @@ export type Database = {
           max_concurrent_calls: number
           objection_handling: Json
           play_disclosure: boolean
+          post_call_email_body: string | null
+          post_call_email_enabled: boolean
+          post_call_email_subject: string | null
+          post_call_email_trigger: string
+          post_call_notification_email: string | null
+          post_call_notification_enabled: boolean
+          post_call_notification_includes: Json
+          post_call_notification_triggers: Json
+          post_call_sms_body: string | null
+          post_call_sms_enabled: boolean
+          post_call_task_enabled: boolean
           primary_cta: string
           record_calls: boolean
           require_verbal_consent: boolean
@@ -133,6 +144,17 @@ export type Database = {
           max_concurrent_calls?: number
           objection_handling?: Json
           play_disclosure?: boolean
+          post_call_email_body?: string | null
+          post_call_email_enabled?: boolean
+          post_call_email_subject?: string | null
+          post_call_email_trigger?: string
+          post_call_notification_email?: string | null
+          post_call_notification_enabled?: boolean
+          post_call_notification_includes?: Json
+          post_call_notification_triggers?: Json
+          post_call_sms_body?: string | null
+          post_call_sms_enabled?: boolean
+          post_call_task_enabled?: boolean
           primary_cta?: string
           record_calls?: boolean
           require_verbal_consent?: boolean
@@ -207,6 +229,17 @@ export type Database = {
           max_concurrent_calls?: number
           objection_handling?: Json
           play_disclosure?: boolean
+          post_call_email_body?: string | null
+          post_call_email_enabled?: boolean
+          post_call_email_subject?: string | null
+          post_call_email_trigger?: string
+          post_call_notification_email?: string | null
+          post_call_notification_enabled?: boolean
+          post_call_notification_includes?: Json
+          post_call_notification_triggers?: Json
+          post_call_sms_body?: string | null
+          post_call_sms_enabled?: boolean
+          post_call_task_enabled?: boolean
           primary_cta?: string
           record_calls?: boolean
           require_verbal_consent?: boolean
@@ -1256,6 +1289,73 @@ export type Database = {
           },
           {
             foreignKeyName: "phone_numbers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_call_tasks: {
+        Row: {
+          agent_id: string | null
+          call_date: string | null
+          call_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          contact_name: string | null
+          created_at: string
+          description: string
+          generated_by: string
+          id: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          call_date?: string | null
+          call_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          contact_name?: string | null
+          created_at?: string
+          description: string
+          generated_by?: string
+          id?: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          call_date?: string | null
+          call_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          contact_name?: string | null
+          created_at?: string
+          description?: string
+          generated_by?: string
+          id?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_call_tasks_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_call_tasks_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_call_tasks_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
