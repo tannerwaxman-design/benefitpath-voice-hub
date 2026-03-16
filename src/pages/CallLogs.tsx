@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Download, Flag, Play, Search, SkipBack, SkipForward } from "lucide-react";
+import { Download, Flag, Play, Search, SkipBack, SkipForward, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 const outcomeColors: Record<string, string> = {
@@ -32,6 +32,7 @@ type CallWithRelations = {
   contact_name: string | null;
   to_number: string;
   from_number: string;
+  direction: string;
   started_at: string;
   duration_seconds: number | null;
   outcome: string;
@@ -53,11 +54,12 @@ type CallWithRelations = {
 export default function CallLogs() {
   const [search, setSearch] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
+  const [directionFilter, setDirectionFilter] = useState("all");
   const [selectedCall, setSelectedCall] = useState<CallWithRelations | null>(null);
   const [page, setPage] = useState(0);
   const perPage = 10;
 
-  const { data: calls, isLoading } = useCalls({ outcome: outcomeFilter, search, limit: 200 });
+  const { data: calls, isLoading } = useCalls({ outcome: outcomeFilter, direction: directionFilter, search, limit: 200 });
 
   const paged = useMemo(() => {
     const list = calls || [];
@@ -101,8 +103,16 @@ export default function CallLogs() {
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             {["all", "connected", "completed", "voicemail", "no_answer", "transferred", "busy", "failed"].map(s => (
-              <SelectItem key={s} value={s}>{s === "all" ? "All" : s.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
+              <SelectItem key={s} value={s}>{s === "all" ? "All Outcomes" : s.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={directionFilter} onValueChange={v => { setDirectionFilter(v); setPage(0); }}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Calls</SelectItem>
+            <SelectItem value="outbound">Outbound Only</SelectItem>
+            <SelectItem value="inbound">Inbound Only</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -120,14 +130,19 @@ export default function CallLogs() {
             <table className="w-full">
               <thead>
                 <tr className="bg-secondary/50">
-                  {["Date / Time", "Contact", "Campaign", "Agent", "Duration", "Cost", "Outcome", "Sentiment", ""].map(h => (
-                    <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
+                  {["", "Date / Time", "Contact", "Campaign", "Agent", "Duration", "Cost", "Outcome", "Sentiment", ""].map(h => (
+                    <th key={h || "actions"} className="px-4 py-3 text-left section-label">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {paged.map((call: CallWithRelations, i: number) => (
                   <tr key={call.id} className={`border-t hover:bg-secondary/20 cursor-pointer ${i % 2 ? "bg-secondary/10" : ""}`} onClick={() => setSelectedCall(call)}>
+                    <td className="px-4 py-3">
+                      {call.direction === "inbound"
+                        ? <ArrowDownLeft className="h-4 w-4 text-primary" />
+                        : <ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
+                    </td>
                     <td className="px-4 py-3 text-sm text-foreground">{formatDate(call.started_at)}</td>
                     <td className="px-4 py-3"><p className="text-sm font-medium text-foreground">{call.contact_name || "Unknown"}</p><p className="text-xs text-muted-foreground">{call.to_number}</p></td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{call.campaigns?.name || "—"}</td>

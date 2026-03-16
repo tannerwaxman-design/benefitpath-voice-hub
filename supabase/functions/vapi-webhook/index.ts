@@ -73,9 +73,39 @@ Deno.serve(async (req: Request) => {
       // ========================================
       case "status-update": {
         const status = message.status;
+        const callType = message.call?.type || "";
+        const isInbound = callType === "inboundPhoneCall";
         console.log(
-          `[webhook] status-update: call=${vapiCallId} status=${status} tenant=${tenantId}`
+          `[webhook] status-update: call=${vapiCallId} status=${status} tenant=${tenantId} type=${callType}`
         );
+
+        // For inbound calls, create a call record when the call starts
+        if (isInbound && (status === "ringing" || status === "in-progress") && tenantId) {
+          const customerNumber = message.call?.customer?.number || "";
+          const phoneNumber = message.call?.phoneNumber?.number || "";
+
+          // Check if record already exists
+          const { data: existingCall } = await supabase
+            .from("calls")
+            .select("id")
+            .eq("vapi_call_id", vapiCallId)
+            .maybeSingle();
+
+          if (!existingCall) {
+            await supabase.from("calls").insert({
+              vapi_call_id: vapiCallId,
+              tenant_id: tenantId,
+              agent_id: agentId || null,
+              contact_id: contactId || null,
+              direction: "inbound",
+              from_number: customerNumber,
+              to_number: phoneNumber,
+              started_at: new Date().toISOString(),
+              outcome: "in_progress",
+              contact_name: message.call?.customer?.name || null,
+            });
+          }
+        }
 
         if (status === "ended") {
           const endedReason = message.endedReason || "unknown";

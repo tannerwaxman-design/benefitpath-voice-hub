@@ -5,7 +5,7 @@ import type { Tables } from "@/integrations/supabase/types";
 
 export type CallRow = Tables<"calls">;
 
-export function useCalls(filters?: { outcome?: string; search?: string; limit?: number }) {
+export function useCalls(filters?: { outcome?: string; direction?: string; search?: string; limit?: number }) {
   const { user } = useAuth();
   return useQuery({
     queryKey: ["calls", user?.tenant_id, filters],
@@ -18,6 +18,9 @@ export function useCalls(filters?: { outcome?: string; search?: string; limit?: 
 
       if (filters?.outcome && filters.outcome !== "all") {
         query = query.eq("outcome", filters.outcome);
+      }
+      if (filters?.direction && filters.direction !== "all") {
+        query = query.eq("direction", filters.direction);
       }
       if (filters?.search) {
         query = query.or(`contact_name.ilike.%${filters.search}%,to_number.ilike.%${filters.search}%`);
