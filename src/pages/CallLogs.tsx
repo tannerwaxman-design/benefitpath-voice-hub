@@ -103,8 +103,16 @@ export default function CallLogs() {
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             {["all", "connected", "completed", "voicemail", "no_answer", "transferred", "busy", "failed"].map(s => (
-              <SelectItem key={s} value={s}>{s === "all" ? "All" : s.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
+              <SelectItem key={s} value={s}>{s === "all" ? "All Outcomes" : s.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={directionFilter} onValueChange={v => { setDirectionFilter(v); setPage(0); }}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Calls</SelectItem>
+            <SelectItem value="outbound">Outbound Only</SelectItem>
+            <SelectItem value="inbound">Inbound Only</SelectItem>
           </SelectContent>
         </Select>
       </div>
