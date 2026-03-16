@@ -143,7 +143,7 @@ export default function Analytics() {
             <table className="w-full">
               <thead>
                 <tr className="bg-secondary/50">
-                  {["Agent", "Calls", "Connect Rate", "Avg Duration", "Appointments", "Sentiment"].map(h => (
+                  {["Agent", "Calls", "Connect Rate", "Avg Duration", "Appointments", "Sentiment", "Avg Score"].map(h => (
                     <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
                   ))}
                 </tr>
