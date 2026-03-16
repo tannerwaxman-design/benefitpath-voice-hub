@@ -208,7 +208,7 @@ export default function AgentEditor() {
     status: agentActive ? "active" : "draft",
     voice_id: voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice,
     voice_provider: "eleven_labs",
-    voice_name: voiceSource === "cloned" ? "My Voice Clone" : (voiceOptions.find(v => v.voice_id === selectedVoice)?.name || null),
+    voice_name: voiceSource === "cloned" ? "My Voice Clone" : (availableVoices?.find(v => v.provider_voice_id === selectedVoice)?.name || null),
     voice_source: voiceSource,
     cloned_voice_id: clonedVoiceId,
     voice_clone_status: voiceCloneStatus,
