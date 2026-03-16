@@ -1,0 +1,305 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useCallback, useRef } from "react";
+
+export interface Voice {
+  id: string;
+  tenant_id: string | null;
+  name: string;
+  type: "preset" | "cloned";
+  provider: string;
+  provider_voice_id: string;
+  gender: string | null;
+  accent: string | null;
+  style: string | null;
+  description: string | null;
+  language: string | null;
+  recording_url: string | null;
+  clone_status: string | null;
+  is_default: boolean;
+  is_global: boolean;
+  created_at: string;
+}
+
+export interface VoiceWithCollection extends Voice {
+  in_collection: boolean;
+  used_by_agents: string[];
+}
+
+export function useAllVoices() {
+  return useQuery({
+    queryKey: ["voices", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("voices" as any)
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as unknown as Voice[];
+    },
+  });
+}
+
+export function useMyVoices() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["voices", "my-collection"],
+    queryFn: async () => {
+      // Get user's voice collection
+      const { data: collection, error: collError } = await supabase
+        .from("user_voice_collection" as any)
+        .select("voice_id");
+      if (collError) throw collError;
+
+      const collectionIds = new Set((collection || []).map((c: any) => c.voice_id));
+
+      // Get tenant's cloned voices
+      const { data: clonedVoices, error: cloneError } = await supabase
+        .from("voices" as any)
+        .select("*")
+        .eq("type", "cloned");
+      if (cloneError) throw cloneError;
+
+      // Get preset voices that are in collection
+      const collectionArray = Array.from(collectionIds);
+      let presetVoices: Voice[] = [];
+      if (collectionArray.length > 0) {
+        const { data, error } = await supabase
+          .from("voices" as any)
+          .select("*")
+          .in("id", collectionArray);
+        if (error) throw error;
+        presetVoices = (data || []) as unknown as Voice[];
+      }
+
+      // Get agents to show "used by"
+      const { data: agents } = await supabase
+        .from("agents")
+        .select("agent_name, voice_id");
+
+      const allVoices = [...(clonedVoices || []) as unknown as Voice[], ...presetVoices];
+
+      return allVoices.map((v) => ({
+        ...v,
+        in_collection: true,
+        used_by_agents: (agents || [])
+          .filter((a) => a.voice_id === v.provider_voice_id)
+          .map((a) => a.agent_name),
+      })) as VoiceWithCollection[];
+    },
+  });
+}
+
+export function useVoiceLibrary() {
+  return useQuery({
+    queryKey: ["voices", "library"],
+    queryFn: async () => {
+      // Get all global preset voices
+      const { data: voices, error } = await supabase
+        .from("voices" as any)
+        .select("*")
+        .eq("is_global", true)
+        .eq("type", "preset")
+        .order("name");
+      if (error) throw error;
+
+      // Get user's collection to know which are added
+      const { data: collection } = await supabase
+        .from("user_voice_collection" as any)
+        .select("voice_id");
+
+      const collectionIds = new Set((collection || []).map((c: any) => c.voice_id));
+
+      return ((voices || []) as unknown as Voice[]).map((v) => ({
+        ...v,
+        in_collection: collectionIds.has(v.id),
+        used_by_agents: [],
+      })) as VoiceWithCollection[];
+    },
+  });
+}
+
+export function useAddToCollection() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (voiceId: string) => {
+      const { error } = await supabase
+        .from("user_voice_collection" as any)
+        .insert({ tenant_id: user!.tenant.id, voice_id: voiceId } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voices"] });
+      toast({ title: "Voice added to your collection" });
+    },
+  });
+}
+
+export function useRemoveFromCollection() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (voiceId: string) => {
+      const { error } = await supabase
+        .from("user_voice_collection" as any)
+        .delete()
+        .eq("voice_id", voiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voices"] });
+      toast({ title: "Voice removed from your collection" });
+    },
+  });
+}
+
+export function useSetDefaultVoice() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (voiceId: string) => {
+      // Remove default from all tenant voices
+      await supabase
+        .from("voices" as any)
+        .update({ is_default: false } as any)
+        .eq("is_default", true);
+      // Set new default
+      const { error } = await supabase
+        .from("voices" as any)
+        .update({ is_default: true } as any)
+        .eq("id", voiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voices"] });
+      toast({ title: "Default voice updated" });
+    },
+  });
+}
+
+export function useDeleteVoice() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (voiceId: string) => {
+      const { error } = await supabase
+        .from("voices" as any)
+        .delete()
+        .eq("id", voiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voices"] });
+      toast({ title: "Voice deleted" });
+    },
+  });
+}
+
+// TTS preview hook with caching
+export function useTtsPreview() {
+  const cacheRef = useRef<Map<string, string>>(new Map());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const play = useCallback(async (text: string, voiceId: string) => {
+    const cacheKey = `${voiceId}:${text}`;
+    
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    // Check cache
+    let audioUrl = cacheRef.current.get(cacheKey);
+    if (!audioUrl) {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tts-preview`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+          body: JSON.stringify({ text, voice_id: voiceId }),
+        }
+      );
+
+      if (!response.ok) throw new Error("TTS preview failed");
+
+      const blob = await response.blob();
+      audioUrl = URL.createObjectURL(blob);
+      cacheRef.current.set(cacheKey, audioUrl);
+    }
+
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    await audio.play();
+
+    return new Promise<void>((resolve) => {
+      audio.onended = () => {
+        audioRef.current = null;
+        resolve();
+      };
+    });
+  }, []);
+
+  const stop = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  }, []);
+
+  return { play, stop };
+}
+
+// Hook for agent builder voice dropdown
+export function useAvailableVoices() {
+  return useQuery({
+    queryKey: ["voices", "available-for-agent"],
+    queryFn: async () => {
+      // Get cloned voices
+      const { data: cloned } = await supabase
+        .from("voices" as any)
+        .select("*")
+        .eq("type", "cloned");
+
+      // Get collection
+      const { data: collection } = await supabase
+        .from("user_voice_collection" as any)
+        .select("voice_id");
+
+      const collectionIds = (collection || []).map((c: any) => c.voice_id);
+
+      let presets: Voice[] = [];
+      if (collectionIds.length > 0) {
+        const { data } = await supabase
+          .from("voices" as any)
+          .select("*")
+          .in("id", collectionIds);
+        presets = (data || []) as unknown as Voice[];
+      }
+
+      // If no voices in collection, return all global presets
+      if (presets.length === 0 && (!cloned || cloned.length === 0)) {
+        const { data } = await supabase
+          .from("voices" as any)
+          .select("*")
+          .eq("is_global", true)
+          .eq("type", "preset");
+        presets = (data || []) as unknown as Voice[];
+      }
+
+      return [...((cloned || []) as unknown as Voice[]), ...presets];
+    },
+  });
+}
