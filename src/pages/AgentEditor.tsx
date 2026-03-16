@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, GripVertical, Loader2, Phone, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
 import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
 
-const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Handling Rules", "Transfer & Escalation", "Compliance", "Review & Save"];
+const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "Compliance", "Review & Save"];
 
 const industries = ["Insurance", "Employee Benefits", "Health & Wellness", "Human Resources", "Financial Services", "Medicare", "Dental/Vision", "Life Insurance", "Workers' Comp", "Other"];
 
