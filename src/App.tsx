@@ -12,6 +12,7 @@ import AgentBuilder from "./pages/AgentBuilder";
 import AgentEditor from "./pages/AgentEditor";
 import Campaigns from "./pages/Campaigns";
 import CampaignWizard from "./pages/CampaignWizard";
+import CampaignDetail from "./pages/CampaignDetail";
 import ContactLists from "./pages/ContactLists";
 import CallLogs from "./pages/CallLogs";
 import Analytics from "./pages/Analytics";
@@ -64,7 +65,7 @@ const App = () => (
                 <Route path="/tools" element={<Tools />} />
                 <Route path="/campaigns" element={<Campaigns />} />
                 <Route path="/campaigns/new" element={<CampaignWizard />} />
-                <Route path="/campaigns/:id" element={<Campaigns />} />
+                <Route path="/campaigns/:id" element={<CampaignDetail />} />
                 <Route path="/contacts" element={<ContactLists />} />
                 <Route path="/call-logs" element={<CallLogs />} />
                 <Route path="/coaching" element={<CoachingDashboard />} />

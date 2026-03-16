@@ -86,7 +86,7 @@ export default function Campaigns() {
                 </thead>
                 <tbody>
                   {filtered.map((c, i) => (
-                    <tr key={c.id} className={`border-t hover:bg-secondary/20 ${i % 2 === 0 ? "" : "bg-secondary/10"}`}>
+                    <tr key={c.id} className={`border-t hover:bg-secondary/20 cursor-pointer ${i % 2 === 0 ? "" : "bg-secondary/10"}`} onClick={() => navigate(`/campaigns/${c.id}`)}>
                       <td className="px-4 py-3 text-sm font-medium text-foreground">{c.name}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{(c as any).agents?.agent_name || "—"}</td>
                       <td className="px-4 py-3"><Badge variant="secondary" className={`${statusColors[c.status] || ""} border-0 text-[10px]`}>{c.status}</Badge></td>
