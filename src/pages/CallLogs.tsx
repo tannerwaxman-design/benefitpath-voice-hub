@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, MessageSquare, Send } from "lucide-react";
+import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, MessageSquare, Send, Star } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import type { Json } from "@/integrations/supabase/types";
 import { useNavigate } from "react-router-dom";
 
