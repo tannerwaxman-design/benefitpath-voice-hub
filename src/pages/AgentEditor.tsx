@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAgent, useCreateAgent, useUpdateAgent, useDeleteAgent, useTestCall } from "@/hooks/use-agents";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,7 +20,18 @@ import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTem
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 import { VoiceCloneSection } from "@/components/agents/VoiceCloneSection";
 
-const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "After the Call", "Compliance", "Review & Save"];
+const sectionDefs = [
+  { id: "section-basic-info", label: "Basic Info" },
+  { id: "section-voice-persona", label: "Voice & Persona" },
+  { id: "section-conversation-flow", label: "Conversation Flow" },
+  { id: "section-knowledge-base", label: "Knowledge Base" },
+  { id: "section-call-direction", label: "Call Direction" },
+  { id: "section-call-handling", label: "Call Handling Rules" },
+  { id: "section-transfer", label: "Transfer & Escalation" },
+  { id: "section-after-call", label: "After the Call" },
+  { id: "section-compliance", label: "Compliance" },
+  { id: "section-review", label: "Review & Save" },
+];
 
 const industries = ["Insurance", "Employee Benefits", "Health & Wellness", "Human Resources", "Financial Services", "Medicare", "Dental/Vision", "Life Insurance", "Workers' Comp", "Other"];
 
@@ -47,7 +58,7 @@ export default function AgentEditor() {
   const { data: apiVoices, isLoading: voicesLoading } = useVoices();
   const voiceOptions = apiVoices && apiVoices.length > 0 ? apiVoices : fallbackVoices;
 
-  const [activeSection, setActiveSection] = useState(0);
+  const [activeSection, setActiveSection] = useState("section-basic-info");
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [industry, setIndustry] = useState("Insurance");
@@ -160,6 +171,25 @@ export default function AgentEditor() {
     setInitialized(true);
   }
 
+  // Scroll spy for sidebar nav
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        }
+      },
+      { rootMargin: "-20% 0px -70% 0px" }
+    );
+    sectionDefs.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
   if (isNew && showTemplatePicker) {
     return <AgentTemplatePicker onSelect={applyTemplate} />;
   }
@@ -264,10 +294,13 @@ export default function AgentEditor() {
         {/* Left Mini Nav */}
         <div className="w-48 shrink-0 hidden lg:block">
           <nav className="sticky top-6 space-y-1">
-            {sections.map((s, i) => (
-              <button key={s} onClick={() => setActiveSection(i)}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${i === activeSection ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-secondary"}`}
-              >{i + 1}. {s}</button>
+            {sectionDefs.map((s) => (
+              <button key={s.id} onClick={() => {
+                const el = document.getElementById(s.id);
+                if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setActiveSection(s.id); }
+              }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors border-l-2 ${activeSection === s.id ? "border-primary bg-primary/10 text-primary font-medium" : "border-transparent text-muted-foreground hover:bg-secondary"}`}
+              >{s.label}</button>
             ))}
           </nav>
         </div>
@@ -275,7 +308,7 @@ export default function AgentEditor() {
         {/* Content */}
         <div className="flex-1 space-y-8 max-w-3xl">
           {/* Section 1: Basic Info */}
-          <Card>
+          <Card id="section-basic-info">
             <CardHeader><CardTitle className="section-title">Basic Info</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -301,7 +334,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 2: Voice & Persona */}
-          <Card>
+          <Card id="section-voice-persona">
             <CardHeader><CardTitle className="section-title">Voice & Persona</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <VoiceCloneSection
@@ -377,7 +410,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 3: Conversation Flow */}
-          <Card>
+          <Card id="section-conversation-flow">
             <CardHeader><CardTitle className="section-title">Conversation Flow</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -412,7 +445,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 4: Knowledge Base */}
-          <Card>
+          <Card id="section-knowledge-base">
             <CardHeader><CardTitle className="section-title">Knowledge Base</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -423,7 +456,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 5: Call Direction */}
-          <Card>
+          <Card id="section-call-direction">
             <CardHeader><CardTitle className="section-title">Call Direction</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -483,7 +516,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 6: Transfer */}
-          <Card>
+          <Card id="section-transfer">
             <CardHeader><CardTitle className="section-title">Transfer & Escalation</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -498,10 +531,12 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 8: After the Call */}
-          <PostCallActionsSection config={postCallActions} onChange={setPostCallActions} />
+          <div id="section-after-call">
+            <PostCallActionsSection config={postCallActions} onChange={setPostCallActions} />
+          </div>
 
           {/* Section 9: Compliance */}
-          <Card>
+          <Card id="section-compliance">
             <CardHeader><CardTitle className="section-title">Compliance</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
@@ -514,7 +549,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-4 border-t">
+          <div id="section-review" className="flex items-center gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => handleSave(false)} disabled={isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Save as Draft
