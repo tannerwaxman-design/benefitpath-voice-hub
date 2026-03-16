@@ -12,6 +12,7 @@ import AgentBuilder from "./pages/AgentBuilder";
 import AgentEditor from "./pages/AgentEditor";
 import Campaigns from "./pages/Campaigns";
 import CampaignWizard from "./pages/CampaignWizard";
+import CampaignDetail from "./pages/CampaignDetail";
 import ContactLists from "./pages/ContactLists";
 import CallLogs from "./pages/CallLogs";
 import Analytics from "./pages/Analytics";
