@@ -54,11 +54,12 @@ type CallWithRelations = {
 export default function CallLogs() {
   const [search, setSearch] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
+  const [directionFilter, setDirectionFilter] = useState("all");
   const [selectedCall, setSelectedCall] = useState<CallWithRelations | null>(null);
   const [page, setPage] = useState(0);
   const perPage = 10;
 
-  const { data: calls, isLoading } = useCalls({ outcome: outcomeFilter, search, limit: 200 });
+  const { data: calls, isLoading } = useCalls({ outcome: outcomeFilter, direction: directionFilter, search, limit: 200 });
 
   const paged = useMemo(() => {
     const list = calls || [];
