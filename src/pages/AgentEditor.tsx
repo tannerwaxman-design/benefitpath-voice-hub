@@ -35,13 +35,7 @@ const sectionDefs = [
 
 const industries = ["Insurance", "Employee Benefits", "Health & Wellness", "Human Resources", "Financial Services", "Medicare", "Dental/Vision", "Life Insurance", "Workers' Comp", "Other"];
 
-// Fallback voices if API hasn't loaded yet
-const fallbackVoices: ElevenLabsVoice[] = [
-  { voice_id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", category: "premade", labels: { accent: "American", gender: "Female" }, preview_url: null, description: null },
-  { voice_id: "JBFqnCBsd6RMkjVDRZzb", name: "George", category: "premade", labels: { accent: "British", gender: "Male" }, preview_url: null, description: null },
-  { voice_id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", category: "premade", labels: { accent: "British", gender: "Male" }, preview_url: null, description: null },
-  { voice_id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", category: "premade", labels: { accent: "British", gender: "Female" }, preview_url: null, description: null },
-];
+// No more fallback voices - using voice management system
 
 export default function AgentEditor() {
   const { id } = useParams();
