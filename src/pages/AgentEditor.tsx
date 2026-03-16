@@ -171,7 +171,25 @@ export default function AgentEditor() {
     setInitialized(true);
   }
 
-  if (isNew && showTemplatePicker) {
+  // Scroll spy for sidebar nav
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        }
+      },
+      { rootMargin: "-20% 0px -70% 0px" }
+    );
+    sectionDefs.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
     return <AgentTemplatePicker onSelect={applyTemplate} />;
   }
 
