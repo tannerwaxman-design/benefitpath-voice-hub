@@ -15,6 +15,7 @@ const navItems = [
   { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
   { label: "Contact Lists", icon: Users, path: "/contacts" },
   { label: "Call Logs", icon: Phone, path: "/call-logs" },
+  { label: "Coaching", icon: GraduationCap, path: "/coaching" },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
   { label: "Phone Numbers", icon: Hash, path: "/phone-numbers" },
   { label: "Billing & Usage", icon: CreditCard, path: "/billing" },
