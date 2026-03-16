@@ -414,11 +414,14 @@ export type Database = {
           is_flagged: boolean
           outcome: string
           phone_number_id: string | null
+          quality_score: number | null
           recording_duration_seconds: number | null
           recording_url: string | null
           review_status: string
           reviewed_at: string | null
           reviewed_by: string | null
+          score_breakdown: Json | null
+          score_feedback: Json | null
           sentiment: string | null
           sentiment_score: number | null
           sentiment_timeline: Json | null
@@ -464,11 +467,14 @@ export type Database = {
           is_flagged?: boolean
           outcome?: string
           phone_number_id?: string | null
+          quality_score?: number | null
           recording_duration_seconds?: number | null
           recording_url?: string | null
           review_status?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          score_breakdown?: Json | null
+          score_feedback?: Json | null
           sentiment?: string | null
           sentiment_score?: number | null
           sentiment_timeline?: Json | null
@@ -514,11 +520,14 @@ export type Database = {
           is_flagged?: boolean
           outcome?: string
           phone_number_id?: string | null
+          quality_score?: number | null
           recording_duration_seconds?: number | null
           recording_url?: string | null
           review_status?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          score_breakdown?: Json | null
+          score_feedback?: Json | null
           sentiment?: string | null
           sentiment_score?: number | null
           sentiment_timeline?: Json | null
