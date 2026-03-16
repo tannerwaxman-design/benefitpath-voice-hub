@@ -12,11 +12,6 @@ import {
   BarChart,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
-import {
-  ComposedChart, Bar, Line,
-  BarChart,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
-} from "recharts";
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "0:00";
