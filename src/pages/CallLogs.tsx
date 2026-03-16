@@ -474,6 +474,18 @@ export default function CallLogs() {
                     <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(call.duration_seconds)}</td>
                     <td className="px-4 py-3"><Badge variant="secondary" className={`${outcomeColors[call.outcome] || "bg-secondary"} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge></td>
                     <td className="px-4 py-3">
+                      {call.quality_score != null ? (
+                        <span className={`text-sm font-semibold ${
+                          call.quality_score >= 80 ? "text-success" :
+                          call.quality_score >= 60 ? "text-warning" : "text-destructive"
+                        }`}>
+                          {call.quality_score}/100
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <Badge variant="secondary" className={`${reviewStatusColors[call.review_status || "not_reviewed"] || "bg-secondary"} border-0 text-[10px]`}>
                         {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
                       </Badge>

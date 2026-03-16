@@ -83,11 +83,18 @@ export default function Overview() {
     ];
   }, [summary]);
 
+  const avgScore = useMemo(() => {
+    if (!recentCalls || recentCalls.length === 0) return null;
+    const scored = recentCalls.filter((c: any) => c.quality_score != null);
+    if (scored.length === 0) return null;
+    return Math.round(scored.reduce((sum: number, c: any) => sum + c.quality_score, 0) / scored.length);
+  }, [recentCalls]);
+
   const statCards = [
     { label: "Total Calls Made", value: summary ? Number(summary.total_calls).toLocaleString() : "—", sub: `Last ${chartRange} days`, icon: PhoneOutgoing, accent: "stat-card-accent-indigo", iconBg: "bg-primary/10 text-primary" },
     { label: "Connect Rate", value: summary ? `${Number(summary.connect_rate || 0).toFixed(1)}%` : "—", sub: "Connected / total", icon: PhoneCall, accent: "stat-card-accent-green", iconBg: "bg-success/10 text-success" },
     { label: "Avg Call Duration", value: summary ? `${Math.floor(Number(summary.avg_duration_seconds || 0) / 60)}m ${Math.round(Number(summary.avg_duration_seconds || 0) % 60)}s` : "—", sub: "Average per call", icon: Clock, accent: "stat-card-accent-amber", iconBg: "bg-warning/10 text-warning" },
-    { label: "Appointments Set", value: summary ? Number(summary.appointments_set).toLocaleString() : "—", sub: summary ? `${Number(summary.conversion_rate || 0).toFixed(1)}% conversion` : "—", icon: CalendarCheck, accent: "stat-card-accent-purple", iconBg: "bg-purple-100 text-purple-600" },
+    { label: "Avg Call Score", value: avgScore != null ? `${avgScore}/100` : "—", sub: avgScore != null ? (avgScore >= 80 ? "Excellent" : avgScore >= 60 ? "Good" : "Needs work") : "No scored calls", icon: CalendarCheck, accent: "stat-card-accent-purple", iconBg: "bg-purple-100 text-purple-600" },
   ];
 
   function timeAgo(dt: string) {
