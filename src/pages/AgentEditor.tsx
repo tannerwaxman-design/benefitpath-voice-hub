@@ -426,7 +426,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 4: Knowledge Base */}
-          <Card>
+          <Card id="section-knowledge-base">
             <CardHeader><CardTitle className="section-title">Knowledge Base</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
