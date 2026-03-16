@@ -1876,6 +1876,7 @@ export type Database = {
           agent_name: string
           appointments: number
           avg_duration: number
+          avg_score: number
           connect_rate: number
           positive_sentiment_pct: number
           total_calls: number
