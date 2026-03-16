@@ -295,15 +295,15 @@ export default function Overview() {
         </Card>
       )}
 
-      {/* Minutes Usage */}
+      {/* Credits Usage */}
       {user?.tenant && (
         <Card>
-          <CardHeader><CardTitle className="card-title">Minutes Usage</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="card-title">Credits Usage</CardTitle></CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-foreground">{user.tenant.minutes_used_this_cycle.toLocaleString()} / {user.tenant.monthly_minute_limit.toLocaleString()} minutes</span>
+                  <span className="text-sm text-foreground">{user.tenant.minutes_used_this_cycle.toLocaleString()} / {user.tenant.monthly_minute_limit.toLocaleString()} credits</span>
                   <span className="text-sm text-muted-foreground">{((user.tenant.minutes_used_this_cycle / user.tenant.monthly_minute_limit) * 100).toFixed(1)}%</span>
                 </div>
                 <div className="w-full bg-secondary rounded-full h-2">

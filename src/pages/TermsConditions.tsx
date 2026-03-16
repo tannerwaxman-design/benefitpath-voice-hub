@@ -38,7 +38,7 @@ export default function TermsConditions() {
             <ul className="list-disc pl-6 space-y-1">
               <li>Subscriptions are billed on a monthly recurring basis.</li>
               <li>Payment is due at the beginning of each billing cycle.</li>
-              <li>Voice AI usage beyond your plan's included minutes will be billed at the overage rate specified in your plan.</li>
+              <li>Voice AI usage beyond your plan's included credits will be billed at the overage rate specified in your plan.</li>
               <li>You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing cycle. No refunds are provided for partial months.</li>
               <li>We reserve the right to change our pricing with 30 days' notice.</li>
             </ul>
