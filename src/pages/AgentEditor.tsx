@@ -49,8 +49,9 @@ export default function AgentEditor() {
   const updateAgent = useUpdateAgent();
   const deleteAgent = useDeleteAgent();
   const testCall = useTestCall();
-  const { data: apiVoices, isLoading: voicesLoading } = useVoices();
-  const voiceOptions = apiVoices && apiVoices.length > 0 ? apiVoices : fallbackVoices;
+  const { data: availableVoices, isLoading: voicesLoading } = useAvailableVoices();
+  const { play: playTts, stop: stopTts } = useTtsPreview();
+  const [ttsPreviewLoading, setTtsPreviewLoading] = useState(false);
 
   const [activeSection, setActiveSection] = useState("section-basic-info");
   const [name, setName] = useState("");
