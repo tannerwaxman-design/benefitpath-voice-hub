@@ -100,16 +100,39 @@ Deno.serve(async (req: Request) => {
       // ========================================
       case "status-update": {
         const status = message.status;
-        const callType = message.call?.type || "";
-        const isInbound = callType === "inboundPhoneCall";
         console.log(
-          `[webhook] status-update: call=${vapiCallId} status=${status} tenant=${tenantId} type=${callType}`
+          `[webhook] status-update: call=${vapiCallId} status=${status} tenant=${tenantId} type=${callType} inbound=${isInboundCall}`
         );
 
         // For inbound calls, create a call record when the call starts
-        if (isInbound && (status === "ringing" || status === "in-progress") && tenantId) {
+        if (isInboundCall && (status === "ringing" || status === "in-progress") && tenantId) {
           const customerNumber = message.call?.customer?.number || "";
           const phoneNumber = message.call?.phoneNumber?.number || "";
+
+          // Try to match caller to existing contact
+          let matchedContactId = contactId || null;
+          if (!matchedContactId && customerNumber && tenantId) {
+            const { data: matchedContact } = await supabase
+              .from("contacts")
+              .select("id")
+              .eq("tenant_id", tenantId)
+              .eq("phone", customerNumber)
+              .maybeSingle();
+            if (matchedContact) {
+              matchedContactId = matchedContact.id;
+            }
+          }
+
+          // Look up phone_number_id
+          let phoneNumberId = null;
+          if (phoneNumber) {
+            const { data: pn } = await supabase
+              .from("phone_numbers")
+              .select("id")
+              .eq("phone_number", phoneNumber)
+              .maybeSingle();
+            if (pn) phoneNumberId = pn.id;
+          }
 
           // Check if record already exists
           const { data: existingCall } = await supabase
@@ -123,7 +146,8 @@ Deno.serve(async (req: Request) => {
               vapi_call_id: vapiCallId,
               tenant_id: tenantId,
               agent_id: agentId || null,
-              contact_id: contactId || null,
+              contact_id: matchedContactId,
+              phone_number_id: phoneNumberId,
               direction: "inbound",
               from_number: customerNumber,
               to_number: phoneNumber,
@@ -131,6 +155,7 @@ Deno.serve(async (req: Request) => {
               outcome: "in_progress",
               contact_name: message.call?.customer?.name || null,
             });
+            console.log(`[webhook] Created inbound call record: vapi=${vapiCallId} tenant=${tenantId} agent=${agentId}`);
           }
         }
 
