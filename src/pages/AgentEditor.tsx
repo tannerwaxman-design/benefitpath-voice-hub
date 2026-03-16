@@ -512,7 +512,9 @@ export default function AgentEditor() {
           </Card>
 
           {/* Section 8: After the Call */}
-          <PostCallActionsSection config={postCallActions} onChange={setPostCallActions} />
+          <div id="section-after-call">
+            <PostCallActionsSection config={postCallActions} onChange={setPostCallActions} />
+          </div>
 
           {/* Section 9: Compliance */}
           <Card>
