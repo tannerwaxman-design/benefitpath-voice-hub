@@ -34,6 +34,7 @@ export default function Analytics() {
   const [agentPerf, setAgentPerf] = useState<any[]>([]);
   const [funnel, setFunnel] = useState<any>(null);
   const [tenant, setTenant] = useState<any>(null);
+  const { data: smartSlots } = useSmartSchedule();
 
   const dateFrom = useMemo(() => {
     const d = new Date();

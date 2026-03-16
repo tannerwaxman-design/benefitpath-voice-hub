@@ -183,7 +183,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Launch calls
-      for (const cc of contactsToCall) {
+      for (const cc of orderedContacts) {
         const contact = (cc as Record<string, unknown>).contacts as Record<
           string,
           string
