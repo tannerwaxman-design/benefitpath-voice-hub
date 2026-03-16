@@ -157,6 +157,14 @@ export default function Analytics() {
                     <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(a.avg_duration)}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.appointments).toLocaleString()}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{a.positive_sentiment_pct != null ? `${a.positive_sentiment_pct}% pos` : "—"}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {a.avg_score != null ? (
+                        <span className={`font-semibold ${
+                          a.avg_score >= 80 ? "text-success" :
+                          a.avg_score >= 60 ? "text-warning" : "text-destructive"
+                        }`}>{Math.round(a.avg_score)}/100</span>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
