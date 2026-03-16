@@ -77,19 +77,22 @@ Deno.serve(async (req: Request) => {
       endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
     });
 
-    const patchBody: Record<string, unknown> = { assistantId };
-    const currentServerUrl = currentPhoneConfig.data?.server?.url;
+    const currentServerConfig = currentPhoneConfig.data?.server ?? null;
+    const currentServerUrl = currentServerConfig?.url;
     const currentServerUrlAlias = currentPhoneConfig.data?.serverUrl;
+    const hasPhoneLevelServerRouting = Boolean(currentServerConfig || currentServerUrlAlias);
 
-    if (currentServerUrl) {
-      patchBody.server = {
-        ...currentPhoneConfig.data?.server,
+    const clearRoutingBody: Record<string, unknown> = {
+      assistantId: null,
+      ...(hasPhoneLevelServerRouting ? { serverUrl: "" } : {}),
+    };
+
+    if (currentServerConfig) {
+      clearRoutingBody.server = {
+        ...currentServerConfig,
         url: "",
+        credentialId: null,
       };
-    }
-
-    if (currentServerUrlAlias) {
-      patchBody.serverUrl = "";
     }
 
     console.log("assign-phone-number sync", {
@@ -98,30 +101,51 @@ Deno.serve(async (req: Request) => {
       assistantId,
       currentServerUrl,
       currentServerUrlAlias,
-      clearingPhoneLevelServerRouting: Boolean(currentServerUrl || currentServerUrlAlias),
+      hasPhoneLevelServerRouting,
+      mode: assistantId ? "detach-reattach" : "detach-only",
     });
 
-    let vapiResult = await vapiRequest({
+    let detachResult = await vapiRequest({
       method: "PATCH",
       endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
-      body: patchBody,
+      body: clearRoutingBody,
     });
 
-    if (!vapiResult.ok && (currentServerUrl || currentServerUrlAlias)) {
-      console.warn("assign-phone-number retrying without server clear", vapiResult.error);
+    if (!detachResult.ok && hasPhoneLevelServerRouting) {
+      console.warn("assign-phone-number retrying detach without server clear", detachResult.error);
+      detachResult = await vapiRequest({
+        method: "PATCH",
+        endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
+        body: { assistantId: null },
+      });
+    }
+
+    if (!detachResult.ok) {
+      return errorResponse(
+        "Failed to clear existing phone routing in voice engine: " +
+          (detachResult.error || "Unknown error"),
+        502
+      );
+    }
+
+    let vapiResult = detachResult;
+
+    if (assistantId) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
       vapiResult = await vapiRequest({
         method: "PATCH",
         endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
         body: { assistantId },
       });
-    }
 
-    if (!vapiResult.ok) {
-      return errorResponse(
-        "Failed to sync phone number assignment with voice engine: " +
-          (vapiResult.error || "Unknown error"),
-        502
-      );
+      if (!vapiResult.ok) {
+        return errorResponse(
+          "Failed to sync phone number assignment with voice engine: " +
+            (vapiResult.error || "Unknown error"),
+          502
+        );
+      }
     }
 
     const { data: updatedPhone, error: updateError } = await serviceClient
