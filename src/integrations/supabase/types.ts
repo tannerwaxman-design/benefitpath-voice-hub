@@ -28,6 +28,7 @@ export type Database = {
           business_hours: Json
           call_direction: string
           call_objective: string
+          cloned_voice_id: string | null
           closing_script: string | null
           company_name_override: string | null
           compiled_system_prompt: string | null
@@ -92,9 +93,11 @@ export type Database = {
           vapi_last_synced_at: string | null
           vapi_sync_error: string | null
           vapi_sync_status: string
+          voice_clone_status: string | null
           voice_id: string
           voice_name: string | null
           voice_provider: string
+          voice_source: string
           voicemail_after_attempt: number
           voicemail_enabled: boolean
           voicemail_script: string | null
@@ -113,6 +116,7 @@ export type Database = {
           business_hours?: Json
           call_direction?: string
           call_objective?: string
+          cloned_voice_id?: string | null
           closing_script?: string | null
           company_name_override?: string | null
           compiled_system_prompt?: string | null
@@ -177,9 +181,11 @@ export type Database = {
           vapi_last_synced_at?: string | null
           vapi_sync_error?: string | null
           vapi_sync_status?: string
+          voice_clone_status?: string | null
           voice_id?: string
           voice_name?: string | null
           voice_provider?: string
+          voice_source?: string
           voicemail_after_attempt?: number
           voicemail_enabled?: boolean
           voicemail_script?: string | null
@@ -198,6 +204,7 @@ export type Database = {
           business_hours?: Json
           call_direction?: string
           call_objective?: string
+          cloned_voice_id?: string | null
           closing_script?: string | null
           company_name_override?: string | null
           compiled_system_prompt?: string | null
@@ -262,9 +269,11 @@ export type Database = {
           vapi_last_synced_at?: string | null
           vapi_sync_error?: string | null
           vapi_sync_status?: string
+          voice_clone_status?: string | null
           voice_id?: string
           voice_name?: string | null
           voice_provider?: string
+          voice_source?: string
           voicemail_after_attempt?: number
           voicemail_enabled?: boolean
           voicemail_script?: string | null

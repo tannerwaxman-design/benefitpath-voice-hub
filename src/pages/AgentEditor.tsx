@@ -18,6 +18,7 @@ import { ArrowLeft, Check, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOut
 import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
+import { VoiceCloneSection } from "@/components/agents/VoiceCloneSection";
 
 const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "After the Call", "Compliance", "Review & Save"];
 
@@ -77,6 +78,9 @@ export default function AgentEditor() {
   const [answerAfterRings, setAnswerAfterRings] = useState(2);
   const [afterHoursBehavior, setAfterHoursBehavior] = useState("voicemail");
   const [afterHoursVoicemailMessage, setAfterHoursVoicemailMessage] = useState("Thank you for calling. Our office is currently closed. Please leave a message and we'll call you back on the next business day.");
+  const [voiceSource, setVoiceSource] = useState<"preset" | "cloned">("preset");
+  const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
+  const [voiceCloneStatus, setVoiceCloneStatus] = useState<string | null>(null);
   const [postCallActions, setPostCallActions] = useState<PostCallActionsConfig>({
     post_call_email_enabled: false,
     post_call_email_subject: "Thanks for chatting with us!",
@@ -135,6 +139,9 @@ export default function AgentEditor() {
     setInboundGreeting((existingAgent as any).inbound_greeting || "Thank you for calling. How can I help you today?");
     setAnswerAfterRings((existingAgent as any).answer_after_rings ?? 2);
     setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
+    setVoiceSource((existingAgent as any).voice_source || "preset");
+    setClonedVoiceId((existingAgent as any).cloned_voice_id || null);
+    setVoiceCloneStatus((existingAgent as any).voice_clone_status || null);
     setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
     const ea = existingAgent as any;
     setPostCallActions({
@@ -174,9 +181,12 @@ export default function AgentEditor() {
     company_name_override: companyName || null,
     description: description || null,
     status: agentActive ? "active" : "draft",
-    voice_id: selectedVoice,
+    voice_id: voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice,
     voice_provider: "eleven_labs",
-    voice_name: voiceOptions.find(v => v.voice_id === selectedVoice)?.name || null,
+    voice_name: voiceSource === "cloned" ? "My Voice Clone" : (voiceOptions.find(v => v.voice_id === selectedVoice)?.name || null),
+    voice_source: voiceSource,
+    cloned_voice_id: clonedVoiceId,
+    voice_clone_status: voiceCloneStatus,
     speaking_speed: speed[0],
     tone,
     enthusiasm_level: enthusiasm[0],
@@ -294,6 +304,17 @@ export default function AgentEditor() {
           <Card>
             <CardHeader><CardTitle className="section-title">Voice & Persona</CardTitle></CardHeader>
             <CardContent className="space-y-6">
+              <VoiceCloneSection
+                voiceSource={voiceSource}
+                onVoiceSourceChange={setVoiceSource}
+                clonedVoiceId={clonedVoiceId}
+                onClonedVoiceId={(id) => { setClonedVoiceId(id); setVoiceCloneStatus("ready"); }}
+                cloneStatus={voiceCloneStatus}
+                agentId={id}
+                plan={user?.tenant?.plan}
+              />
+
+              {voiceSource === "preset" && (
               <div>
                 <Label className="mb-3 block">Voice Selection {voicesLoading && <span className="text-xs text-muted-foreground">(loading...)</span>}</Label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto">
@@ -316,6 +337,7 @@ export default function AgentEditor() {
                   ))}
                 </div>
               </div>
+              )}
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <Label>Speaking Speed: {speed[0]}x</Label>
