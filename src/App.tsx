@@ -22,6 +22,7 @@ import BillingUsage from "./pages/BillingUsage";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Team from "./pages/Team";
 import CoachingDashboard from "./pages/CoachingDashboard";
+import Training from "./pages/Training";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="/contacts" element={<ContactLists />} />
                 <Route path="/call-logs" element={<CallLogs />} />
                 <Route path="/coaching" element={<CoachingDashboard />} />
+                <Route path="/training" element={<Training />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/phone-numbers" element={<PhoneNumbers />} />
                 <Route path="/billing" element={<BillingUsage />} />
