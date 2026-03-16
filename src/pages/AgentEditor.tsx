@@ -517,7 +517,7 @@ export default function AgentEditor() {
           </div>
 
           {/* Section 9: Compliance */}
-          <Card>
+          <Card id="section-compliance">
             <CardHeader><CardTitle className="section-title">Compliance</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
