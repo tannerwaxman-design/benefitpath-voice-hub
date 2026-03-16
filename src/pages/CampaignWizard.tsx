@@ -127,6 +127,7 @@ export default function CampaignWizard() {
         max_calls_per_day: maxCallsPerDay,
         max_concurrent_calls: maxConcurrent,
         scheduled_start: startDate || null,
+        smart_schedule_enabled: smartScheduleEnabled,
         status: "draft",
       });
 
