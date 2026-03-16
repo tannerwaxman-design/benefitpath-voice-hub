@@ -335,12 +335,19 @@ export function VoiceCloneSection({
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
                     </span>
-                    <span className="text-sm font-medium text-foreground">Recording...</span>
+                    <span className="text-sm font-medium text-destructive">Recording...</span>
                   </div>
-                  <span className="text-lg font-mono text-foreground">{formatTime(duration)}</span>
+                  <span className="text-lg font-mono text-foreground">{formatTime(duration)} / {formatTime(TARGET_DURATION)}</span>
                 </div>
 
-                <canvas ref={canvasRef} width={500} height={80} className="w-full h-20 rounded-lg" />
+                {/* Script stays visible — teleprompter style */}
+                <div className="p-5 rounded-lg bg-secondary border border-border">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Read this out loud:</p>
+                  <p className="text-foreground italic" style={{ fontSize: "18px", lineHeight: 1.6 }}>{SAMPLE_SCRIPT}</p>
+                </div>
+
+                {/* Live waveform below script */}
+                <canvas ref={canvasRef} width={500} height={60} className="w-full h-14 rounded-lg" />
 
                 {duration < MIN_DURATION && (
                   <p className="text-xs text-muted-foreground">
