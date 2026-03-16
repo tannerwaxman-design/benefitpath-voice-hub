@@ -348,7 +348,67 @@ export default function AgentEditor() {
             </CardContent>
           </Card>
 
-          {/* Section 5: Transfer */}
+          {/* Section 5: Call Direction */}
+          <Card>
+            <CardHeader><CardTitle className="section-title">Call Direction</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label className="mb-3 block">What type of calls should this agent handle?</Label>
+                <div className="space-y-2">
+                  {[
+                    { value: "outbound", label: "Outbound only", desc: "This agent calls your leads", icon: PhoneOutgoing },
+                    { value: "inbound", label: "Inbound only", desc: "This agent answers calls to your number", icon: PhoneIncoming },
+                    { value: "both", label: "Both", desc: "This agent can make and receive calls", icon: Phone },
+                  ].map(opt => (
+                    <button key={opt.value} onClick={() => setCallDirection(opt.value)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 text-left transition-all ${callDirection === opt.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
+                      <opt.icon className={`h-5 w-5 shrink-0 ${callDirection === opt.value ? "text-primary" : "text-muted-foreground"}`} />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(callDirection === "inbound" || callDirection === "both") && (
+                <div className="space-y-4 border-t border-border pt-4">
+                  <p className="text-sm font-medium text-foreground">Inbound Settings</p>
+                  <div>
+                    <Label>Inbound greeting</Label>
+                    <Textarea value={inboundGreeting} onChange={e => setInboundGreeting(e.target.value)} rows={2} className="mt-1" placeholder="Thank you for calling..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Answer after (rings)</Label>
+                      <Input type="number" min={1} max={10} value={answerAfterRings} onChange={e => setAnswerAfterRings(Number(e.target.value))} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Outside business hours</Label>
+                      <Select value={afterHoursBehavior} onValueChange={setAfterHoursBehavior}>
+                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="answer">Answer with AI agent</SelectItem>
+                          <SelectItem value="voicemail">Play voicemail message</SelectItem>
+                          <SelectItem value="forward">Forward to mobile</SelectItem>
+                          <SelectItem value="ring">Let it ring</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {afterHoursBehavior === "voicemail" && (
+                    <div>
+                      <Label>After-hours voicemail message</Label>
+                      <Textarea value={afterHoursVoicemailMessage} onChange={e => setAfterHoursVoicemailMessage(e.target.value)} rows={3} className="mt-1" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Section 6: Transfer */}
           <Card>
             <CardHeader><CardTitle className="section-title">Transfer & Escalation</CardTitle></CardHeader>
             <CardContent className="space-y-4">

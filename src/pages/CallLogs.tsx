@@ -138,6 +138,11 @@ export default function CallLogs() {
               <tbody>
                 {paged.map((call: CallWithRelations, i: number) => (
                   <tr key={call.id} className={`border-t hover:bg-secondary/20 cursor-pointer ${i % 2 ? "bg-secondary/10" : ""}`} onClick={() => setSelectedCall(call)}>
+                    <td className="px-4 py-3">
+                      {call.direction === "inbound"
+                        ? <ArrowDownLeft className="h-4 w-4 text-primary" />
+                        : <ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
+                    </td>
                     <td className="px-4 py-3 text-sm text-foreground">{formatDate(call.started_at)}</td>
                     <td className="px-4 py-3"><p className="text-sm font-medium text-foreground">{call.contact_name || "Unknown"}</p><p className="text-xs text-muted-foreground">{call.to_number}</p></td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{call.campaigns?.name || "—"}</td>
