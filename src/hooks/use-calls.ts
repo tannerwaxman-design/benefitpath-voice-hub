@@ -14,7 +14,6 @@ export function useCalls(filters?: { outcome?: string; direction?: string; searc
         .from("calls")
         .select("*, agents(agent_name), campaigns(name)")
         .order("started_at", { ascending: false })
-        .limit(filters?.limit || 100);
 
       if (filters?.outcome && filters.outcome !== "all") {
         query = query.eq("outcome", filters.outcome);
