@@ -1,0 +1,2 @@
+ALTER TABLE public.agents DROP CONSTRAINT agents_call_objective_check;
+ALTER TABLE public.agents ADD CONSTRAINT agents_call_objective_check CHECK (call_objective = ANY (ARRAY['appointment_setting','lead_qualification','enrollment_followup','policy_renewal','renewal_reminder','survey','payment_reminder','general_info','information','custom']));
