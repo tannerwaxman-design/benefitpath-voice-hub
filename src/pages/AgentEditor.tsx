@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
 import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
+import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 
 const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "Compliance", "Review & Save"];
 
