@@ -275,10 +275,13 @@ export default function AgentEditor() {
         {/* Left Mini Nav */}
         <div className="w-48 shrink-0 hidden lg:block">
           <nav className="sticky top-6 space-y-1">
-            {sections.map((s, i) => (
-              <button key={s} onClick={() => setActiveSection(i)}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${i === activeSection ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-secondary"}`}
-              >{i + 1}. {s}</button>
+            {sectionDefs.map((s) => (
+              <button key={s.id} onClick={() => {
+                const el = document.getElementById(s.id);
+                if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setActiveSection(s.id); }
+              }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors border-l-2 ${activeSection === s.id ? "border-primary bg-primary/10 text-primary font-medium" : "border-transparent text-muted-foreground hover:bg-secondary"}`}
+              >{s.label}</button>
             ))}
           </nav>
         </div>
@@ -286,7 +289,7 @@ export default function AgentEditor() {
         {/* Content */}
         <div className="flex-1 space-y-8 max-w-3xl">
           {/* Section 1: Basic Info */}
-          <Card>
+          <Card id="section-basic-info">
             <CardHeader><CardTitle className="section-title">Basic Info</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
