@@ -58,7 +58,7 @@ export default function AgentEditor() {
   const { data: apiVoices, isLoading: voicesLoading } = useVoices();
   const voiceOptions = apiVoices && apiVoices.length > 0 ? apiVoices : fallbackVoices;
 
-  const [activeSection, setActiveSection] = useState(0);
+  const [activeSection, setActiveSection] = useState("section-basic-info");
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [industry, setIndustry] = useState("Insurance");
