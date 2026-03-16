@@ -46,8 +46,8 @@ Deno.serve(async (req: Request) => {
       message.metadata ||
       {};
 
-    const tenantId = metadata.benefitpath_tenant_id;
-    const agentId = metadata.benefitpath_agent_id;
+    let tenantId = metadata.benefitpath_tenant_id;
+    let agentId = metadata.benefitpath_agent_id;
     const contactId = metadata.benefitpath_contact_id;
     const campaignId = metadata.benefitpath_campaign_id;
     const campaignContactId = metadata.benefitpath_campaign_contact_id;
@@ -66,6 +66,33 @@ Deno.serve(async (req: Request) => {
     // Use admin client (bypasses RLS — server-to-server)
     const supabase = createAdminClient();
 
+    // ── INBOUND FALLBACK ──
+    // For inbound calls, VAPI routes via assistantId on the phone number,
+    // so our custom metadata won't be present. Look up tenant & agent
+    // from the called phone number in our DB.
+    const callType = message.call?.type || "";
+    const isInboundCall = callType === "inboundPhoneCall";
+
+    if (!tenantId && isInboundCall) {
+      const calledNumber = message.call?.phoneNumber?.number || "";
+      if (calledNumber) {
+        const { data: phoneRecord } = await supabase
+          .from("phone_numbers")
+          .select("tenant_id, assigned_agent_id")
+          .eq("phone_number", calledNumber)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (phoneRecord) {
+          tenantId = phoneRecord.tenant_id;
+          agentId = agentId || phoneRecord.assigned_agent_id;
+          console.log(`[webhook] Inbound fallback: resolved tenant=${tenantId} agent=${agentId} from number=${calledNumber}`);
+        } else {
+          console.warn(`[webhook] Inbound call to ${calledNumber} but no matching phone_number record found`);
+        }
+      }
+    }
+
     // 4. Route based on message type
     switch (message.type) {
       // ========================================
@@ -73,16 +100,39 @@ Deno.serve(async (req: Request) => {
       // ========================================
       case "status-update": {
         const status = message.status;
-        const callType = message.call?.type || "";
-        const isInbound = callType === "inboundPhoneCall";
         console.log(
-          `[webhook] status-update: call=${vapiCallId} status=${status} tenant=${tenantId} type=${callType}`
+          `[webhook] status-update: call=${vapiCallId} status=${status} tenant=${tenantId} type=${callType} inbound=${isInboundCall}`
         );
 
         // For inbound calls, create a call record when the call starts
-        if (isInbound && (status === "ringing" || status === "in-progress") && tenantId) {
+        if (isInboundCall && (status === "ringing" || status === "in-progress") && tenantId) {
           const customerNumber = message.call?.customer?.number || "";
           const phoneNumber = message.call?.phoneNumber?.number || "";
+
+          // Try to match caller to existing contact
+          let matchedContactId = contactId || null;
+          if (!matchedContactId && customerNumber && tenantId) {
+            const { data: matchedContact } = await supabase
+              .from("contacts")
+              .select("id")
+              .eq("tenant_id", tenantId)
+              .eq("phone", customerNumber)
+              .maybeSingle();
+            if (matchedContact) {
+              matchedContactId = matchedContact.id;
+            }
+          }
+
+          // Look up phone_number_id
+          let phoneNumberId = null;
+          if (phoneNumber) {
+            const { data: pn } = await supabase
+              .from("phone_numbers")
+              .select("id")
+              .eq("phone_number", phoneNumber)
+              .maybeSingle();
+            if (pn) phoneNumberId = pn.id;
+          }
 
           // Check if record already exists
           const { data: existingCall } = await supabase
@@ -96,7 +146,8 @@ Deno.serve(async (req: Request) => {
               vapi_call_id: vapiCallId,
               tenant_id: tenantId,
               agent_id: agentId || null,
-              contact_id: contactId || null,
+              contact_id: matchedContactId,
+              phone_number_id: phoneNumberId,
               direction: "inbound",
               from_number: customerNumber,
               to_number: phoneNumber,
@@ -104,6 +155,7 @@ Deno.serve(async (req: Request) => {
               outcome: "in_progress",
               contact_name: message.call?.customer?.name || null,
             });
+            console.log(`[webhook] Created inbound call record: vapi=${vapiCallId} tenant=${tenantId} agent=${agentId}`);
           }
         }
 
@@ -357,11 +409,36 @@ Deno.serve(async (req: Request) => {
           reportUpdate.cost_minutes = reportDurationMinutes;
         }
 
-        // Update call record with rich data
-        await supabase
+        // Upsert: if call record doesn't exist yet (e.g. inbound where status-update was missed), create it
+        const { data: existingCallForReport } = await supabase
           .from("calls")
-          .update(reportUpdate)
-          .eq("vapi_call_id", vapiCallId);
+          .select("id")
+          .eq("vapi_call_id", vapiCallId)
+          .maybeSingle();
+
+        if (!existingCallForReport && tenantId) {
+          const customerNumber = message.call?.customer?.number || "";
+          const phoneNumber = message.call?.phoneNumber?.number || "";
+          await supabase.from("calls").insert({
+            vapi_call_id: vapiCallId,
+            tenant_id: tenantId,
+            agent_id: agentId || null,
+            direction: isInboundCall ? "inbound" : "outbound",
+            from_number: isInboundCall ? customerNumber : phoneNumber,
+            to_number: isInboundCall ? phoneNumber : customerNumber,
+            started_at: new Date().toISOString(),
+            outcome: "completed",
+            contact_name: message.call?.customer?.name || null,
+            ...reportUpdate,
+          });
+          console.log(`[webhook] Created missing call record in end-of-call-report: vapi=${vapiCallId}`);
+        } else {
+          // Update call record with rich data
+          await supabase
+            .from("calls")
+            .update(reportUpdate)
+            .eq("vapi_call_id", vapiCallId);
+        }
 
         // Fetch and store costs (end-of-call-report arrives after VAPI has finalized costs)
         if (tenantId && !isTestCall) {
