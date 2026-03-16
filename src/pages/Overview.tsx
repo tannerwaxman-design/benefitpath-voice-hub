@@ -46,6 +46,8 @@ export default function Overview() {
   const { data: callsPerDay, refetch: refetchChart } = useCallsPerDay(dateFrom, dateTo);
   const { data: campaigns, refetch: refetchCampaigns } = useCampaigns();
   const { data: recentCalls, refetch: refetchCalls } = useRecentCalls(8);
+  const { data: tasks } = usePostCallTasks(5);
+  const updateTask = useUpdateTaskStatus();
 
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
