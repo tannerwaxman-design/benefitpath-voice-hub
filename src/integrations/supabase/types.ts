@@ -247,6 +247,99 @@ export type Database = {
           },
         ]
       }
+      call_coaching_notes: {
+        Row: {
+          author_email: string
+          author_user_id: string
+          call_id: string
+          created_at: string
+          id: string
+          note: string
+          tenant_id: string
+        }
+        Insert: {
+          author_email?: string
+          author_user_id: string
+          call_id: string
+          created_at?: string
+          id?: string
+          note: string
+          tenant_id: string
+        }
+        Update: {
+          author_email?: string
+          author_user_id?: string
+          call_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_coaching_notes_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_coaching_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_transcript_comments: {
+        Row: {
+          author_email: string
+          author_user_id: string
+          call_id: string
+          comment: string
+          created_at: string
+          id: string
+          message_index: number
+          tenant_id: string
+        }
+        Insert: {
+          author_email?: string
+          author_user_id: string
+          call_id: string
+          comment: string
+          created_at?: string
+          id?: string
+          message_index: number
+          tenant_id: string
+        }
+        Update: {
+          author_email?: string
+          author_user_id?: string
+          call_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          message_index?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_transcript_comments_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_transcript_comments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calls: {
         Row: {
           agent_id: string | null
@@ -281,6 +374,7 @@ export type Database = {
           phone_number_id: string | null
           recording_duration_seconds: number | null
           recording_url: string | null
+          review_status: string
           reviewed_at: string | null
           reviewed_by: string | null
           sentiment: string | null
@@ -330,6 +424,7 @@ export type Database = {
           phone_number_id?: string | null
           recording_duration_seconds?: number | null
           recording_url?: string | null
+          review_status?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           sentiment?: string | null
@@ -379,6 +474,7 @@ export type Database = {
           phone_number_id?: string | null
           recording_duration_seconds?: number | null
           recording_url?: string | null
+          review_status?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           sentiment?: string | null
