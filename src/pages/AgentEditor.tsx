@@ -17,8 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
 import { useVoices, ElevenLabsVoice } from "@/hooks/use-voices";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
+import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 
-const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "Compliance", "Review & Save"];
+const sections = ["Basic Info", "Voice & Persona", "Conversation Flow", "Knowledge Base", "Call Direction", "Call Handling Rules", "Transfer & Escalation", "After the Call", "Compliance", "Review & Save"];
 
 const industries = ["Insurance", "Employee Benefits", "Health & Wellness", "Human Resources", "Financial Services", "Medicare", "Dental/Vision", "Life Insurance", "Workers' Comp", "Other"];
 
@@ -76,6 +77,19 @@ export default function AgentEditor() {
   const [answerAfterRings, setAnswerAfterRings] = useState(2);
   const [afterHoursBehavior, setAfterHoursBehavior] = useState("voicemail");
   const [afterHoursVoicemailMessage, setAfterHoursVoicemailMessage] = useState("Thank you for calling. Our office is currently closed. Please leave a message and we'll call you back on the next business day.");
+  const [postCallActions, setPostCallActions] = useState<PostCallActionsConfig>({
+    post_call_email_enabled: false,
+    post_call_email_subject: "Thanks for chatting with us!",
+    post_call_email_body: "",
+    post_call_email_trigger: "connected_only",
+    post_call_sms_enabled: false,
+    post_call_sms_body: "",
+    post_call_notification_enabled: false,
+    post_call_notification_email: "",
+    post_call_notification_triggers: ["appointment_booked", "lead_qualified", "callback_requested"],
+    post_call_notification_includes: ["call_summary", "contact_info"],
+    post_call_task_enabled: false,
+  });
 
   const applyTemplate = (template: AgentTemplate | null) => {
     if (template) {
@@ -122,6 +136,20 @@ export default function AgentEditor() {
     setAnswerAfterRings((existingAgent as any).answer_after_rings ?? 2);
     setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
     setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
+    const ea = existingAgent as any;
+    setPostCallActions({
+      post_call_email_enabled: ea.post_call_email_enabled ?? false,
+      post_call_email_subject: ea.post_call_email_subject || "Thanks for chatting with us!",
+      post_call_email_body: ea.post_call_email_body || "",
+      post_call_email_trigger: ea.post_call_email_trigger || "connected_only",
+      post_call_sms_enabled: ea.post_call_sms_enabled ?? false,
+      post_call_sms_body: ea.post_call_sms_body || "",
+      post_call_notification_enabled: ea.post_call_notification_enabled ?? false,
+      post_call_notification_email: ea.post_call_notification_email || "",
+      post_call_notification_triggers: ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"],
+      post_call_notification_includes: ea.post_call_notification_includes || ["call_summary", "contact_info"],
+      post_call_task_enabled: ea.post_call_task_enabled ?? false,
+    });
     setInitialized(true);
   }
 
@@ -168,6 +196,7 @@ export default function AgentEditor() {
     answer_after_rings: answerAfterRings,
     after_hours_behavior: afterHoursBehavior,
     after_hours_voicemail_message: afterHoursVoicemailMessage || null,
+    ...postCallActions,
   });
 
   const handleSave = async (activate: boolean) => {
@@ -446,7 +475,10 @@ export default function AgentEditor() {
             </CardContent>
           </Card>
 
-          {/* Section 6: Compliance */}
+          {/* Section 8: After the Call */}
+          <PostCallActionsSection config={postCallActions} onChange={setPostCallActions} />
+
+          {/* Section 9: Compliance */}
           <Card>
             <CardHeader><CardTitle className="section-title">Compliance</CardTitle></CardHeader>
             <CardContent className="space-y-4">
