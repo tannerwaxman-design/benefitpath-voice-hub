@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, Bot, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen
+  LayoutDashboard, Bot, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import logo from "@/assets/benefit_path_icon.svg";
@@ -18,6 +18,7 @@ const navItems = [
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
   { label: "Phone Numbers", icon: Hash, path: "/phone-numbers" },
   { label: "Billing & Usage", icon: CreditCard, path: "/billing" },
+  { label: "Team", icon: UsersRound, path: "/team" },
   { label: "Settings", icon: Settings, path: "/settings" },
 ];
 

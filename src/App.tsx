@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import Tools from "./pages/Tools";
 import BillingUsage from "./pages/BillingUsage";
 import KnowledgeBase from "./pages/KnowledgeBase";
+import Team from "./pages/Team";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/phone-numbers" element={<PhoneNumbers />} />
                 <Route path="/billing" element={<BillingUsage />} />
+                <Route path="/team" element={<Team />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>
