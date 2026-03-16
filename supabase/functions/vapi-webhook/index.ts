@@ -469,6 +469,32 @@ Deno.serve(async (req: Request) => {
           });
         }
 
+        // Trigger AI call scoring asynchronously (fire-and-forget)
+        // Only score connected/completed/transferred calls
+        const scorableOutcomes = ["connected", "completed", "transferred"];
+        const { data: callRecord } = await supabase
+          .from("calls")
+          .select("id, outcome")
+          .eq("vapi_call_id", vapiCallId)
+          .single();
+
+        if (callRecord && scorableOutcomes.includes(callRecord.outcome) && transcript.length > 0) {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL");
+          const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+          if (supabaseUrl && serviceRoleKey) {
+            fetch(`${supabaseUrl}/functions/v1/score-call`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${serviceRoleKey}`,
+              },
+              body: JSON.stringify({ call_id: callRecord.id }),
+            }).catch((err) =>
+              console.error("Failed to trigger call scoring:", err)
+            );
+          }
+        }
+
         break;
       }
 

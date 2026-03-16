@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, MessageSquare, Send } from "lucide-react";
+import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, MessageSquare, Send, Star } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import type { Json } from "@/integrations/supabase/types";
 import { useNavigate } from "react-router-dom";
 
@@ -190,6 +191,77 @@ function CallDetailPanel({ call, onClose }: { call: CallWithRelations; onClose: 
           <p className="section-label mb-2">AI-Generated Summary</p>
           <p className="text-sm text-foreground">{call.summary}</p>
         </div>
+      )}
+
+      {/* Call Quality Score Card */}
+      {(call as any).quality_score != null && (
+        <Card className="border-primary/20">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">Call Quality Score: {(call as any).quality_score}/100</span>
+              </div>
+              <span className={`text-lg font-bold ${
+                (call as any).quality_score >= 80 ? "text-success" :
+                (call as any).quality_score >= 60 ? "text-warning" : "text-destructive"
+              }`}>
+                {(call as any).quality_score}
+              </span>
+            </div>
+            <Progress value={(call as any).quality_score} className="h-2" />
+
+            {(call as any).score_feedback && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(call as any).score_feedback.went_well?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-success mb-1.5">✅ What went well</p>
+                    <ul className="space-y-1">
+                      {(call as any).score_feedback.went_well.map((item: string, i: number) => (
+                        <li key={i} className="text-xs text-muted-foreground">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {(call as any).score_feedback.could_improve?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-warning mb-1.5">⚡ Could improve</p>
+                    <ul className="space-y-1">
+                      {(call as any).score_feedback.could_improve.map((item: string, i: number) => (
+                        <li key={i} className="text-xs text-muted-foreground">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(call as any).score_breakdown && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">📊 Score Breakdown</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {[
+                    ["Opening & Hook", "opening_hook"],
+                    ["Value Proposition", "value_proposition"],
+                    ["Objection Handling", "objection_handling"],
+                    ["Discovery Questions", "discovery_questions"],
+                    ["Call-to-Action", "call_to_action"],
+                    ["Professionalism", "professionalism"],
+                    ["Compliance", "compliance"],
+                    ["Outcome Achievement", "outcome_achievement"],
+                    ["Conversation Flow", "conversation_flow"],
+                    ["Overall Effectiveness", "overall_effectiveness"],
+                  ].map(([label, key]) => (
+                    <div key={key} className="flex justify-between text-xs py-0.5">
+                      <span className="text-muted-foreground">{label}:</span>
+                      <span className="font-medium text-foreground">{(call as any).score_breakdown[key]}/10</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Transcript with inline comments */}
@@ -383,8 +455,8 @@ export default function CallLogs() {
             <table className="w-full">
               <thead>
                 <tr className="bg-secondary/50">
-                  {["", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Review", ""].map(h => (
-                    <th key={h || "actions"} className="px-4 py-3 text-left section-label">{h}</th>
+                  {["dir", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Score", "Review", "actions"].map(h => (
+                    <th key={h} className="px-4 py-3 text-left section-label">{h === "dir" || h === "actions" ? "" : h}</th>
                   ))}
                 </tr>
               </thead>
@@ -401,6 +473,18 @@ export default function CallLogs() {
                     <td className="px-4 py-3 text-sm text-muted-foreground">{call.agents?.agent_name || "—"}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(call.duration_seconds)}</td>
                     <td className="px-4 py-3"><Badge variant="secondary" className={`${outcomeColors[call.outcome] || "bg-secondary"} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge></td>
+                    <td className="px-4 py-3">
+                      {call.quality_score != null ? (
+                        <span className={`text-sm font-semibold ${
+                          call.quality_score >= 80 ? "text-success" :
+                          call.quality_score >= 60 ? "text-warning" : "text-destructive"
+                        }`}>
+                          {call.quality_score}/100
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary" className={`${reviewStatusColors[call.review_status || "not_reviewed"] || "bg-secondary"} border-0 text-[10px]`}>
                         {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
