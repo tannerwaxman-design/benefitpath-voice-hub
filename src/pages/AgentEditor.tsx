@@ -304,6 +304,17 @@ export default function AgentEditor() {
           <Card>
             <CardHeader><CardTitle className="section-title">Voice & Persona</CardTitle></CardHeader>
             <CardContent className="space-y-6">
+              <VoiceCloneSection
+                voiceSource={voiceSource}
+                onVoiceSourceChange={setVoiceSource}
+                clonedVoiceId={clonedVoiceId}
+                onClonedVoiceId={(id) => { setClonedVoiceId(id); setVoiceCloneStatus("ready"); }}
+                cloneStatus={voiceCloneStatus}
+                agentId={id}
+                plan={user?.tenant?.plan}
+              />
+
+              {voiceSource === "preset" && (
               <div>
                 <Label className="mb-3 block">Voice Selection {voicesLoading && <span className="text-xs text-muted-foreground">(loading...)</span>}</Label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto">
@@ -326,6 +337,7 @@ export default function AgentEditor() {
                   ))}
                 </div>
               </div>
+              )}
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <Label>Speaking Speed: {speed[0]}x</Label>
