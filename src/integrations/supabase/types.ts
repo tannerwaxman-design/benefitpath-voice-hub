@@ -16,13 +16,17 @@ export type Database = {
     Tables: {
       agents: {
         Row: {
+          after_hours_behavior: string
+          after_hours_voicemail_message: string | null
           agent_name: string
           agent_title: string | null
           amd_action: string
           amd_enabled: boolean
+          answer_after_rings: number
           background_noise: string
           backup_transfer_number: string | null
           business_hours: Json
+          call_direction: string
           call_objective: string
           closing_script: string | null
           company_name_override: string | null
@@ -43,6 +47,7 @@ export type Database = {
           hours_between_retries: number
           id: string
           if_no_human: string
+          inbound_greeting: string | null
           industry: string | null
           interruption_handling: string
           knowledge_base_text: string | null
@@ -85,13 +90,17 @@ export type Database = {
           warning_before_max_duration: boolean
         }
         Insert: {
+          after_hours_behavior?: string
+          after_hours_voicemail_message?: string | null
           agent_name: string
           agent_title?: string | null
           amd_action?: string
           amd_enabled?: boolean
+          answer_after_rings?: number
           background_noise?: string
           backup_transfer_number?: string | null
           business_hours?: Json
+          call_direction?: string
           call_objective?: string
           closing_script?: string | null
           company_name_override?: string | null
@@ -112,6 +121,7 @@ export type Database = {
           hours_between_retries?: number
           id?: string
           if_no_human?: string
+          inbound_greeting?: string | null
           industry?: string | null
           interruption_handling?: string
           knowledge_base_text?: string | null
@@ -154,13 +164,17 @@ export type Database = {
           warning_before_max_duration?: boolean
         }
         Update: {
+          after_hours_behavior?: string
+          after_hours_voicemail_message?: string | null
           agent_name?: string
           agent_title?: string | null
           amd_action?: string
           amd_enabled?: boolean
+          answer_after_rings?: number
           background_noise?: string
           backup_transfer_number?: string | null
           business_hours?: Json
+          call_direction?: string
           call_objective?: string
           closing_script?: string | null
           company_name_override?: string | null
@@ -181,6 +195,7 @@ export type Database = {
           hours_between_retries?: number
           id?: string
           if_no_human?: string
+          inbound_greeting?: string | null
           industry?: string | null
           interruption_handling?: string
           knowledge_base_text?: string | null
