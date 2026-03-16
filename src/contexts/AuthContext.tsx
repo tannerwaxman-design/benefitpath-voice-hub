@@ -13,6 +13,10 @@ export interface TenantInfo {
   status: string;
   default_timezone: string;
   onboarding_completed: boolean;
+  overage_rate_per_minute: number;
+  billing_cycle_start: string;
+  billing_cycle_end: string;
+  hard_stop_enabled: boolean;
 }
 
 export interface UserProfile {
@@ -62,7 +66,7 @@ async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
   // Get tenant info
   const { data: tenant, error: tError } = await supabase
     .from("tenants")
-    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, credit_balance, industry, status, default_timezone, onboarding_completed")
+    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, credit_balance, industry, status, default_timezone, onboarding_completed, overage_rate_per_minute, billing_cycle_start, billing_cycle_end, hard_stop_enabled")
     .eq("id", tenantUser.tenant_id)
     .single();
 
