@@ -140,6 +140,11 @@ export default function AgentEditor() {
     transfer_phone_number: transferPhone || null,
     backup_transfer_number: backupTransfer || null,
     transfer_announcement: transferAnnouncement || null,
+    call_direction: callDirection,
+    inbound_greeting: inboundGreeting || null,
+    answer_after_rings: answerAfterRings,
+    after_hours_behavior: afterHoursBehavior,
+    after_hours_voicemail_message: afterHoursVoicemailMessage || null,
   });
 
   const handleSave = async (activate: boolean) => {
