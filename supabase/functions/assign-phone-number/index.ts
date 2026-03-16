@@ -1,5 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { vapiRequest } from "../_shared/vapi-client.ts";
+import { createAdminClient } from "../_shared/supabase-admin.ts";
 import {
   getAuthContext,
   corsHeaders,
@@ -19,16 +19,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Admin access required", 403);
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-        auth: { autoRefreshToken: false, persistSession: false },
-      }
-    );
+    const serviceClient = createAdminClient();
 
     const body = await req.json();
     const phoneId = body.phone_id;
@@ -38,26 +29,26 @@ Deno.serve(async (req: Request) => {
       return errorResponse("phone_id is required");
     }
 
-    const { data: phoneNumber, error: phoneError } = await supabase
+    const { data: phoneNumber, error: phoneError } = await serviceClient
       .from("phone_numbers")
       .select("id, phone_number, vapi_phone_id, assigned_agent_id, tenant_id")
       .eq("id", phoneId)
       .single();
 
-    if (phoneError || !phoneNumber) {
+    if (phoneError || !phoneNumber || phoneNumber.tenant_id !== auth.tenantId) {
       return errorResponse("Phone number not found", 404);
     }
 
     let assistantId: string | null = null;
 
     if (agentId) {
-      const { data: agent, error: agentError } = await supabase
+      const { data: agent, error: agentError } = await serviceClient
         .from("agents")
         .select("id, agent_name, vapi_assistant_id, tenant_id")
         .eq("id", agentId)
         .single();
 
-      if (agentError || !agent) {
+      if (agentError || !agent || agent.tenant_id !== auth.tenantId) {
         return errorResponse("Agent not found", 404);
       }
 
@@ -88,7 +79,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: updatedPhone, error: updateError } = await supabase
+    const { data: updatedPhone, error: updateError } = await serviceClient
       .from("phone_numbers")
       .update({ assigned_agent_id: agentId })
       .eq("id", phoneId)
