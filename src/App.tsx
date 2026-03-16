@@ -21,6 +21,7 @@ import Tools from "./pages/Tools";
 import BillingUsage from "./pages/BillingUsage";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Team from "./pages/Team";
+import CoachingDashboard from "./pages/CoachingDashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
