@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, TrendingDown, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Download, Zap } from "lucide-react";
+import { useSmartSchedule, groupSlotsByScore, DAY_NAMES, formatSlotTime } from "@/hooks/use-smart-schedule";
+import {
+  ComposedChart, Bar, Line,
+  BarChart,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+} from "recharts";
 import {
   ComposedChart, Bar, Line,
   BarChart,
