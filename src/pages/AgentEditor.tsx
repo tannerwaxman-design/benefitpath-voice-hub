@@ -69,6 +69,11 @@ export default function AgentEditor() {
   const [showTestCallDialog, setShowTestCallDialog] = useState(false);
   const [testPhoneNumber, setTestPhoneNumber] = useState("");
   const [initialized, setInitialized] = useState(false);
+  const [callDirection, setCallDirection] = useState("outbound");
+  const [inboundGreeting, setInboundGreeting] = useState("Thank you for calling. How can I help you today?");
+  const [answerAfterRings, setAnswerAfterRings] = useState(2);
+  const [afterHoursBehavior, setAfterHoursBehavior] = useState("voicemail");
+  const [afterHoursVoicemailMessage, setAfterHoursVoicemailMessage] = useState("Thank you for calling. Our office is currently closed. Please leave a message and we'll call you back on the next business day.");
 
   // Populate form with existing agent data
   if (existingAgent && !initialized) {
