@@ -710,6 +710,7 @@ export type Database = {
           retry_voicemail_max: number
           scheduled_end: string | null
           scheduled_start: string | null
+          smart_schedule_enabled: boolean
           status: string
           tenant_id: string
           timezone_strategy: string
@@ -757,6 +758,7 @@ export type Database = {
           retry_voicemail_max?: number
           scheduled_end?: string | null
           scheduled_start?: string | null
+          smart_schedule_enabled?: boolean
           status?: string
           tenant_id: string
           timezone_strategy?: string
@@ -804,6 +806,7 @@ export type Database = {
           retry_voicemail_max?: number
           scheduled_end?: string | null
           scheduled_start?: string | null
+          smart_schedule_enabled?: boolean
           status?: string
           tenant_id?: string
           timezone_strategy?: string
@@ -1381,6 +1384,50 @@ export type Database = {
           },
         ]
       }
+      smart_schedule: {
+        Row: {
+          connect_rate: number
+          day_of_week: number
+          hour_of_day: number
+          id: string
+          score: string
+          tenant_id: string
+          total_calls: number
+          total_connected: number
+          updated_at: string
+        }
+        Insert: {
+          connect_rate?: number
+          day_of_week: number
+          hour_of_day: number
+          id?: string
+          score?: string
+          tenant_id: string
+          total_calls?: number
+          total_connected?: number
+          updated_at?: string
+        }
+        Update: {
+          connect_rate?: number
+          day_of_week?: number
+          hour_of_day?: number
+          id?: string
+          score?: string
+          tenant_id?: string
+          total_calls?: number
+          total_connected?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_schedule_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -1923,6 +1970,17 @@ export type Database = {
           total_calls: number
         }[]
       }
+      get_smart_schedule: {
+        Args: never
+        Returns: {
+          connect_rate: number
+          day_of_week: number
+          hour_of_day: number
+          score: string
+          total_calls: number
+          total_connected: number
+        }[]
+      }
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_tenant_role: { Args: never; Returns: string }
       increment_campaign_contact_attempts: {
@@ -1949,6 +2007,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      recalculate_smart_schedule: {
+        Args: { p_tenant_id: string }
+        Returns: undefined
       }
     }
     Enums: {

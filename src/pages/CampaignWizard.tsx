@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Check, Loader2, Upload } from "lucide-react";
 import Papa from "papaparse";
+import SmartSchedulePanel from "@/components/campaigns/SmartSchedulePanel";
 
 const steps = ["Campaign Basics", "Contact List", "Schedule & Pacing", "Review & Launch"];
 
@@ -47,6 +48,7 @@ export default function CampaignWizard() {
   const [startDate, setStartDate] = useState("");
   const [maxCallsPerDay, setMaxCallsPerDay] = useState(200);
   const [maxConcurrent, setMaxConcurrent] = useState(5);
+  const [smartScheduleEnabled, setSmartScheduleEnabled] = useState(false);
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,6 +127,7 @@ export default function CampaignWizard() {
         max_calls_per_day: maxCallsPerDay,
         max_concurrent_calls: maxConcurrent,
         scheduled_start: startDate || null,
+        smart_schedule_enabled: smartScheduleEnabled,
         status: "draft",
       });
 
@@ -273,8 +276,32 @@ export default function CampaignWizard() {
           )}
 
           {step === 2 && (
-            <div className="space-y-4 max-w-xl">
+            <div className="space-y-6 max-w-xl">
               <div><Label>Start Date</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+
+              {/* Smart Schedule Toggle */}
+              <div className="space-y-4">
+                <Label className="block text-base font-semibold">Calling Schedule</Label>
+                <div className="space-y-2">
+                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${!smartScheduleEnabled ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
+                    <input type="radio" name="schedule_mode" checked={!smartScheduleEnabled} onChange={() => setSmartScheduleEnabled(false)} className="mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Manual schedule</p>
+                      <p className="text-xs text-muted-foreground">I'll set the calling hours myself</p>
+                    </div>
+                  </label>
+                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${smartScheduleEnabled ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}>
+                    <input type="radio" name="schedule_mode" checked={smartScheduleEnabled} onChange={() => setSmartScheduleEnabled(true)} className="mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Smart Schedule — AI picks the best time to call each lead</p>
+                      <p className="text-xs text-muted-foreground">Analyzes your past call data to maximize connect rates</p>
+                    </div>
+                  </label>
+                </div>
+
+                {smartScheduleEnabled && <SmartSchedulePanel />}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Max calls per day</Label><Input type="number" value={maxCallsPerDay} onChange={e => setMaxCallsPerDay(parseInt(e.target.value))} min={10} max={5000} /></div>
                 <div><Label>Max concurrent calls</Label><Input type="number" value={maxConcurrent} onChange={e => setMaxConcurrent(parseInt(e.target.value))} min={1} max={50} /></div>

@@ -126,7 +126,29 @@ Deno.serve(async (req: Request) => {
         .order("next_attempt_at", { ascending: true, nullsFirst: true })
         .limit(toFetch);
 
-      if (!contactsToCall?.length) {
+      // Smart Schedule: reorder contacts by current time slot score
+      let orderedContacts = contactsToCall || [];
+      if (campaign.smart_schedule_enabled && contactsToCall?.length) {
+        const currentHour = parseInt(localTimeStr.split(":")[0]);
+        const currentDay = now.getDay();
+        
+        // Check if current time is a good slot
+        const { data: slotData } = await supabase
+          .from("smart_schedule")
+          .select("score, connect_rate")
+          .eq("tenant_id", campaign.tenant_id)
+          .eq("day_of_week", currentDay)
+          .eq("hour_of_day", currentHour)
+          .maybeSingle();
+
+        // If current slot is "avoid" and we have data, skip this cycle
+        if (slotData?.score === "avoid") {
+          console.log(`Campaign ${campaign.name}: Smart Schedule says avoid hour ${currentHour}, skipping`);
+          continue;
+        }
+      }
+
+      if (!orderedContacts?.length) {
         // Check if campaign is done
         const { count: pendingCount } = await supabase
           .from("campaign_contacts")
@@ -161,7 +183,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Launch calls
-      for (const cc of contactsToCall) {
+      for (const cc of orderedContacts) {
         const contact = (cc as Record<string, unknown>).contacts as Record<
           string,
           string
