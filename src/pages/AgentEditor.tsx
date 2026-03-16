@@ -530,7 +530,7 @@ export default function AgentEditor() {
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-4 border-t">
+          <div id="section-review" className="flex items-center gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => handleSave(false)} disabled={isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Save as Draft
