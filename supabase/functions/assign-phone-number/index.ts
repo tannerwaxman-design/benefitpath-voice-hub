@@ -77,6 +77,7 @@ Deno.serve(async (req: Request) => {
       endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
       body: {
         assistantId,
+        number: phoneNumber.phone_number,
       },
     });
 

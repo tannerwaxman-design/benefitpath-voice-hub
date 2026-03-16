@@ -281,6 +281,11 @@ Deno.serve(async (req: Request) => {
 
         business_hours: body.business_hours || {},
         timezone: body.timezone || tenant.default_timezone,
+        call_direction: body.call_direction || "outbound",
+        inbound_greeting: body.inbound_greeting || null,
+        answer_after_rings: body.answer_after_rings ?? 2,
+        after_hours_behavior: body.after_hours_behavior || "voicemail",
+        after_hours_voicemail_message: body.after_hours_voicemail_message || null,
 
         transfer_triggers: body.transfer_triggers || ["human_requested", "high_intent", "frustrated"],
         transfer_method: body.transfer_method || "warm",
