@@ -102,13 +102,15 @@ Deno.serve(async (req: Request) => {
       phoneId,
       vapiPhoneId: phoneNumber.vapi_phone_id,
       assistantId,
+      currentAssistantId: currentPhoneConfig.data?.assistantId,
       currentServerUrl,
       currentServerUrlAlias,
       hasPhoneLevelServerRouting,
       mode: assistantId ? "detach-reattach" : "detach-only",
+      currentPhoneConfig: currentPhoneConfig.data,
     });
 
-    let detachResult = await vapiRequest({
+    let detachResult = await vapiRequest<VapiPhoneNumberConfig>({
       method: "PATCH",
       endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
       body: clearRoutingBody,
@@ -116,12 +118,19 @@ Deno.serve(async (req: Request) => {
 
     if (!detachResult.ok && hasPhoneLevelServerRouting) {
       console.warn("assign-phone-number retrying detach without server clear", detachResult.error);
-      detachResult = await vapiRequest({
+      detachResult = await vapiRequest<VapiPhoneNumberConfig>({
         method: "PATCH",
         endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
         body: { assistantId: null },
       });
     }
+
+    console.log("assign-phone-number detach-result", {
+      ok: detachResult.ok,
+      status: detachResult.status,
+      error: detachResult.error,
+      data: detachResult.data,
+    });
 
     if (!detachResult.ok) {
       return errorResponse(
@@ -136,10 +145,17 @@ Deno.serve(async (req: Request) => {
     if (assistantId) {
       await new Promise((resolve) => setTimeout(resolve, 250));
 
-      vapiResult = await vapiRequest({
+      vapiResult = await vapiRequest<VapiPhoneNumberConfig>({
         method: "PATCH",
         endpoint: `/phone-number/${phoneNumber.vapi_phone_id}`,
         body: { assistantId },
+      });
+
+      console.log("assign-phone-number attach-result", {
+        ok: vapiResult.ok,
+        status: vapiResult.status,
+        error: vapiResult.error,
+        data: vapiResult.data,
       });
 
       if (!vapiResult.ok) {
