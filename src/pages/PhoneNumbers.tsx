@@ -293,12 +293,17 @@ export default function PhoneNumbers() {
                       </td>
                       <td className="px-4 py-3">
                         {pn.agents ? (
-                          <Badge
-                            variant="secondary"
-                            className="bg-primary/10 text-primary border-0 text-[10px]"
-                          >
-                            {pn.agents.agent_name}
-                          </Badge>
+                          <div>
+                            <Badge
+                              variant="secondary"
+                              className="bg-primary/10 text-primary border-0 text-[10px]"
+                            >
+                              {pn.agents.agent_name}
+                            </Badge>
+                            {(pn.agents as any).call_direction && (pn.agents as any).call_direction !== "outbound" && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">Answers inbound calls</p>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">Unassigned</span>
                         )}
