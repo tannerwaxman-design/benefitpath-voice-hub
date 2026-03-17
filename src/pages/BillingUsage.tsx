@@ -120,6 +120,7 @@ export default function BillingUsage() {
   const subscription = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
 
   const tenant = billing?.tenant || user?.tenant;
   const plan = tenant?.plan || "voice_ai_pro";
@@ -171,7 +172,7 @@ export default function BillingUsage() {
     setCheckoutLoading(planId);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId: stripeplan.price_id },
+        body: { priceId: billingInterval === "annual" ? stripeplan.annual_price_id : stripeplan.price_id },
       });
       if (error) throw error;
       if (data?.url) {
@@ -366,10 +367,27 @@ export default function BillingUsage() {
 
       {/* Plan Comparison */}
       <div id="plans-section">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Compare Plans</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Compare Plans</h2>
+          <div className="flex items-center gap-2 bg-secondary rounded-lg p-1">
+            <button
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${billingInterval === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setBillingInterval("monthly")}
+            >
+              Monthly
+            </button>
+            <button
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setBillingInterval("annual")}
+            >
+              Annual <Badge variant="secondary" className="ml-1 text-xs bg-primary/10 text-primary border-0">Save 20%</Badge>
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {plans.map(p => {
             const isCurrent = p.id === plan;
+            const displayPrice = p.price === -1 ? -1 : billingInterval === "annual" ? Math.round(p.price * 0.8) : p.price;
             return (
               <Card key={p.id} className={`relative ${p.popular && !isCurrent ? "border-primary shadow-md" : ""} ${isCurrent ? "border-primary/50 bg-primary/5" : ""}`}>
                 {p.popular && !isCurrent && (
@@ -388,12 +406,18 @@ export default function BillingUsage() {
                     <h3 className="text-lg font-semibold text-foreground">{p.name}</h3>
                   </div>
                   <div>
-                    {p.price === -1 ? (
+                    {displayPrice === -1 ? (
                       <span className="text-2xl font-bold text-foreground">Custom Pricing</span>
                     ) : (
                       <>
-                        <span className="text-3xl font-bold text-foreground">${p.price}</span>
+                        {billingInterval === "annual" && p.price !== -1 && (
+                          <span className="text-sm text-muted-foreground line-through mr-2">${p.price}</span>
+                        )}
+                        <span className="text-3xl font-bold text-foreground">${displayPrice}</span>
                         <span className="text-muted-foreground text-sm">/mo</span>
+                        {billingInterval === "annual" && p.price !== -1 && (
+                          <p className="text-xs text-muted-foreground mt-1">Billed ${displayPrice * 12}/year</p>
+                        )}
                       </>
                     )}
                   </div>
