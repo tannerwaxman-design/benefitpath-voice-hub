@@ -211,9 +211,9 @@ export function CloneVoiceTab() {
   // ── Full-take recording ──
   const startRecording = async () => {
     try {
-      const { mediaRecorder, stream } = await initAudioCapture();
+      const { mediaRecorder, stream, mimeType } = await initAudioCapture();
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach(t => t.stop());
