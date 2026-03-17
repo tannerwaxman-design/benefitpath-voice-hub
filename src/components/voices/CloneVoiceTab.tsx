@@ -56,6 +56,8 @@ export function CloneVoiceTab() {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const rawChunksRef = useRef<Float32Array[]>([]);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const fallbackBlobRef = useRef<Blob | null>(null);
+  const mimeTypeRef = useRef<string>("");
 
   // Check for existing cloned voice
   useEffect(() => {
