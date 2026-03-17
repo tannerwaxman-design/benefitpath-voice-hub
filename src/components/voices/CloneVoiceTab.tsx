@@ -340,6 +340,10 @@ export function CloneVoiceTab() {
 
   const submitVoiceClone = async () => {
     if (!audioBlob) return;
+    if (audioBlob.size < MIN_RECORDING_SIZE_BYTES) {
+      toast({ title: "Recording too small", description: "Please record a longer sample before submitting.", variant: "destructive" });
+      return;
+    }
     setStatus("processing");
     setProcessingProgress(0);
     const progressInterval = setInterval(() => {
@@ -352,6 +356,7 @@ export function CloneVoiceTab() {
     try {
       const formData = new FormData();
       const fileExtension = audioBlob.type.includes("wav") ? "wav" : audioBlob.type.includes("mp4") ? "m4a" : audioBlob.type.includes("ogg") ? "ogg" : "webm";
+      console.log("Submitting audio for cloning, blob size:", audioBlob.size, "type:", audioBlob.type);
       formData.append("audio", audioBlob, `voice-sample.${fileExtension}`);
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
@@ -378,6 +383,7 @@ export function CloneVoiceTab() {
       }
 
       const data = await response.json();
+      console.log("Clone response:", data);
       setProcessingProgress(100);
 
       const { data: voiceRow, error: insertError } = await supabase
