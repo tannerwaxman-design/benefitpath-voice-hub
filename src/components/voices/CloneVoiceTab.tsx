@@ -223,16 +223,17 @@ export function CloneVoiceTab() {
         fallbackBlobRef.current = previewBlob.size > 0 ? previewBlob : null;
 
         const totalLength = rawChunksRef.current.reduce((acc, c) => acc + c.length, 0);
-        const finalBlob = totalLength > 0
-          ? encodeWav(
-              rawChunksRef.current.reduce((merged, chunk, index) => {
-                const offset = rawChunksRef.current.slice(0, index).reduce((sum, current) => sum + current.length, 0);
-                merged.set(chunk, offset);
-                return merged;
-              }, new Float32Array(totalLength)),
-              audioCtx.sampleRate
-            )
-          : fallbackBlobRef.current;
+        let finalBlob: Blob | null = fallbackBlobRef.current;
+
+        if (totalLength > 0) {
+          const merged = new Float32Array(totalLength);
+          let offset = 0;
+          for (const chunk of rawChunksRef.current) {
+            merged.set(chunk, offset);
+            offset += chunk.length;
+          }
+          finalBlob = encodeWav(merged, audioCtx.sampleRate);
+        }
 
         if (finalBlob) {
           setAudioBlob(finalBlob);
