@@ -80,8 +80,6 @@ export function CloneVoiceTab() {
       if (audioRef.current) audioRef.current.pause();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-      scriptProcessorRef.current?.disconnect();
-      sourceRef.current?.disconnect();
       if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
         void audioCtxRef.current.close();
       }
