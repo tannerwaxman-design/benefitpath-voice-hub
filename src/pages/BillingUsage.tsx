@@ -258,7 +258,9 @@ export default function BillingUsage() {
               <Button variant="default" size="sm" onClick={() => document.getElementById("plans-section")?.scrollIntoView({ behavior: "smooth" })}>
                 Upgrade Plan
               </Button>
-              <Button variant="outline" size="sm">Manage Payment</Button>
+              <Button variant="outline" size="sm" onClick={handleManagePayment} disabled={portalLoading}>
+                {portalLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Loading…</> : "Manage Payment"}
+              </Button>
             </div>
           </div>
         </CardContent>
