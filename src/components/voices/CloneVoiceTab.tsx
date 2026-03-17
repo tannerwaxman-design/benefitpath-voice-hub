@@ -43,6 +43,7 @@ export function CloneVoiceTab() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [clonedVoice, setClonedVoice] = useState<ClonedVoiceInfo | null>(null);
+  const [isFinalizingRecording, setIsFinalizingRecording] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
