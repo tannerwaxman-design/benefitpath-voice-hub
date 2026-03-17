@@ -47,7 +47,6 @@ export function useMyVoices() {
   return useQuery({
     queryKey: ["voices", "my-collection"],
     queryFn: async () => {
-      // Get user's voice collection
       const { data: collection, error: collError } = await supabase
         .from("user_voice_collection" as any)
         .select("voice_id");
@@ -55,14 +54,12 @@ export function useMyVoices() {
 
       const collectionIds = new Set((collection || []).map((c: any) => c.voice_id));
 
-      // Get tenant's cloned voices
       const { data: clonedVoices, error: cloneError } = await supabase
         .from("voices" as any)
         .select("*")
         .eq("type", "cloned");
       if (cloneError) throw cloneError;
 
-      // Get preset voices that are in collection
       const collectionArray = Array.from(collectionIds);
       let presetVoices: Voice[] = [];
       if (collectionArray.length > 0) {
@@ -74,7 +71,6 @@ export function useMyVoices() {
         presetVoices = (data || []) as unknown as Voice[];
       }
 
-      // Get agents to show "used by"
       const { data: agents } = await supabase
         .from("agents")
         .select("agent_name, voice_id");
@@ -96,7 +92,6 @@ export function useVoiceLibrary() {
   return useQuery({
     queryKey: ["voices", "library"],
     queryFn: async () => {
-      // Get all global preset voices
       const { data: voices, error } = await supabase
         .from("voices" as any)
         .select("*")
@@ -105,7 +100,6 @@ export function useVoiceLibrary() {
         .order("name");
       if (error) throw error;
 
-      // Get user's collection to know which are added
       const { data: collection } = await supabase
         .from("user_voice_collection" as any)
         .select("voice_id");
@@ -165,12 +159,10 @@ export function useSetDefaultVoice() {
 
   return useMutation({
     mutationFn: async (voiceId: string) => {
-      // Remove default from all tenant voices
       await supabase
         .from("voices" as any)
         .update({ is_default: false } as any)
         .eq("is_default", true);
-      // Set new default
       const { error } = await supabase
         .from("voices" as any)
         .update({ is_default: true } as any)
@@ -203,23 +195,30 @@ export function useDeleteVoice() {
   });
 }
 
-// TTS preview hook with caching
+// TTS preview hook — fetches audio binary via fetch (NOT supabase.functions.invoke)
+// and plays it in the browser with caching
 export function useTtsPreview() {
   const cacheRef = useRef<Map<string, string>>(new Map());
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const play = useCallback(async (text: string, voiceId: string) => {
     const cacheKey = `${voiceId}:${text}`;
-    
+
     // Stop any currently playing audio
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
 
     // Check cache
     let audioUrl = cacheRef.current.get(cacheKey);
     if (!audioUrl) {
+      // Get the current session token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tts-preview`,
         {
@@ -227,34 +226,55 @@ export function useTtsPreview() {
           headers: {
             "Content-Type": "application/json",
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ text, voice_id: voiceId }),
         }
       );
 
-      if (!response.ok) throw new Error("TTS preview failed");
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("TTS preview response error:", response.status, errText);
+        throw new Error(`TTS preview failed (${response.status})`);
+      }
+
+      const contentType = response.headers.get("Content-Type") || "";
+      if (!contentType.includes("audio")) {
+        // Server returned JSON error instead of audio
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error((errJson as any).error || "Unexpected response from TTS");
+      }
 
       const blob = await response.blob();
+      if (blob.size === 0) throw new Error("Empty audio response");
+
       audioUrl = URL.createObjectURL(blob);
       cacheRef.current.set(cacheKey, audioUrl);
     }
 
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
-    await audio.play();
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       audio.onended = () => {
         audioRef.current = null;
         resolve();
       };
+      audio.onerror = (e) => {
+        audioRef.current = null;
+        reject(new Error("Audio playback failed"));
+      };
+      audio.play().catch((err) => {
+        audioRef.current = null;
+        reject(err);
+      });
     });
   }, []);
 
   const stop = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
   }, []);
@@ -267,13 +287,11 @@ export function useAvailableVoices() {
   return useQuery({
     queryKey: ["voices", "available-for-agent"],
     queryFn: async () => {
-      // Get cloned voices
       const { data: cloned } = await supabase
         .from("voices" as any)
         .select("*")
         .eq("type", "cloned");
 
-      // Get collection
       const { data: collection } = await supabase
         .from("user_voice_collection" as any)
         .select("voice_id");
@@ -289,7 +307,6 @@ export function useAvailableVoices() {
         presets = (data || []) as unknown as Voice[];
       }
 
-      // If no voices in collection, return all global presets
       if (presets.length === 0 && (!cloned || cloned.length === 0)) {
         const { data } = await supabase
           .from("voices" as any)
