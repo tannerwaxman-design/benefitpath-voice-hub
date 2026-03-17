@@ -213,6 +213,7 @@ export function CloneVoiceTab() {
       drawWaveform();
     } catch (error) {
       console.error("Voice recording failed to start", error);
+      setIsFinalizingRecording(false);
       toast({
         title: "Microphone access required",
         description: error instanceof Error ? error.message : "Please allow microphone access in your browser settings.",
@@ -223,8 +224,8 @@ export function CloneVoiceTab() {
 
   const stopRecording = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setIsFinalizingRecording(true);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-    setStatus("recorded");
   };
 
   const playAudio = () => {
