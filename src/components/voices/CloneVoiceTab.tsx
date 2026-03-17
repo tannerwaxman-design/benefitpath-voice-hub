@@ -423,6 +423,9 @@ export function CloneVoiceTab() {
   };
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+  const formatBytes = (bytes: number) => bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+    : `${Math.round(bytes / 1024)} KB`;
 
   // ── Gate: Enterprise only ──
   if (!isEnterprise) {
