@@ -5,10 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Download, Play, Search, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, Phone } from "lucide-react";
 import CallDetailPanel, { type CallWithRelations } from "@/components/calls/CallDetailPanel";
+import { TableSkeleton } from "@/components/ui/page-skeletons";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
+import { useNavigate } from "react-router-dom";
 
 const outcomeColors: Record<string, string> = {
   connected: "bg-success/10 text-success",
@@ -38,6 +42,7 @@ const reviewStatusColors: Record<string, string> = {
 };
 
 export default function CallLogs() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [directionFilter, setDirectionFilter] = useState("all");
@@ -45,7 +50,8 @@ export default function CallLogs() {
   const [page, setPage] = useState(0);
   const perPage = 10;
 
-  const { data: calls, isLoading } = useCalls({ outcome: outcomeFilter, direction: directionFilter, search, limit: 200 });
+  const { data: calls, isLoading, isError, refetch } = useCalls({ outcome: outcomeFilter, direction: directionFilter, search, limit: 200 });
+  const showSkeleton = useDelayedLoading(isLoading);
 
   const paged = useMemo(() => {
     const list = calls || [];
@@ -64,17 +70,28 @@ export default function CallLogs() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   }
 
-  if (isLoading) {
+  const hasFilters = search || outcomeFilter !== "all" || directionFilter !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setOutcomeFilter("all");
+    setDirectionFilter("all");
+    setPage(0);
+  };
+
+  if (showSkeleton) {
     return (
       <div className="space-y-6">
         <h1 className="page-title">Call Logs</h1>
-        <Skeleton className="h-96 w-full" />
+        <TableSkeleton rows={10} cols={8} />
       </div>
     );
   }
 
+  if (isError) return <ErrorState message="We couldn't load your call logs." onRetry={() => refetch()} />;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Call Logs</h1>
         <Button variant="outline"><Download className="h-4 w-4 mr-2" /> Export CSV</Button>
@@ -104,58 +121,66 @@ export default function CallLogs() {
       </div>
 
       {(!calls || calls.length === 0) ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-lg font-medium text-foreground mb-2">No calls yet</p>
-            <p className="text-sm text-muted-foreground">Calls will appear here once your agents start making them.</p>
-          </CardContent>
-        </Card>
+        hasFilters ? (
+          <EmptyState
+            icon={Search}
+            title="No calls match your filters"
+            description="Try adjusting your date range, outcome, or search term."
+            actionLabel="Clear Filters"
+            onAction={clearFilters}
+          />
+        ) : (
+          <EmptyState
+            icon={Phone}
+            title="No calls yet"
+            description="Once your agents start making calls, they'll appear here with full transcripts and analytics."
+            actionLabel="Create an Agent"
+            onAction={() => navigate("/agents/new")}
+          />
+        )
       ) : (
         <Card>
           <CardContent className="p-0">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-secondary/50">
-                  {["dir", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Score", "Review", "actions"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left section-label">{h === "dir" || h === "actions" ? "" : h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paged.map((call: any, i: number) => (
-                  <tr key={call.id} className={`border-t hover:bg-secondary/20 cursor-pointer ${i % 2 ? "bg-secondary/10" : ""}`} onClick={() => setSelectedCall(call)}>
-                    <td className="px-4 py-3">
-                      {call.direction === "inbound"
-                        ? <ArrowDownLeft className="h-4 w-4 text-primary" />
-                        : <ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-foreground">{formatDate(call.started_at)}</td>
-                    <td className="px-4 py-3"><p className="text-sm font-medium text-foreground">{call.contact_name || "Unknown"}</p><p className="text-xs text-muted-foreground">{call.to_number}</p></td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{call.agents?.agent_name || "—"}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(call.duration_seconds)}</td>
-                    <td className="px-4 py-3"><Badge variant="secondary" className={`${outcomeColors[call.outcome] || "bg-secondary"} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge></td>
-                    <td className="px-4 py-3">
-                      {call.quality_score != null ? (
-                        <span className={`text-sm font-semibold ${
-                          call.quality_score >= 80 ? "text-success" :
-                          call.quality_score >= 60 ? "text-warning" : "text-destructive"
-                        }`}>
-                          {call.quality_score}/100
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="secondary" className={`${reviewStatusColors[call.review_status || "not_reviewed"] || "bg-secondary"} border-0 text-[10px]`}>
-                        {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-secondary/50">
+                    {["", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Score", "Review", ""].map((h, i) => (
+                      <th key={i} className="px-4 py-3 text-left section-label">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paged.map((call: any, i: number) => (
+                    <tr key={call.id} className={`border-t hover:bg-secondary/20 cursor-pointer transition-colors ${i % 2 ? "bg-secondary/10" : ""}`} onClick={() => setSelectedCall(call)}>
+                      <td className="px-4 py-3">
+                        {call.direction === "inbound"
+                          ? <ArrowDownLeft className="h-4 w-4 text-primary" />
+                          : <ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-foreground">{formatDate(call.started_at)}</td>
+                      <td className="px-4 py-3"><p className="text-sm font-medium text-foreground">{call.contact_name || "Unknown"}</p><p className="text-xs text-muted-foreground">{call.to_number}</p></td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{call.agents?.agent_name || "—"}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(call.duration_seconds)}</td>
+                      <td className="px-4 py-3"><Badge variant="secondary" className={`${outcomeColors[call.outcome] || "bg-secondary"} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge></td>
+                      <td className="px-4 py-3">
+                        {call.quality_score != null ? (
+                          <span className={`text-sm font-semibold ${call.quality_score >= 80 ? "text-success" : call.quality_score >= 60 ? "text-warning" : "text-destructive"}`}>
+                            {call.quality_score}/100
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="secondary" className={`${reviewStatusColors[call.review_status || "not_reviewed"] || "bg-secondary"} border-0 text-[10px]`}>
+                          {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary" aria-label="Play recording"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <div className="flex items-center justify-between px-4 py-3 border-t">
               <p className="text-sm text-muted-foreground">Showing {page * perPage + 1}-{Math.min((page + 1) * perPage, calls?.length || 0)} of {calls?.length || 0}</p>
               <div className="flex gap-1">
@@ -167,7 +192,6 @@ export default function CallLogs() {
         </Card>
       )}
 
-      {/* Call Detail Sheet */}
       <Sheet open={!!selectedCall} onOpenChange={() => setSelectedCall(null)}>
         <SheetContent className="w-[500px] sm:w-[600px] overflow-auto">
           {selectedCall && <CallDetailPanel call={selectedCall} onClose={() => setSelectedCall(null)} />}
