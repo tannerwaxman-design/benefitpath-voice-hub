@@ -120,6 +120,7 @@ export default function BillingUsage() {
   const subscription = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
 
   const tenant = billing?.tenant || user?.tenant;
   const plan = tenant?.plan || "voice_ai_pro";
