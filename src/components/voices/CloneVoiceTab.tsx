@@ -56,6 +56,8 @@ export function CloneVoiceTab() {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const rawChunksRef = useRef<Float32Array[]>([]);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const fallbackBlobRef = useRef<Blob | null>(null);
+  const mimeTypeRef = useRef<string>("");
 
   // Check for existing cloned voice
   useEffect(() => {
@@ -79,8 +81,14 @@ export function CloneVoiceTab() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (audioRef.current) audioRef.current.pause();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      scriptProcessorRef.current?.disconnect();
+      sourceRef.current?.disconnect();
+      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+        void audioCtxRef.current.close();
+      }
     };
   }, [audioUrl]);
 
@@ -140,6 +148,22 @@ export function CloneVoiceTab() {
 
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Microphone recording is not supported in this browser.");
+      }
+
+      fallbackBlobRef.current = null;
+      rawChunksRef.current = [];
+      chunksRef.current = [];
+
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
+      setAudioBlob(null);
+      setIsPlaying(false);
+      setProcessingProgress(0);
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -162,61 +186,93 @@ export function CloneVoiceTab() {
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      // Capture raw PCM via ScriptProcessor for WAV conversion
-      rawChunksRef.current = [];
-      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-      scriptProcessorRef.current = processor;
-      processor.onaudioprocess = (e) => {
-        const input = e.inputBuffer.getChannelData(0);
-        rawChunksRef.current.push(new Float32Array(input));
-      };
-      source.connect(processor);
-      processor.connect(audioCtx.destination);
-
-      // Also keep MediaRecorder for instant playback preview
-      let mimeType = "audio/webm;codecs=opus";
-      if (MediaRecorder.isTypeSupported("audio/webm;codecs=pcm")) {
-        mimeType = "audio/webm;codecs=pcm";
+      try {
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        scriptProcessorRef.current = processor;
+        processor.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0);
+          rawChunksRef.current.push(new Float32Array(input));
+        };
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+      } catch (processorError) {
+        console.warn("PCM capture unavailable, falling back to MediaRecorder blob only", processorError);
+        scriptProcessorRef.current = null;
       }
-      const mediaRecorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 256000 });
+
+      const candidateMimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/ogg;codecs=opus",
+      ];
+      const mimeType = candidateMimeTypes.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+      mimeTypeRef.current = mimeType || "audio/webm";
+
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 256000 })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mediaRecorder.onstop = () => {
-        // Build WAV from raw PCM for cloning (high quality)
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const previewBlob = new Blob(chunksRef.current, { type: mimeTypeRef.current || "audio/webm" });
+        fallbackBlobRef.current = previewBlob.size > 0 ? previewBlob : null;
+
         const totalLength = rawChunksRef.current.reduce((acc, c) => acc + c.length, 0);
-        const merged = new Float32Array(totalLength);
-        let offset = 0;
-        for (const chunk of rawChunksRef.current) {
-          merged.set(chunk, offset);
-          offset += chunk.length;
+        let finalBlob: Blob | null = fallbackBlobRef.current;
+
+        if (totalLength > 0) {
+          const merged = new Float32Array(totalLength);
+          let offset = 0;
+          for (const chunk of rawChunksRef.current) {
+            merged.set(chunk, offset);
+            offset += chunk.length;
+          }
+          finalBlob = encodeWav(merged, audioCtx.sampleRate);
         }
-        const wavBlob = encodeWav(merged, audioCtx.sampleRate);
-        setAudioBlob(wavBlob);
 
-        // Use webm for preview playback (instant)
-        const previewBlob = new Blob(chunksRef.current, { type: mimeType });
-        setAudioUrl(URL.createObjectURL(previewBlob));
+        if (finalBlob) {
+          setAudioBlob(finalBlob);
+        }
 
-        stream.getTracks().forEach(t => t.stop());
+        if (fallbackBlobRef.current) {
+          setAudioUrl((previousUrl) => {
+            if (previousUrl) URL.revokeObjectURL(previousUrl);
+            return URL.createObjectURL(fallbackBlobRef.current!);
+          });
+        }
+
+        scriptProcessorRef.current?.disconnect();
+        sourceRef.current?.disconnect();
+        stream.getTracks().forEach((t) => t.stop());
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
-        processor.disconnect();
-        source.disconnect();
+        if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+          await audioCtxRef.current.close();
+        }
       };
 
       mediaRecorder.start(250);
       setStatus("recording");
       setDuration(0);
       timerRef.current = setInterval(() => {
-        setDuration(prev => {
+        setDuration((prev) => {
           const next = prev + 1;
           if (next >= MAX_DURATION) stopRecording();
           return next;
         });
       }, 1000);
       drawWaveform();
-    } catch {
-      toast({ title: "Microphone access required", description: "Please allow microphone access in your browser settings.", variant: "destructive" });
+    } catch (error) {
+      console.error("Voice recording failed to start", error);
+      toast({
+        title: "Microphone access required",
+        description: error instanceof Error ? error.message : "Please allow microphone access in your browser settings.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -261,7 +317,8 @@ export function CloneVoiceTab() {
 
     try {
       const formData = new FormData();
-      formData.append("audio", audioBlob, "voice-sample.wav");
+      const fileExtension = audioBlob.type.includes("wav") ? "wav" : audioBlob.type.includes("mp4") ? "m4a" : audioBlob.type.includes("ogg") ? "ogg" : "webm";
+      formData.append("audio", audioBlob, `voice-sample.${fileExtension}`);
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
       const { data: sessionData } = await supabase.auth.getSession();
