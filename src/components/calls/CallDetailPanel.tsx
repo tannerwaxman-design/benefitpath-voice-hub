@@ -145,7 +145,7 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
 
   const handleRefetchTranscript = async () => {
     if (!call.vapi_call_id) {
-      toast.error("No VAPI call ID found for this call");
+      toast.error("No call ID found for this call");
       return;
     }
     setIsRefetching(true);

@@ -87,7 +87,7 @@ export default function PhoneNumbers() {
   const [selectedPhoneId, setSelectedPhoneId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
 
-  // VAPI free number form
+  // Free number form
   const [newType, setNewType] = useState<"local" | "toll_free">("local");
   const [areaCode, setAreaCode] = useState("720");
 
@@ -275,7 +275,7 @@ export default function PhoneNumbers() {
                               : "border-primary/30 text-primary"
                           }`}
                         >
-                          {((pn as Record<string, unknown>).provider as string) || "vapi"}
+                          {((pn as Record<string, unknown>).provider as string) === "vapi" ? "platform" : ((pn as Record<string, unknown>).provider as string) || "platform"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -422,7 +422,7 @@ export default function PhoneNumbers() {
               </TabsTrigger>
               <TabsTrigger value="vapi-free" className="flex-1">
                 <Phone className="h-3.5 w-3.5 mr-1.5" />
-                VAPI Free
+                Free Number
               </TabsTrigger>
             </TabsList>
 
@@ -577,7 +577,7 @@ export default function PhoneNumbers() {
               )}
             </TabsContent>
 
-            {/* VAPI Free Number */}
+            {/* Free Number */}
             <TabsContent value="vapi-free" className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-warning/10 text-xs text-warning">
                 Free numbers are limited and shared. For production use, connect your own Twilio
