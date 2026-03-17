@@ -578,8 +578,8 @@ export default function Settings() {
                       )}
 
                       <div className="mt-4 space-y-2 text-sm">
-                        <p className="font-medium text-foreground mb-2">Cost per component (VAPI at-cost)</p>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Platform (Vapi)</span><span className="text-foreground">${billing.costSummary.vapi.toFixed(2)}</span></div>
+                        <p className="font-medium text-foreground mb-2">Cost per component (at-cost)</p>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Platform</span><span className="text-foreground">${billing.costSummary.vapi.toFixed(2)}</span></div>
                         <div className="flex justify-between"><span className="text-muted-foreground">Transport</span><span className="text-foreground">${billing.costSummary.transport.toFixed(2)}</span></div>
                         <div className="flex justify-between"><span className="text-muted-foreground">Speech-to-Text</span><span className="text-foreground">${billing.costSummary.stt.toFixed(2)}</span></div>
                         <div className="flex justify-between"><span className="text-muted-foreground">LLM</span><span className="text-foreground">${billing.costSummary.llm.toFixed(2)}</span></div>

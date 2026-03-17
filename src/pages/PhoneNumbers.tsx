@@ -577,7 +577,7 @@ export default function PhoneNumbers() {
               )}
             </TabsContent>
 
-            {/* VAPI Free Number */}
+            {/* Free Number */}
             <TabsContent value="vapi-free" className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-warning/10 text-xs text-warning">
                 Free numbers are limited and shared. For production use, connect your own Twilio
