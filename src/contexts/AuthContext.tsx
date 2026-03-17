@@ -17,6 +17,9 @@ export interface TenantInfo {
   billing_cycle_start: string;
   billing_cycle_end: string;
   hard_stop_enabled: boolean;
+  auto_refill_enabled: boolean;
+  auto_refill_threshold: number;
+  auto_refill_package: string;
 }
 
 export interface UserProfile {
@@ -52,7 +55,6 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
-  // Get tenant_users record
   const { data: tenantUser, error: tuError } = await supabase
     .from("tenant_users")
     .select("tenant_id, role")
@@ -63,10 +65,9 @@ async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
 
   if (tuError || !tenantUser) return null;
 
-  // Get tenant info
   const { data: tenant, error: tError } = await supabase
     .from("tenants")
-    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, credit_balance, industry, status, default_timezone, onboarding_completed, overage_rate_per_minute, billing_cycle_start, billing_cycle_end, hard_stop_enabled")
+    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, credit_balance, industry, status, default_timezone, onboarding_completed, overage_rate_per_minute, billing_cycle_start, billing_cycle_end, hard_stop_enabled, auto_refill_enabled, auto_refill_threshold, auto_refill_package")
     .eq("id", tenantUser.tenant_id)
     .single();
 
@@ -95,14 +96,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         setSession(newSession);
         setSupabaseUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          // Defer profile fetch to avoid deadlocks
           setTimeout(() => loadProfile(newSession.user), 0);
         } else {
           setUser(null);
@@ -114,7 +113,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // Then check existing session
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (existingSession?.user) {
         setSession(existingSession);
