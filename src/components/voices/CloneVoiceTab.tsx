@@ -325,27 +325,6 @@ export function CloneVoiceTab() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
   };
 
-  const playAudio = () => {
-    if (!audioBlob) return;
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    const audio = new Audio();
-    audio.play().catch(() => {}); // Unlock for iOS Safari
-    audio.preload = "auto";
-    audio.src = URL.createObjectURL(audioBlob);
-    audioRef.current = audio;
-    audio.onended = () => setIsPlaying(false);
-    audio.onerror = () => {
-      console.error("Audio playback error", audio.error);
-      setIsPlaying(false);
-    };
-    audio.play().then(() => setIsPlaying(true)).catch((err) => {
-      console.error("Playback failed", err);
-      setIsPlaying(false);
-    });
-  };
-
-  const pauseAudio = () => { audioRef.current?.pause(); setIsPlaying(false); };
-
   const reRecord = () => {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioBlob(null);
@@ -355,6 +334,8 @@ export function CloneVoiceTab() {
     setProcessingProgress(0);
     setClonedVoice(null);
     setIsFinalizingRecording(false);
+    setRecordedDurationSeconds(null);
+    setRecordingSizeBytes(null);
   };
 
   const submitVoiceClone = async () => {
