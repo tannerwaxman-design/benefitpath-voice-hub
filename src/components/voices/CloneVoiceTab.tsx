@@ -185,11 +185,14 @@ export function CloneVoiceTab() {
             if (prev) URL.revokeObjectURL(prev);
             return URL.createObjectURL(recordedBlob);
           });
+          setStatus("recorded");
         } else {
           console.warn("Recording produced empty blob");
-          toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone.", variant: "destructive" });
+          setStatus("idle");
+          toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone and try again.", variant: "destructive" });
         }
 
+        setIsFinalizingRecording(false);
         stream.getTracks().forEach((t) => t.stop());
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
         if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
