@@ -261,7 +261,7 @@ export function CloneVoiceTab() {
 
     try {
       const formData = new FormData();
-      formData.append("audio", audioBlob, "voice-sample.webm");
+      formData.append("audio", audioBlob, "voice-sample.wav");
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
       const { data: sessionData } = await supabase.auth.getSession();
