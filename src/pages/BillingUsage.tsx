@@ -165,6 +165,40 @@ export default function BillingUsage() {
     return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
+  const handleCheckout = async (planId: string) => {
+    const stripeplan = STRIPE_PLANS[planId as keyof typeof STRIPE_PLANS];
+    if (!stripeplan) return;
+    setCheckoutLoading(planId);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: stripeplan.price_id },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: any) {
+      toast({ title: "Checkout failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  const handleManagePayment = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: any) {
+      toast({ title: "Could not open billing portal", description: err.message, variant: "destructive" });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const handleHardStopToggle = (checked: boolean) => {
     updateSettings.mutate({ hard_stop_enabled: checked });
   };
