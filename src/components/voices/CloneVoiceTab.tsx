@@ -160,6 +160,10 @@ export function CloneVoiceTab() {
         throw new Error("Microphone recording is not supported in this browser.");
       }
 
+      if (typeof MediaRecorder === "undefined") {
+        throw new Error("Audio recording is not supported in this browser.");
+      }
+
       chunksRef.current = [];
 
       if (audioUrl) {
@@ -167,8 +171,11 @@ export function CloneVoiceTab() {
         setAudioUrl(null);
       }
       setAudioBlob(null);
-      setIsPlaying(false);
+      setRecordedDurationSeconds(null);
+      setRecordingSizeBytes(null);
       setProcessingProgress(0);
+      setIsFinalizingRecording(false);
+      setStatus("idle");
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -181,6 +188,24 @@ export function CloneVoiceTab() {
       });
       streamRef.current = stream;
 
+      const audioTracks = stream.getAudioTracks();
+      console.log("Microphone access granted, tracks:", audioTracks.map((track) => ({
+        label: track.label,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+      })));
+
+      if (audioTracks.length === 0) {
+        throw new Error("No audio tracks found in the microphone stream.");
+      }
+
+      audioTracks.forEach((track) => {
+        track.onmute = () => console.warn("Microphone track muted", track.label);
+        track.onunmute = () => console.log("Microphone track unmuted", track.label);
+        track.onended = () => console.warn("Microphone track ended", track.label);
+      });
+
       // AudioContext only for waveform visualization
       const audioCtx = new AudioContext({ sampleRate: 44100 });
       audioCtxRef.current = audioCtx;
@@ -191,7 +216,6 @@ export function CloneVoiceTab() {
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      // Use MediaRecorder for capture — same blob for playback and upload
       const candidateMimeTypes = [
         "audio/webm;codecs=opus",
         "audio/webm",
@@ -200,41 +224,79 @@ export function CloneVoiceTab() {
       ];
       const mimeType = candidateMimeTypes.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
       mimeTypeRef.current = mimeType || "audio/webm";
+      console.log("Using MIME type:", mimeTypeRef.current);
 
       const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 256000 })
-        : new MediaRecorder(stream);
+        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 })
+        : new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
       mediaRecorderRef.current = mediaRecorder;
 
+      mediaRecorder.onstart = () => {
+        console.log("MediaRecorder started, state:", mediaRecorder.state);
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+      };
+
       mediaRecorder.ondataavailable = (e) => {
+        console.log("Audio chunk received, size:", e.data.size, "bytes");
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = async () => {
-        const recordedBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || mimeTypeRef.current });
+        try {
+          const totalSize = chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
+          console.log("MediaRecorder stopped, total chunks:", chunksRef.current.length);
+          console.log("Total audio data size:", totalSize, "bytes");
 
-        if (recordedBlob.size > 0) {
+          if (totalSize === 0) {
+            chunksRef.current = [];
+            setStatus("idle");
+            toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone and try again.", variant: "destructive" });
+            return;
+          }
+
+          const recordedBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || mimeTypeRef.current || "audio/webm" });
+          chunksRef.current = [];
+          console.log("Final audio blob size:", recordedBlob.size, "bytes, type:", recordedBlob.type);
+
+          if (recordedBlob.size < MIN_RECORDING_SIZE_BYTES) {
+            setStatus("idle");
+            toast({ title: "Recording too small", description: "The recording was too short or empty. Please try again and speak clearly into your microphone.", variant: "destructive" });
+            return;
+          }
+
+          const { url, duration: detectedDuration } = await validateRecordedAudio(recordedBlob);
           setAudioBlob(recordedBlob);
+          setRecordedDurationSeconds(detectedDuration);
+          setRecordingSizeBytes(recordedBlob.size);
           setAudioUrl((prev) => {
             if (prev) URL.revokeObjectURL(prev);
-            return URL.createObjectURL(recordedBlob);
+            return url;
           });
           setStatus("recorded");
-        } else {
-          console.warn("Recording produced empty blob");
+          console.log("Audio is playable, duration:", detectedDuration, "seconds");
+        } catch (error) {
+          console.error("Recorded audio validation failed", error);
           setStatus("idle");
-          toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone and try again.", variant: "destructive" });
-        }
-
-        setIsFinalizingRecording(false);
-        stream.getTracks().forEach((t) => t.stop());
-        if (animationRef.current) cancelAnimationFrame(animationRef.current);
-        if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-          await audioCtxRef.current.close();
+          toast({
+            title: "Recording failed",
+            description: error instanceof Error ? error.message : "The recording could not be validated. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsFinalizingRecording(false);
+          stream.getTracks().forEach((t) => t.stop());
+          if (animationRef.current) cancelAnimationFrame(animationRef.current);
+          if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+            await audioCtxRef.current.close();
+          }
         }
       };
 
       mediaRecorder.start(1000);
+      console.log("Recording started successfully");
       setStatus("recording");
       setDuration(0);
       timerRef.current = setInterval(() => {
@@ -247,6 +309,7 @@ export function CloneVoiceTab() {
       drawWaveform();
     } catch (error) {
       console.error("Voice recording failed to start", error);
+      setStatus("idle");
       setIsFinalizingRecording(false);
       toast({
         title: "Microphone access required",
