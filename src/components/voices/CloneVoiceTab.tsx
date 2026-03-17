@@ -257,6 +257,7 @@ export function CloneVoiceTab() {
     setStatus("idle");
     setProcessingProgress(0);
     setClonedVoice(null);
+    setIsFinalizingRecording(false);
   };
 
   const submitVoiceClone = async () => {
