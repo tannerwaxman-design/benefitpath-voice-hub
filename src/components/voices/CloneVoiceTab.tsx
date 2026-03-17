@@ -692,21 +692,86 @@ export function CloneVoiceTab() {
             {/* Script sections */}
             <ScriptDisplay editable={customizeScript} />
 
-            {/* Tips */}
-            <div className="space-y-1 p-3 rounded-lg bg-muted/50">
-              <p className="text-xs font-semibold text-muted-foreground">Pro tips:</p>
-              <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
-                <li>Read it like you're talking to a real client, not reading a script</li>
-                <li>Keep a steady pace — don't rush through it</li>
-                <li>If you stumble on a word, just keep going naturally</li>
-                <li>Smile while you speak — your clients will hear it</li>
-              </ul>
+            {/* Environment & recording guidance */}
+            <div className="space-y-3 p-4 rounded-lg border border-border bg-secondary/30">
+              <p className="text-sm font-semibold text-foreground">⚠️ Before You Record — Read This First</p>
+              <p className="text-xs text-muted-foreground">
+                The quality of your voice clone depends almost entirely on the quality of your recording.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-1">✅ DO:</p>
+                  <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+                    <li>Record in the quietest room available</li>
+                    <li>Close windows, turn off fans/AC/TV</li>
+                    <li>Use earbuds with a mic or sit close to your laptop mic</li>
+                    <li>Speak at a normal conversational volume</li>
+                    <li>Read naturally, like you're talking to a client</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-1">❌ DON'T:</p>
+                  <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+                    <li>Record in a car, coffee shop, or noisy office</li>
+                    <li>Use speakerphone</li>
+                    <li>Whisper or yell</li>
+                    <li>Rush through the script</li>
+                    <li>Stop and restart mid-sentence — just keep going</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={status === "env-testing"}
+                  onClick={async () => {
+                    setStatus("env-testing" as CloneStatus);
+                    try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                      const recorder = new MediaRecorder(stream);
+                      const chunks: Blob[] = [];
+                      recorder.ondataavailable = (e) => chunks.push(e.data);
+                      recorder.start();
+                      await new Promise(resolve => setTimeout(resolve, 5000));
+                      recorder.stop();
+                      stream.getTracks().forEach(t => t.stop());
+                      await new Promise(resolve => setTimeout(resolve, 200));
+                      const blob = new Blob(chunks, { type: "audio/webm" });
+                      const url = URL.createObjectURL(blob);
+                      const audio = new Audio(url);
+                      audio.onended = () => {
+                        URL.revokeObjectURL(url);
+                        toast({
+                          title: "Environment test complete",
+                          description: "If you heard background noise, find a quieter spot before recording.",
+                        });
+                        setStatus("idle");
+                      };
+                      audio.play();
+                    } catch {
+                      toast({ title: "Microphone access required", variant: "destructive" });
+                      setStatus("idle");
+                    }
+                  }}
+                >
+                  {status === "env-testing" ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Testing (5s)...</>
+                  ) : (
+                    <><Mic className="h-3.5 w-3.5" /> Test My Environment</>
+                  )}
+                </Button>
+              </div>
             </div>
 
-            <Button onClick={recordingMode === "section" ? () => { setStatus("idle"); } : startRecording} className="w-full gap-2" size="lg"
-              {...(recordingMode === "section" ? {} : {})}
+            <Button
+              onClick={recordingMode === "section" ? () => { setStatus("idle"); } : startRecording}
+              className="w-full gap-2"
+              size="lg"
+              disabled={status === "env-testing"}
             >
-              <Mic className="h-4 w-4" /> Start Recording
+              <Mic className="h-4 w-4" /> I'm Ready — Start Recording
             </Button>
           </div>
         )}
