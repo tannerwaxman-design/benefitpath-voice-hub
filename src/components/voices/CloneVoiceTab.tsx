@@ -320,9 +320,30 @@ export function CloneVoiceTab() {
       formData.append("audio", blobToSubmit, "voice-sample.webm");
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
-      const { data, error } = await supabase.functions.invoke("clone-voice", { body: formData });
+      // Use raw fetch instead of supabase.functions.invoke for FormData
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/clone-voice`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: formData,
+        }
+      );
+
       clearInterval(progressInterval);
-      if (error) throw error;
+      if (!response.ok) {
+        const errBody = await response.text();
+        throw new Error(errBody || `Clone failed (${response.status})`);
+      }
+
+      const data = await response.json();
 
       setProcessingProgress(100);
 
