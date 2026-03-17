@@ -136,11 +136,33 @@ export default function PhoneNumbers() {
     assignNumber.mutate({ phoneId, agentId: null });
   };
 
+  const validateTwilioCreds = (): boolean => {
+    if (!twilioSid.startsWith("AC") || twilioSid.length < 34) {
+      toast({ title: "Invalid Account SID", description: "Twilio Account SIDs start with 'AC' and are 34 characters long.", variant: "destructive" });
+      return false;
+    }
+    if (twilioToken.length < 32) {
+      toast({ title: "Invalid Auth Token", description: "Twilio Auth Tokens are 32 characters long.", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
+  const validateE164 = (num: string): boolean => {
+    const e164Regex = /^\+[1-9]\d{6,14}$/;
+    if (!e164Regex.test(num)) {
+      toast({ title: "Invalid phone number", description: "Phone number must be in E.164 format (e.g. +15551234567).", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
   const handleImportTwilio = () => {
     if (!importNumber || !twilioSid || !twilioToken) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
     }
+    if (!validateTwilioCreds() || !validateE164(importNumber)) return;
     importTwilio.mutate(
       {
         phone_number: importNumber,
@@ -163,6 +185,7 @@ export default function PhoneNumbers() {
       toast({ title: "Please enter your Twilio credentials", variant: "destructive" });
       return;
     }
+    if (!validateTwilioCreds()) return;
     searchTwilio.mutate(
       {
         area_code: buyAreaCode,
