@@ -635,7 +635,7 @@ export function CloneVoiceTab() {
     <Card className="border-border">
       <CardContent className="p-6">
         {/* IDLE */}
-        {status === "idle" && (
+        {(status === "idle" || status === "env-testing") && (
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-1">
               <Mic className="h-5 w-5 text-primary" />
