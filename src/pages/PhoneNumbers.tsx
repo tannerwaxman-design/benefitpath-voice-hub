@@ -490,7 +490,7 @@ export default function PhoneNumbers() {
                   <Label className="text-xs">Twilio Account SID</Label>
                   <Input
                     value={twilioSid}
-                    onChange={(e) => setTwilioSid(e.target.value)}
+                    onChange={(e) => { setTwilioSid(e.target.value); setTwilioVerified(false); }}
                     placeholder="AC..."
                     className="mt-1 text-xs"
                   />
@@ -500,11 +500,30 @@ export default function PhoneNumbers() {
                   <Input
                     type="password"
                     value={twilioToken}
-                    onChange={(e) => setTwilioToken(e.target.value)}
+                    onChange={(e) => { setTwilioToken(e.target.value); setTwilioVerified(false); }}
                     placeholder="••••••••"
                     className="mt-1 text-xs"
                   />
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={twilioVerified ? "outline" : "secondary"}
+                  size="sm"
+                  onClick={handleVerifyTwilio}
+                  disabled={twilioVerifying || !twilioSid || !twilioToken}
+                >
+                  {twilioVerifying ? (
+                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Verifying...</>
+                  ) : twilioVerified ? (
+                    <><Check className="h-3.5 w-3.5 mr-1.5 text-success" /> Verified</>
+                  ) : (
+                    <><ShieldCheck className="h-3.5 w-3.5 mr-1.5" /> Test Connection</>
+                  )}
+                </Button>
+                {twilioVerified && twilioAccountName && (
+                  <span className="text-xs text-success">{twilioAccountName}</span>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Phone Number (E.164)</Label>
