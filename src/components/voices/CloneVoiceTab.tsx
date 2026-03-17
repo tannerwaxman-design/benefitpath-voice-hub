@@ -171,7 +171,16 @@ export function CloneVoiceTab() {
   }, []);
 
   const initAudioCapture = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        sampleRate: 44100,
+        sampleSize: 16,
+        echoCancellation: false,   // Disable — degrades clone quality
+        noiseSuppression: false,   // Disable — strips vocal detail
+        autoGainControl: false,    // Disable — inconsistent volume
+      },
+    });
     streamRef.current = stream;
     const audioCtx = new AudioContext();
     audioCtxRef.current = audioCtx;
@@ -180,11 +189,23 @@ export function CloneVoiceTab() {
     analyser.fftSize = 2048;
     source.connect(analyser);
     analyserRef.current = analyser;
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+
+    // Choose highest quality codec available
+    let mimeType = "audio/webm;codecs=opus";
+    if (MediaRecorder.isTypeSupported("audio/webm;codecs=pcm")) {
+      mimeType = "audio/webm;codecs=pcm";
+    } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+      mimeType = "audio/webm;codecs=opus";
+    }
+
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType,
+      audioBitsPerSecond: 256000,
+    });
     mediaRecorderRef.current = mediaRecorder;
     chunksRef.current = [];
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-    return { mediaRecorder, stream };
+    return { mediaRecorder, stream, mimeType };
   };
 
   // ── Full-take recording ──
