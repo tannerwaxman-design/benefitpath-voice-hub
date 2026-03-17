@@ -595,17 +595,20 @@ export function CloneVoiceTab() {
               <Check className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">Recording Complete — {formatTime(duration)}</h3>
             </div>
+            {audioUrl && (
+              <audio controls src={audioUrl} className="w-full" preload="metadata" />
+            )}
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              {recordedDurationSeconds !== null && <span>Detected length: {recordedDurationSeconds.toFixed(1)}s</span>}
+              {recordingSizeBytes !== null && <span>File size: {formatBytes(recordingSizeBytes)}</span>}
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={isPlaying ? pauseAudio : playAudio} className="gap-1">
-                {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                {isPlaying ? "Pause" : "Play Back"}
-              </Button>
               <Button variant="outline" size="sm" onClick={reRecord} className="gap-1">
                 <RotateCcw className="h-3 w-3" /> Re-record
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">Happy with how it sounds? Your voice clone will be ready in about 2 minutes.</p>
-            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg">
+            <p className="text-sm text-muted-foreground">Listen to the recording first. If it sounds wrong or silent, re-record before creating the clone.</p>
+            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg" disabled={!audioBlob || audioBlob.size < MIN_RECORDING_SIZE_BYTES || recordedDurationSeconds === null}>
               <Mic className="h-4 w-4" /> Submit & Create My Voice
             </Button>
           </div>
