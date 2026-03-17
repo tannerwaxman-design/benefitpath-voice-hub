@@ -116,8 +116,42 @@ export function CloneVoiceTab() {
     };
     draw();
   }, []);
+  const validateRecordedAudio = useCallback((blob: Blob) => new Promise<{ url: string; duration: number }>((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const audio = document.createElement("audio");
+    let settled = false;
 
+    const cleanup = () => {
+      audio.onloadedmetadata = null;
+      audio.onerror = null;
+    };
 
+    audio.preload = "metadata";
+    audio.src = url;
+
+    audio.onloadedmetadata = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      const detectedDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      if (detectedDuration <= 0) {
+        URL.revokeObjectURL(url);
+        reject(new Error("The recording appears to be empty. Please try again."));
+        return;
+      }
+      resolve({ url, duration: detectedDuration });
+    };
+
+    audio.onerror = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      URL.revokeObjectURL(url);
+      reject(new Error("The recording could not be played back. Please try again."));
+    };
+
+    audio.load();
+  }), []);
 
 
   const startRecording = async () => {
