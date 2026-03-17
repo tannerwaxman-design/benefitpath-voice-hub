@@ -10,7 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
-import { CreditCard, Clock, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown } from "lucide-react";
+import { useSubscription } from "@/hooks/use-subscription";
+import { STRIPE_PLANS, getPlanByProductId } from "@/lib/stripe-config";
+import { supabase } from "@/integrations/supabase/client";
+import { CreditCard, Clock, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown, Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
 
 const planNames: Record<string, string> = {
@@ -114,6 +117,9 @@ export default function BillingUsage() {
   const { data: billing, isLoading } = useBillingUsage();
   const updateSettings = useUpdateBillingSettings();
   const { toast } = useToast();
+  const subscription = useSubscription();
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const tenant = billing?.tenant || user?.tenant;
   const plan = tenant?.plan || "voice_ai_pro";
@@ -157,6 +163,40 @@ export default function BillingUsage() {
   const formatDate = (d: string | undefined) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const handleCheckout = async (planId: string) => {
+    const stripeplan = STRIPE_PLANS[planId as keyof typeof STRIPE_PLANS];
+    if (!stripeplan) return;
+    setCheckoutLoading(planId);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: stripeplan.price_id },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: any) {
+      toast({ title: "Checkout failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  const handleManagePayment = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: any) {
+      toast({ title: "Could not open billing portal", description: err.message, variant: "destructive" });
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   const handleHardStopToggle = (checked: boolean) => {
@@ -218,7 +258,9 @@ export default function BillingUsage() {
               <Button variant="default" size="sm" onClick={() => document.getElementById("plans-section")?.scrollIntoView({ behavior: "smooth" })}>
                 Upgrade Plan
               </Button>
-              <Button variant="outline" size="sm">Manage Payment</Button>
+              <Button variant="outline" size="sm" onClick={handleManagePayment} disabled={portalLoading}>
+                {portalLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Loading…</> : "Manage Payment"}
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -367,9 +409,18 @@ export default function BillingUsage() {
                   <Button
                     variant={isCurrent ? "outline" : "default"}
                     className="w-full"
-                    disabled={isCurrent}
+                    disabled={isCurrent || checkoutLoading === p.id}
+                    onClick={() => {
+                      if (p.id === "voice_ai_custom") {
+                        window.open("mailto:sales@benefitpath.com?subject=Enterprise%20Plan%20Inquiry", "_blank");
+                      } else {
+                        handleCheckout(p.id);
+                      }
+                    }}
                   >
-                    {isCurrent ? "Current Plan" : p.id === "voice_ai_custom" ? "Contact Sales" : "Upgrade"}
+                    {checkoutLoading === p.id ? (
+                      <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing…</>
+                    ) : isCurrent ? "Current Plan" : p.id === "voice_ai_custom" ? "Contact Sales" : "Upgrade"}
                   </Button>
                 </CardContent>
               </Card>
