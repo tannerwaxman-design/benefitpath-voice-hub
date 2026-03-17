@@ -36,12 +36,16 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Audio file is required");
     }
 
+    if (audioFile.size < 10 * 1024) {
+      return errorResponse("Recorded audio was empty or too short. Please record at least 15 seconds and try again.", 400);
+    }
+
     // Validate file size (max 10MB)
     if (audioFile.size > 10 * 1024 * 1024) {
       return errorResponse("Audio file too large (max 10MB)");
     }
 
-    console.log(`[CLONE-VOICE] Starting clone for tenant=${auth.tenantId}, file size=${audioFile.size}, type=${audioFile.type}`);
+    console.log(`[CLONE-VOICE] Starting clone for tenant=${auth.tenantId}, name=${audioFile.name}, file size=${audioFile.size}, type=${audioFile.type}`);
 
     // Upload to ElevenLabs voice cloning API with optimized labels
     const elFormData = new FormData();

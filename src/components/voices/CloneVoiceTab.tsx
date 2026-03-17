@@ -6,11 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Mic, Square, Play, Pause, RotateCcw, Check, Loader2, Lock } from "lucide-react";
+import { Mic, Square, RotateCcw, Check, Loader2, Lock } from "lucide-react";
 import { TtsTestBox } from "./TtsTestBox";
 
 const MIN_DURATION = 15;
 const MAX_DURATION = 60;
+const MIN_RECORDING_SIZE_BYTES = 10 * 1024;
 
 type CloneStatus = "idle" | "recording" | "recorded" | "processing" | "ready" | "error";
 
@@ -40,15 +41,15 @@ export function CloneVoiceTab() {
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [clonedVoice, setClonedVoice] = useState<ClonedVoiceInfo | null>(null);
   const [isFinalizingRecording, setIsFinalizingRecording] = useState(false);
+  const [recordedDurationSeconds, setRecordedDurationSeconds] = useState<number | null>(null);
+  const [recordingSizeBytes, setRecordingSizeBytes] = useState<number | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
@@ -78,7 +79,6 @@ export function CloneVoiceTab() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (audioRef.current) audioRef.current.pause();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
@@ -116,14 +116,52 @@ export function CloneVoiceTab() {
     };
     draw();
   }, []);
+  const validateRecordedAudio = useCallback((blob: Blob) => new Promise<{ url: string; duration: number }>((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const audio = document.createElement("audio");
+    let settled = false;
 
+    const cleanup = () => {
+      audio.onloadedmetadata = null;
+      audio.onerror = null;
+    };
 
+    audio.preload = "metadata";
+    audio.src = url;
+
+    audio.onloadedmetadata = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      const detectedDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      if (detectedDuration <= 0) {
+        URL.revokeObjectURL(url);
+        reject(new Error("The recording appears to be empty. Please try again."));
+        return;
+      }
+      resolve({ url, duration: detectedDuration });
+    };
+
+    audio.onerror = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      URL.revokeObjectURL(url);
+      reject(new Error("The recording could not be played back. Please try again."));
+    };
+
+    audio.load();
+  }), []);
 
 
   const startRecording = async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Microphone recording is not supported in this browser.");
+      }
+
+      if (typeof MediaRecorder === "undefined") {
+        throw new Error("Audio recording is not supported in this browser.");
       }
 
       chunksRef.current = [];
@@ -133,8 +171,11 @@ export function CloneVoiceTab() {
         setAudioUrl(null);
       }
       setAudioBlob(null);
-      setIsPlaying(false);
+      setRecordedDurationSeconds(null);
+      setRecordingSizeBytes(null);
       setProcessingProgress(0);
+      setIsFinalizingRecording(false);
+      setStatus("idle");
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -147,6 +188,24 @@ export function CloneVoiceTab() {
       });
       streamRef.current = stream;
 
+      const audioTracks = stream.getAudioTracks();
+      console.log("Microphone access granted, tracks:", audioTracks.map((track) => ({
+        label: track.label,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+      })));
+
+      if (audioTracks.length === 0) {
+        throw new Error("No audio tracks found in the microphone stream.");
+      }
+
+      audioTracks.forEach((track) => {
+        track.onmute = () => console.warn("Microphone track muted", track.label);
+        track.onunmute = () => console.log("Microphone track unmuted", track.label);
+        track.onended = () => console.warn("Microphone track ended", track.label);
+      });
+
       // AudioContext only for waveform visualization
       const audioCtx = new AudioContext({ sampleRate: 44100 });
       audioCtxRef.current = audioCtx;
@@ -157,7 +216,6 @@ export function CloneVoiceTab() {
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      // Use MediaRecorder for capture — same blob for playback and upload
       const candidateMimeTypes = [
         "audio/webm;codecs=opus",
         "audio/webm",
@@ -166,41 +224,79 @@ export function CloneVoiceTab() {
       ];
       const mimeType = candidateMimeTypes.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
       mimeTypeRef.current = mimeType || "audio/webm";
+      console.log("Using MIME type:", mimeTypeRef.current);
 
       const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 256000 })
-        : new MediaRecorder(stream);
+        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 })
+        : new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
       mediaRecorderRef.current = mediaRecorder;
 
+      mediaRecorder.onstart = () => {
+        console.log("MediaRecorder started, state:", mediaRecorder.state);
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+      };
+
       mediaRecorder.ondataavailable = (e) => {
+        console.log("Audio chunk received, size:", e.data.size, "bytes");
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = async () => {
-        const recordedBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || mimeTypeRef.current });
+        try {
+          const totalSize = chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
+          console.log("MediaRecorder stopped, total chunks:", chunksRef.current.length);
+          console.log("Total audio data size:", totalSize, "bytes");
 
-        if (recordedBlob.size > 0) {
+          if (totalSize === 0) {
+            chunksRef.current = [];
+            setStatus("idle");
+            toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone and try again.", variant: "destructive" });
+            return;
+          }
+
+          const recordedBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || mimeTypeRef.current || "audio/webm" });
+          chunksRef.current = [];
+          console.log("Final audio blob size:", recordedBlob.size, "bytes, type:", recordedBlob.type);
+
+          if (recordedBlob.size < MIN_RECORDING_SIZE_BYTES) {
+            setStatus("idle");
+            toast({ title: "Recording too small", description: "The recording was too short or empty. Please try again and speak clearly into your microphone.", variant: "destructive" });
+            return;
+          }
+
+          const { url, duration: detectedDuration } = await validateRecordedAudio(recordedBlob);
           setAudioBlob(recordedBlob);
+          setRecordedDurationSeconds(detectedDuration);
+          setRecordingSizeBytes(recordedBlob.size);
           setAudioUrl((prev) => {
             if (prev) URL.revokeObjectURL(prev);
-            return URL.createObjectURL(recordedBlob);
+            return url;
           });
           setStatus("recorded");
-        } else {
-          console.warn("Recording produced empty blob");
+          console.log("Audio is playable, duration:", detectedDuration, "seconds");
+        } catch (error) {
+          console.error("Recorded audio validation failed", error);
           setStatus("idle");
-          toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone and try again.", variant: "destructive" });
-        }
-
-        setIsFinalizingRecording(false);
-        stream.getTracks().forEach((t) => t.stop());
-        if (animationRef.current) cancelAnimationFrame(animationRef.current);
-        if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-          await audioCtxRef.current.close();
+          toast({
+            title: "Recording failed",
+            description: error instanceof Error ? error.message : "The recording could not be validated. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsFinalizingRecording(false);
+          stream.getTracks().forEach((t) => t.stop());
+          if (animationRef.current) cancelAnimationFrame(animationRef.current);
+          if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+            await audioCtxRef.current.close();
+          }
         }
       };
 
       mediaRecorder.start(1000);
+      console.log("Recording started successfully");
       setStatus("recording");
       setDuration(0);
       timerRef.current = setInterval(() => {
@@ -213,6 +309,7 @@ export function CloneVoiceTab() {
       drawWaveform();
     } catch (error) {
       console.error("Voice recording failed to start", error);
+      setStatus("idle");
       setIsFinalizingRecording(false);
       toast({
         title: "Microphone access required",
@@ -228,27 +325,6 @@ export function CloneVoiceTab() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
   };
 
-  const playAudio = () => {
-    if (!audioBlob) return;
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    const audio = new Audio();
-    audio.play().catch(() => {}); // Unlock for iOS Safari
-    audio.preload = "auto";
-    audio.src = URL.createObjectURL(audioBlob);
-    audioRef.current = audio;
-    audio.onended = () => setIsPlaying(false);
-    audio.onerror = () => {
-      console.error("Audio playback error", audio.error);
-      setIsPlaying(false);
-    };
-    audio.play().then(() => setIsPlaying(true)).catch((err) => {
-      console.error("Playback failed", err);
-      setIsPlaying(false);
-    });
-  };
-
-  const pauseAudio = () => { audioRef.current?.pause(); setIsPlaying(false); };
-
   const reRecord = () => {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioBlob(null);
@@ -258,10 +334,16 @@ export function CloneVoiceTab() {
     setProcessingProgress(0);
     setClonedVoice(null);
     setIsFinalizingRecording(false);
+    setRecordedDurationSeconds(null);
+    setRecordingSizeBytes(null);
   };
 
   const submitVoiceClone = async () => {
     if (!audioBlob) return;
+    if (audioBlob.size < MIN_RECORDING_SIZE_BYTES) {
+      toast({ title: "Recording too small", description: "Please record a longer sample before submitting.", variant: "destructive" });
+      return;
+    }
     setStatus("processing");
     setProcessingProgress(0);
     const progressInterval = setInterval(() => {
@@ -274,6 +356,7 @@ export function CloneVoiceTab() {
     try {
       const formData = new FormData();
       const fileExtension = audioBlob.type.includes("wav") ? "wav" : audioBlob.type.includes("mp4") ? "m4a" : audioBlob.type.includes("ogg") ? "ogg" : "webm";
+      console.log("Submitting audio for cloning, blob size:", audioBlob.size, "type:", audioBlob.type);
       formData.append("audio", audioBlob, `voice-sample.${fileExtension}`);
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
@@ -300,6 +383,7 @@ export function CloneVoiceTab() {
       }
 
       const data = await response.json();
+      console.log("Clone response:", data);
       setProcessingProgress(100);
 
       const { data: voiceRow, error: insertError } = await supabase
@@ -339,6 +423,9 @@ export function CloneVoiceTab() {
   };
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+  const formatBytes = (bytes: number) => bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+    : `${Math.round(bytes / 1024)} KB`;
 
   // ── Gate: Enterprise only ──
   if (!isEnterprise) {
@@ -508,17 +595,20 @@ export function CloneVoiceTab() {
               <Check className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">Recording Complete — {formatTime(duration)}</h3>
             </div>
+            {audioUrl && (
+              <audio controls src={audioUrl} className="w-full" preload="metadata" />
+            )}
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              {recordedDurationSeconds !== null && <span>Detected length: {recordedDurationSeconds.toFixed(1)}s</span>}
+              {recordingSizeBytes !== null && <span>File size: {formatBytes(recordingSizeBytes)}</span>}
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={isPlaying ? pauseAudio : playAudio} className="gap-1">
-                {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                {isPlaying ? "Pause" : "Play Back"}
-              </Button>
               <Button variant="outline" size="sm" onClick={reRecord} className="gap-1">
                 <RotateCcw className="h-3 w-3" /> Re-record
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">Happy with how it sounds? Your voice clone will be ready in about 2 minutes.</p>
-            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg">
+            <p className="text-sm text-muted-foreground">Listen to the recording first. If it sounds wrong or silent, re-record before creating the clone.</p>
+            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg" disabled={!audioBlob || audioBlob.size < MIN_RECORDING_SIZE_BYTES || recordedDurationSeconds === null}>
               <Mic className="h-4 w-4" /> Submit & Create My Voice
             </Button>
           </div>
