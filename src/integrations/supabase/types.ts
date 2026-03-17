@@ -966,6 +966,66 @@ export type Database = {
           },
         ]
       }
+      credit_transactions: {
+        Row: {
+          amount_paid: number
+          balance_after: number
+          call_id: string | null
+          created_at: string
+          credits_added: number
+          credits_used: number
+          description: string | null
+          id: string
+          package_name: string | null
+          stripe_payment_id: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          amount_paid?: number
+          balance_after?: number
+          call_id?: string | null
+          created_at?: string
+          credits_added?: number
+          credits_used?: number
+          description?: string | null
+          id?: string
+          package_name?: string | null
+          stripe_payment_id?: string | null
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          amount_paid?: number
+          balance_after?: number
+          call_id?: string | null
+          created_at?: string
+          credits_added?: number
+          credits_used?: number
+          description?: string | null
+          id?: string
+          package_name?: string | null
+          stripe_payment_id?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dnc_list: {
         Row: {
           added_by: string | null
@@ -1539,6 +1599,9 @@ export type Database = {
       }
       tenants: {
         Row: {
+          auto_refill_enabled: boolean
+          auto_refill_package: string
+          auto_refill_threshold: number
           billing_cycle_end: string
           billing_cycle_start: string
           company_address: string | null
@@ -1584,6 +1647,9 @@ export type Database = {
           webhook_url: string | null
         }
         Insert: {
+          auto_refill_enabled?: boolean
+          auto_refill_package?: string
+          auto_refill_threshold?: number
           billing_cycle_end?: string
           billing_cycle_start?: string
           company_address?: string | null
@@ -1629,6 +1695,9 @@ export type Database = {
           webhook_url?: string | null
         }
         Update: {
+          auto_refill_enabled?: boolean
+          auto_refill_package?: string
+          auto_refill_threshold?: number
           billing_cycle_end?: string
           billing_cycle_start?: string
           company_address?: string | null

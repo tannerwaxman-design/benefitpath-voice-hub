@@ -4,67 +4,75 @@ import { Check, Zap, Star, Building2, Crown } from "lucide-react";
 const plans = [
   {
     name: "Starter",
-    price: "$49",
+    price: "$29",
     icon: Zap,
-    tagline: "Best for solo agents getting started",
+    tagline: "Perfect for solo agents testing the waters",
     features: [
-      "1,000 credits included",
       "1 AI agent",
       "Outbound calls only",
       "Basic call logs",
+      "1 campaign at a time",
       "CSV contact upload",
       "Email support",
     ],
   },
   {
     name: "Professional",
-    price: "$149",
+    price: "$79",
     icon: Star,
     popular: true,
-    tagline: "Best for active agents and small teams",
+    tagline: "The go-to plan for serious agents",
     features: [
-      "5,000 credits included",
       "Unlimited AI agents",
       "Outbound + inbound calls",
       "Full transcripts & recordings",
-      "AI call scoring",
+      "AI call summaries & sentiment",
       "Knowledge base",
-      "CRM & calendar integrations",
       "Smart scheduling",
-      "Priority email & chat support",
+      "CRM & calendar tools",
+      "Unlimited campaigns",
+      "Priority support",
     ],
   },
   {
     name: "Agency",
-    price: "$349",
+    price: "$199",
     icon: Building2,
-    tagline: "Best for agencies managing multiple agents",
+    tagline: "Built for agencies that want every advantage",
     features: [
-      "15,000 credits included",
       "Everything in Professional",
       "Voice cloning",
+      "AI call scoring",
       "AI objection trainer",
-      "Multi-language support",
+      "Multi-language (Spanish)",
       "Team management (up to 10)",
-      "White-label reports",
+      "Call coaching & review",
       "Dedicated account manager",
+      "Phone & video support",
     ],
   },
   {
     name: "Enterprise",
     price: "Custom",
     icon: Crown,
-    tagline: "Contact us for a custom quote",
+    tagline: "For large operations with custom needs",
     features: [
-      "Unlimited credits",
       "Everything in Agency",
       "Unlimited team members",
       "Custom AI model training",
       "API access",
+      "White-label option",
       "Custom integrations",
       "SLA guarantee",
     ],
   },
+];
+
+const creditPackages = [
+  { credits: "500", price: "$25", perCredit: "$0.05" },
+  { credits: "1,000", price: "$45", perCredit: "$0.045" },
+  { credits: "5,000", price: "$175", perCredit: "$0.035", best: true },
+  { credits: "10,000", price: "$300", perCredit: "$0.030" },
 ];
 
 export default function PricingSection() {
@@ -73,10 +81,11 @@ export default function PricingSection() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-            Ready to Start Booking More Appointments?
+            Simple Pricing. Pay for What You Use.
           </h2>
           <p className="text-gray-600 text-[15px]">
-            Simple pricing. Powerful features. <strong>Made for Agents.</strong>
+            Pick a plan for the features. Buy credits when you need them.<br />
+            No contracts. No hidden fees. <strong>Credits never expire.</strong>
           </p>
         </div>
 
@@ -128,6 +137,27 @@ export default function PricingSection() {
               </Link>
             </div>
           ))}
+        </div>
+
+        {/* Credits Section */}
+        <div className="mt-12 text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Credits purchased separately</h3>
+          <p className="text-sm text-gray-500 mb-6">1 credit = 1 minute of calling. Buy as many as you need. Credits never expire.</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+            {creditPackages.map(pkg => (
+              <div key={pkg.credits} className={`rounded-xl border p-4 text-center ${pkg.best ? "border-[#5046E5] bg-[#5046E5]/5 ring-1 ring-[#5046E5]/20 relative" : "border-gray-200"}`}>
+                {pkg.best && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#5046E5] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                    BEST VALUE
+                  </span>
+                )}
+                <p className="text-sm font-bold text-gray-900 mt-1">{pkg.credits} credits</p>
+                <p className="text-xl font-extrabold text-gray-900">{pkg.price}</p>
+                <p className="text-xs text-gray-400">{pkg.perCredit} each</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-4">Auto-refill available so your campaigns never stop.</p>
         </div>
       </div>
     </section>
