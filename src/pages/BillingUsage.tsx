@@ -10,7 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
-import { CreditCard, Clock, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown } from "lucide-react";
+import { useSubscription } from "@/hooks/use-subscription";
+import { STRIPE_PLANS, getPlanByProductId } from "@/lib/stripe-config";
+import { supabase } from "@/integrations/supabase/client";
+import { CreditCard, Clock, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown, Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
 
 const planNames: Record<string, string> = {
