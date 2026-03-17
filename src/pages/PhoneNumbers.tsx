@@ -260,6 +260,8 @@ export default function PhoneNumbers() {
     setShowNewModal(false);
     setSearchResults([]);
     setBuyingNumber(null);
+    setTwilioVerified(false);
+    setTwilioAccountName("");
   };
 
   return (
