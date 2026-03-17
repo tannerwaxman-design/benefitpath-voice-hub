@@ -87,7 +87,7 @@ export default function PhoneNumbers() {
   const [selectedPhoneId, setSelectedPhoneId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
 
-  // VAPI free number form
+  // Free number form
   const [newType, setNewType] = useState<"local" | "toll_free">("local");
   const [areaCode, setAreaCode] = useState("720");
 
