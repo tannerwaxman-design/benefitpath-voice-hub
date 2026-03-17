@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Play, Square, Loader2 } from "lucide-react";
 import { useTtsPreview } from "@/hooks/use-voice-management";
+import { useToast } from "@/hooks/use-toast";
 
 interface TtsTestBoxProps {
   voiceId: string;
@@ -14,40 +15,35 @@ export function TtsTestBox({ voiceId, defaultText = "", compact = false }: TtsTe
   const [text, setText] = useState(defaultText);
   const [status, setStatus] = useState<"idle" | "loading" | "playing">("idle");
   const { play, stop } = useTtsPreview();
+  const { toast } = useToast();
 
   const handlePlay = useCallback(async () => {
-    if (!text.trim()) return;
-    if (status === "playing") {
-      stop();
-      setStatus("idle");
-      return;
-    }
-    setStatus("loading");
-    try {
-      await play(text, voiceId);
-      setStatus("idle");
-    } catch {
-      setStatus("idle");
-    }
-  }, [text, voiceId, status, play, stop]);
+    if (!text.trim() || !voiceId) return;
 
-  // When play starts (after loading), switch to playing
-  const handlePlayWithState = useCallback(async () => {
-    if (!text.trim()) return;
     if (status === "playing") {
       stop();
       setStatus("idle");
       return;
     }
+
     setStatus("loading");
     try {
+      // play() returns a promise that resolves when audio finishes
+      const playPromise = play(text, voiceId);
+      // Once audio starts (play resolved the fetch), switch to playing
       setStatus("playing");
-      await play(text, voiceId);
+      await playPromise;
       setStatus("idle");
-    } catch {
+    } catch (err) {
+      console.error("TTS preview error:", err);
       setStatus("idle");
+      toast({
+        title: "Playback failed",
+        description: "Could not generate audio preview. Please try again.",
+        variant: "destructive",
+      });
     }
-  }, [text, voiceId, status, play, stop]);
+  }, [text, voiceId, status, play, stop, toast]);
 
   return (
     <div className="space-y-2">
@@ -65,8 +61,8 @@ export function TtsTestBox({ voiceId, defaultText = "", compact = false }: TtsTe
       <Button
         size="sm"
         variant={status === "playing" ? "destructive" : "default"}
-        onClick={handlePlayWithState}
-        disabled={!text.trim() || status === "loading"}
+        onClick={handlePlay}
+        disabled={!text.trim() || !voiceId || status === "loading"}
         className="gap-1.5"
       >
         {status === "loading" ? (

@@ -21,7 +21,6 @@ serve(async (req) => {
       });
     }
 
-    // Verify user is authenticated
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -52,8 +51,9 @@ serve(async (req) => {
       );
     }
 
-    // Limit text length to prevent abuse
     const trimmedText = text.slice(0, 500);
+
+    console.log(`[TTS-PREVIEW] Generating for voice=${voice_id}, text length=${trimmedText.length}`);
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voice_id}?output_format=mp3_44100_128`,
@@ -69,6 +69,8 @@ serve(async (req) => {
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true,
           },
         }),
       }
@@ -76,14 +78,15 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("ElevenLabs TTS error:", response.status, errText);
+      console.error("[TTS-PREVIEW] ElevenLabs error:", response.status, errText);
       return new Response(
-        JSON.stringify({ error: "TTS generation failed" }),
+        JSON.stringify({ error: "TTS generation failed", details: errText }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const audioBuffer = await response.arrayBuffer();
+    console.log(`[TTS-PREVIEW] Success, audio size=${audioBuffer.byteLength} bytes`);
 
     return new Response(audioBuffer, {
       headers: {
@@ -93,7 +96,7 @@ serve(async (req) => {
       },
     });
   } catch (err) {
-    console.error("TTS preview error:", err);
+    console.error("[TTS-PREVIEW] Error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
