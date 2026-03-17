@@ -41,15 +41,15 @@ export function CloneVoiceTab() {
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [clonedVoice, setClonedVoice] = useState<ClonedVoiceInfo | null>(null);
   const [isFinalizingRecording, setIsFinalizingRecording] = useState(false);
+  const [recordedDurationSeconds, setRecordedDurationSeconds] = useState<number | null>(null);
+  const [recordingSizeBytes, setRecordingSizeBytes] = useState<number | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
