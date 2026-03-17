@@ -116,41 +116,31 @@ export function CloneVoiceTab() {
     };
     draw();
   }, []);
-  const validateRecordedAudio = useCallback((blob: Blob) => new Promise<{ url: string; duration: number }>((resolve, reject) => {
+  const validateRecordedAudio = useCallback((blob: Blob) => new Promise<{ url: string; duration: number }>((resolve) => {
     const url = URL.createObjectURL(blob);
     const audio = document.createElement("audio");
-    let settled = false;
 
-    const cleanup = () => {
+    // WebM blobs from MediaRecorder often report Infinity or 0 for duration
+    // in loadedmetadata. We rely on blob size (≥10KB) as the primary validation
+    // and treat duration as best-effort metadata.
+    let resolved = false;
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
       audio.onloadedmetadata = null;
       audio.onerror = null;
+      const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+      resolve({ url, duration: dur });
     };
 
     audio.preload = "metadata";
     audio.src = url;
-
-    audio.onloadedmetadata = () => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      const detectedDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
-      if (detectedDuration <= 0) {
-        URL.revokeObjectURL(url);
-        reject(new Error("The recording appears to be empty. Please try again."));
-        return;
-      }
-      resolve({ url, duration: detectedDuration });
-    };
-
-    audio.onerror = () => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      URL.revokeObjectURL(url);
-      reject(new Error("The recording could not be played back. Please try again."));
-    };
-
+    audio.onloadedmetadata = finish;
+    audio.onerror = finish;
     audio.load();
+
+    // Fallback timeout — some browsers never fire loadedmetadata for webm
+    setTimeout(finish, 2000);
   }), []);
 
 
@@ -608,7 +598,7 @@ export function CloneVoiceTab() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">Listen to the recording first. If it sounds wrong or silent, re-record before creating the clone.</p>
-            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg" disabled={!audioBlob || audioBlob.size < MIN_RECORDING_SIZE_BYTES || recordedDurationSeconds === null}>
+            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg" disabled={!audioBlob || audioBlob.size < MIN_RECORDING_SIZE_BYTES}>
               <Mic className="h-4 w-4" /> Submit & Create My Voice
             </Button>
           </div>
