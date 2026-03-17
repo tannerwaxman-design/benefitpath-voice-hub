@@ -409,9 +409,18 @@ export default function BillingUsage() {
                   <Button
                     variant={isCurrent ? "outline" : "default"}
                     className="w-full"
-                    disabled={isCurrent}
+                    disabled={isCurrent || checkoutLoading === p.id}
+                    onClick={() => {
+                      if (p.id === "voice_ai_custom") {
+                        window.open("mailto:sales@benefitpath.com?subject=Enterprise%20Plan%20Inquiry", "_blank");
+                      } else {
+                        handleCheckout(p.id);
+                      }
+                    }}
                   >
-                    {isCurrent ? "Current Plan" : p.id === "voice_ai_custom" ? "Contact Sales" : "Upgrade"}
+                    {checkoutLoading === p.id ? (
+                      <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing…</>
+                    ) : isCurrent ? "Current Plan" : p.id === "voice_ai_custom" ? "Contact Sales" : "Upgrade"}
                   </Button>
                 </CardContent>
               </Card>
