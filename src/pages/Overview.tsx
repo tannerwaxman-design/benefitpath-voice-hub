@@ -111,7 +111,7 @@ export default function Overview() {
 
   const statCards = [
     { label: "Total Calls Made", value: totalCalls, format: (v: number) => <AnimatedNumber value={v} />, sub: `Last ${chartRange} days`, icon: PhoneOutgoing, accent: "stat-card-accent-indigo", iconBg: "bg-primary/10 text-primary" },
-    { label: "Connect Rate", value: connectRate, format: (v: number) => <><AnimatedNumber value={Math.round(v * 10)} suffix="" /><span className="text-lg">.</span>{(v % 1).toFixed(1).slice(2)}%</>, sub: "Connected / total", icon: PhoneCall, accent: "stat-card-accent-green", iconBg: "bg-success/10 text-success" },
+    { label: "Connect Rate", value: connectRate, format: (v: number) => <><AnimatedNumber value={Math.round(v)} /><span className="text-lg">.</span>{Math.round((v % 1) * 10)}%</>, sub: "Connected / total", icon: PhoneCall, accent: "stat-card-accent-green", iconBg: "bg-success/10 text-success" },
     { label: "Avg Call Duration", value: avgDuration, format: (v: number) => <>{Math.floor(v / 60)}m {Math.round(v % 60)}s</>, sub: "Average per call", icon: Clock, accent: "stat-card-accent-amber", iconBg: "bg-warning/10 text-warning" },
     { label: "Avg Call Score", value: avgScore ?? 0, format: (v: number) => avgScore != null ? <><AnimatedNumber value={v} />/100</> : <>—</>, sub: avgScore != null ? (avgScore >= 80 ? "Excellent" : avgScore >= 60 ? "Good" : "Needs work") : "No scored calls", icon: CalendarCheck, accent: "stat-card-accent-purple", iconBg: "bg-purple-100 text-purple-600" },
   ];
