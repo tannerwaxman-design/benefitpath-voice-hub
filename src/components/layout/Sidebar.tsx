@@ -1,27 +1,34 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/hooks/use-permission";
 import {
   LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import logo from "@/assets/benefit_path_icon.svg";
 
-const navItems = [
+interface NavItem {
+  label: string;
+  icon: typeof LayoutDashboard;
+  path: string;
+  roles?: string[]; // if undefined, all roles can see it
+}
+
+const navItems: NavItem[] = [
   { label: "Overview", icon: LayoutDashboard, path: "/" },
   { label: "Agent Builder", icon: Bot, path: "/agents" },
   { label: "Voices", icon: AudioLines, path: "/voices" },
-  { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base" },
-  { label: "Tools", icon: Wrench, path: "/tools" },
+  { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"] },
+  { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"] },
   { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
   { label: "Contact Lists", icon: Users, path: "/contacts" },
   { label: "Call Logs", icon: Phone, path: "/call-logs" },
-  { label: "Training", icon: GraduationCap, path: "/training" },
-  { label: "Coaching", icon: BookOpen, path: "/coaching" },
+  { label: "Training", icon: GraduationCap, path: "/training", roles: ["owner", "admin", "manager"] },
+  { label: "Coaching", icon: BookOpen, path: "/coaching", roles: ["owner", "admin", "manager"] },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
-  { label: "Phone Numbers", icon: Hash, path: "/phone-numbers" },
-  { label: "Billing & Usage", icon: CreditCard, path: "/billing" },
-  { label: "Team", icon: UsersRound, path: "/team" },
+  { label: "Phone Numbers", icon: Hash, path: "/phone-numbers", roles: ["owner", "admin"] },
+  { label: "Team", icon: UsersRound, path: "/team", roles: ["owner", "admin"] },
+  { label: "Billing & Usage", icon: CreditCard, path: "/billing", roles: ["owner"] },
   { label: "Settings", icon: Settings, path: "/settings" },
 ];
 
@@ -29,8 +36,11 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const role = useRole();
   const [collapsed, setCollapsed] = useState(false);
   const creditBalance = user?.tenant?.credit_balance ?? 0;
+
+  const visibleItems = navItems.filter(item => !item.roles || item.roles.includes(role));
 
   return (
     <aside className={`${collapsed ? "w-16" : "w-[260px]"} bg-slate-900 text-slate-400 flex flex-col min-h-screen transition-all duration-200 shrink-0`}>
@@ -52,7 +62,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-4 space-y-1 px-2">
-        {navItems.map(item => {
+        {visibleItems.map(item => {
           const active = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
           return (
             <Link key={item.path} to={item.path}
