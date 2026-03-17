@@ -21,7 +21,15 @@ export const STRIPE_PLANS = {
 } as const;
 
 // Credit packages (one-time purchases)
-export const CREDIT_PACKAGES = [
+export const CREDIT_PACKAGES: readonly {
+  id: string;
+  credits: number;
+  price: number;
+  perCredit: number;
+  product_id: string;
+  price_id: string;
+  bestValue?: boolean;
+}[] = [
   {
     id: "credits_500",
     credits: 500,
@@ -55,7 +63,7 @@ export const CREDIT_PACKAGES = [
     product_id: "prod_UAKJcZSh9gRfaW",
     price_id: "price_1TBzepEpCunE9Xtlk2f2asVZ",
   },
-] as const;
+];
 
 // Reverse lookup: product_id → plan key
 export function getPlanByProductId(productId: string): string | null {
