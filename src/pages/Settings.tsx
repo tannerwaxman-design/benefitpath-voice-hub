@@ -539,7 +539,7 @@ export default function Settings() {
                   <CardContent className="pt-4">
                     <div className="flex items-center gap-2 mb-1">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">VAPI Cost (at cost)</span>
+                      <span className="text-xs text-muted-foreground">Infrastructure Cost (at cost)</span>
                     </div>
                     <p className="text-2xl font-bold text-foreground">${billing.costSummary.total.toFixed(2)}</p>
                   </CardContent>
