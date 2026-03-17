@@ -201,7 +201,7 @@ export function useTtsPreview() {
   const cacheRef = useRef<Map<string, string>>(new Map());
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const play = useCallback(async (text: string, voiceId: string) => {
+  const play = useCallback(async (text: string, voiceId: string, options?: { onPlaybackStart?: () => void }) => {
     const cacheKey = `${voiceId}:${text}`;
 
     // Stop any currently playing audio
@@ -240,7 +240,6 @@ export function useTtsPreview() {
 
       const contentType = response.headers.get("Content-Type") || "";
       if (!contentType.includes("audio")) {
-        // Server returned JSON error instead of audio
         const errJson = await response.json().catch(() => ({}));
         throw new Error((errJson as any).error || "Unexpected response from TTS");
       }
@@ -260,11 +259,13 @@ export function useTtsPreview() {
         audioRef.current = null;
         resolve();
       };
-      audio.onerror = (e) => {
+      audio.onerror = () => {
         audioRef.current = null;
         reject(new Error("Audio playback failed"));
       };
-      audio.play().catch((err) => {
+      audio.play().then(() => {
+        options?.onPlaybackStart?.();
+      }).catch((err) => {
         audioRef.current = null;
         reject(err);
       });
