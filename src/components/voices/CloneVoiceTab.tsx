@@ -238,9 +238,9 @@ export function CloneVoiceTab() {
   // ── Section-by-section recording ──
   const startSectionRecording = async () => {
     try {
-      const { mediaRecorder, stream } = await initAudioCapture();
+      const { mediaRecorder, stream, mimeType } = await initAudioCapture();
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setSectionBlobs(prev => { const n = [...prev]; n[currentSectionIdx] = blob; return n; });
         stream.getTracks().forEach(t => t.stop());
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
