@@ -79,7 +79,6 @@ export function CloneVoiceTab() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (audioRef.current) audioRef.current.pause();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
