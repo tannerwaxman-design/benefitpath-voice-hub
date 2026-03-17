@@ -52,6 +52,10 @@ export function CloneVoiceTab() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const rawChunksRef = useRef<Float32Array[]>([]);
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
 
   // Check for existing cloned voice
   useEffect(() => {
@@ -110,6 +114,30 @@ export function CloneVoiceTab() {
     draw();
   }, []);
 
+  const encodeWav = useCallback((samples: Float32Array, sampleRate: number): Blob => {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    const writeString = (offset: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i)); };
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+    return new Blob([buffer], { type: "audio/wav" });
+  }, []);
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -124,28 +152,56 @@ export function CloneVoiceTab() {
       });
       streamRef.current = stream;
 
-      const audioCtx = new AudioContext();
+      const audioCtx = new AudioContext({ sampleRate: 44100 });
+      audioCtxRef.current = audioCtx;
       const source = audioCtx.createMediaStreamSource(stream);
+      sourceRef.current = source;
+
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
       source.connect(analyser);
       analyserRef.current = analyser;
 
+      // Capture raw PCM via ScriptProcessor for WAV conversion
+      rawChunksRef.current = [];
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      scriptProcessorRef.current = processor;
+      processor.onaudioprocess = (e) => {
+        const input = e.inputBuffer.getChannelData(0);
+        rawChunksRef.current.push(new Float32Array(input));
+      };
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
+
+      // Also keep MediaRecorder for instant playback preview
       let mimeType = "audio/webm;codecs=opus";
       if (MediaRecorder.isTypeSupported("audio/webm;codecs=pcm")) {
         mimeType = "audio/webm;codecs=pcm";
       }
-
       const mediaRecorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 256000 });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        setAudioBlob(blob);
-        setAudioUrl(URL.createObjectURL(blob));
+        // Build WAV from raw PCM for cloning (high quality)
+        const totalLength = rawChunksRef.current.reduce((acc, c) => acc + c.length, 0);
+        const merged = new Float32Array(totalLength);
+        let offset = 0;
+        for (const chunk of rawChunksRef.current) {
+          merged.set(chunk, offset);
+          offset += chunk.length;
+        }
+        const wavBlob = encodeWav(merged, audioCtx.sampleRate);
+        setAudioBlob(wavBlob);
+
+        // Use webm for preview playback (instant)
+        const previewBlob = new Blob(chunksRef.current, { type: mimeType });
+        setAudioUrl(URL.createObjectURL(previewBlob));
+
         stream.getTracks().forEach(t => t.stop());
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        processor.disconnect();
+        source.disconnect();
       };
 
       mediaRecorder.start(250);
@@ -160,7 +216,7 @@ export function CloneVoiceTab() {
       }, 1000);
       drawWaveform();
     } catch {
-      toast({ title: "Microphone access required", description: "Please allow microphone access.", variant: "destructive" });
+      toast({ title: "Microphone access required", description: "Please allow microphone access in your browser settings.", variant: "destructive" });
     }
   };
 
@@ -205,7 +261,7 @@ export function CloneVoiceTab() {
 
     try {
       const formData = new FormData();
-      formData.append("audio", audioBlob, "voice-sample.webm");
+      formData.append("audio", audioBlob, "voice-sample.wav");
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
       const { data: sessionData } = await supabase.auth.getSession();
