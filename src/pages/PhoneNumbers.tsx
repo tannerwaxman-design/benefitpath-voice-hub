@@ -8,6 +8,7 @@ import {
   useAssignPhoneNumber,
   useSetDefaultPhoneNumber,
 } from "@/hooks/use-phone-numbers";
+import { supabase } from "@/integrations/supabase/client";
 import { useAgents } from "@/hooks/use-agents";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
