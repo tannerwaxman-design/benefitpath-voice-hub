@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -6,17 +6,61 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Mic, Square, Play, Pause, RotateCcw, Check, Loader2, PartyPopper, Lock } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Mic, Square, Play, Pause, RotateCcw, Check, Loader2, Lock, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { TtsTestBox } from "./TtsTestBox";
-import { VoiceWithCollection } from "@/hooks/use-voice-management";
 
-const SAMPLE_SCRIPT = `"Hi, thank you for calling Benefits First Insurance Group. My name is Tanner and I'm here to help you with your benefits and coverage options. Whether you're looking at Medicare Advantage, a supplement plan, or prescription drug coverage, I can walk you through everything and help you find the best fit. I look forward to speaking with you."`;
+// ── Script sections ──────────────────────────────────────────────
+interface ScriptSection {
+  id: number;
+  title: string;
+  text: string;
+}
 
-const MIN_DURATION = 20;
-const TARGET_DURATION = 30;
+const buildDefaultSections = (agentName: string, companyName: string): ScriptSection[] => [
+  {
+    id: 1,
+    title: "Warm Greeting",
+    text: `Hi there, thank you so much for taking my call today. My name is ${agentName}, and I'm calling from ${companyName}. I'm reaching out because the annual enrollment period is right around the corner, and I wanted to make sure you have everything you need to make the best decision for your coverage this year. Do you have just a couple of minutes to chat?`,
+  },
+  {
+    id: 2,
+    title: "Explaining Value",
+    text: `Perfect, I really appreciate that. So here's why I'm calling. A lot of folks don't realize that their plan options can change quite a bit from year to year. Premiums go up, benefits shift around, and sometimes there are brand new plans available that weren't there before. What I do is help people like you compare all the available options side by side, completely free of charge, so you can feel confident you're getting the absolute best value for your situation.`,
+  },
+  {
+    id: 3,
+    title: "Handling Pushback",
+    text: `Oh, I completely understand. You know, a lot of my clients felt the exact same way at first. They figured, why fix something that isn't broken, right? But when we actually sat down and looked at the numbers together, most of them were pretty surprised to find they could save a few hundred dollars a year, or pick up benefits they didn't even know were available to them. There's really no downside to just taking a quick look. Would you be open to that?`,
+  },
+  {
+    id: 4,
+    title: "Questions & Details",
+    text: `Great, that's wonderful. Let me ask you just a few quick questions so I can point you in the right direction. First off, are you currently enrolled in a Medicare Advantage plan, or are you on Original Medicare with a supplement? And do you have any prescription medications that are important to keep covered? Also, is your primary care doctor someone you'd want to make sure stays in network? These details really help me narrow down the best options for you specifically.`,
+  },
+  {
+    id: 5,
+    title: "Warm Closing",
+    text: `Thank you so much for sharing all of that with me. Based on what you've told me, I think we can definitely find something that works well for you. What I'd love to do is set up a short fifteen-minute call where we can go through your options together in detail. Would Tuesday afternoon or Wednesday morning work better for you? Either way, I'll send you a confirmation email with everything we talked about today. It was really great speaking with you, and I look forward to helping you get the best coverage possible. Have a wonderful rest of your day.`,
+  },
+];
+
+const SECTION_TIME_RANGES = [
+  [0, 20],
+  [20, 40],
+  [40, 60],
+  [60, 80],
+  [80, 120],
+] as const;
+
+const MIN_DURATION = 30;
+const MAX_DURATION = 180; // auto-stop at 3 min
+const TARGET_DISPLAY = 90; // "~1:30" shown in UI
 
 type CloneStatus = "idle" | "recording" | "recorded" | "processing" | "ready" | "error";
+type RecordingMode = "full" | "section";
 
 interface ClonedVoiceInfo {
   id: string;
@@ -32,6 +76,12 @@ export function CloneVoiceTab() {
   const plan = user?.tenant?.plan || "voice_ai_starter";
   const isEnterprise = plan === "enterprise" || plan === "voice_ai_pro" || plan === "voice_ai_enterprise";
 
+  // Derive agent name / company
+  const agentName = user?.email?.split("@")[0]?.replace(/[._-]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Tanner";
+  const companyName = user?.tenant?.company_name || "Benefits First Insurance Group";
+
+  const defaultSections = useMemo(() => buildDefaultSections(agentName, companyName), [agentName, companyName]);
+
   const [status, setStatus] = useState<CloneStatus>("idle");
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -39,6 +89,14 @@ export function CloneVoiceTab() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [clonedVoice, setClonedVoice] = useState<ClonedVoiceInfo | null>(null);
+
+  // New state
+  const [recordingMode, setRecordingMode] = useState<RecordingMode>("full");
+  const [customizeScript, setCustomizeScript] = useState(false);
+  const [editedSections, setEditedSections] = useState<ScriptSection[]>(defaultSections);
+  const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
+  const [sectionBlobs, setSectionBlobs] = useState<(Blob | null)[]>([null, null, null, null, null]);
+  const [sectionDurations, setSectionDurations] = useState<number[]>([0, 0, 0, 0, 0]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -48,6 +106,12 @@ export function CloneVoiceTab() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const sections = customizeScript ? editedSections : defaultSections;
+
+  // Sync edited sections when defaults change
+  useEffect(() => { setEditedSections(defaultSections); }, [defaultSections]);
 
   // Check for existing cloned voice
   useEffect(() => {
@@ -87,10 +151,10 @@ export function CloneVoiceTab() {
     const draw = () => {
       animationRef.current = requestAnimationFrame(draw);
       analyser.getByteTimeDomainData(dataArray);
-      ctx.fillStyle = "hsl(210, 40%, 98%)";
+      ctx.fillStyle = "hsl(var(--secondary))";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "hsl(239, 84%, 67%)";
+      ctx.strokeStyle = "hsl(var(--primary))";
       ctx.beginPath();
       const sliceWidth = canvas.width / bufferLength;
       let x = 0;
@@ -106,20 +170,27 @@ export function CloneVoiceTab() {
     draw();
   }, []);
 
+  const initAudioCapture = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    streamRef.current = stream;
+    const audioCtx = new AudioContext();
+    audioCtxRef.current = audioCtx;
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+    analyserRef.current = analyser;
+    const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    mediaRecorderRef.current = mediaRecorder;
+    chunksRef.current = [];
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+    return { mediaRecorder, stream };
+  };
+
+  // ── Full-take recording ──
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const audioCtx = new AudioContext();
-      const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 2048;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      const { mediaRecorder, stream } = await initAudioCapture();
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
@@ -133,7 +204,34 @@ export function CloneVoiceTab() {
       timerRef.current = setInterval(() => {
         setDuration(prev => {
           const next = prev + 1;
-          if (next >= TARGET_DURATION) stopRecording();
+          if (next >= MAX_DURATION) stopRecording();
+          return next;
+        });
+      }, 1000);
+      drawWaveform();
+    } catch {
+      toast({ title: "Microphone access required", description: "Please allow microphone access.", variant: "destructive" });
+    }
+  };
+
+  // ── Section-by-section recording ──
+  const startSectionRecording = async () => {
+    try {
+      const { mediaRecorder, stream } = await initAudioCapture();
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setSectionBlobs(prev => { const n = [...prev]; n[currentSectionIdx] = blob; return n; });
+        stream.getTracks().forEach(t => t.stop());
+        if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        setStatus("recorded");
+      };
+      mediaRecorder.start(250);
+      setStatus("recording");
+      setDuration(0);
+      timerRef.current = setInterval(() => {
+        setDuration(prev => {
+          const next = prev + 1;
+          if (next >= 60) stopRecording(); // max 60s per section
           return next;
         });
       }, 1000);
@@ -146,13 +244,17 @@ export function CloneVoiceTab() {
   const stopRecording = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-    setStatus("recorded");
+    if (recordingMode === "full") {
+      setStatus("recorded");
+    }
+    // section mode: onstop handler sets status
   };
 
-  const playAudio = () => {
-    if (!audioUrl) return;
+  const playAudio = (url?: string) => {
+    const playUrl = url || audioUrl;
+    if (!playUrl) return;
     if (audioRef.current) audioRef.current.pause();
-    const audio = new Audio(audioUrl);
+    const audio = new Audio(playUrl);
     audioRef.current = audio;
     audio.onended = () => setIsPlaying(false);
     audio.play();
@@ -169,10 +271,20 @@ export function CloneVoiceTab() {
     setStatus("idle");
     setProcessingProgress(0);
     setClonedVoice(null);
+    setCurrentSectionIdx(0);
+    setSectionBlobs([null, null, null, null, null]);
+    setSectionDurations([0, 0, 0, 0, 0]);
+  };
+
+  // Combine section blobs for section-by-section mode
+  const combineSectionBlobs = (): Blob => {
+    const validBlobs = sectionBlobs.filter(Boolean) as Blob[];
+    return new Blob(validBlobs, { type: "audio/webm" });
   };
 
   const submitVoiceClone = async () => {
-    if (!audioBlob) return;
+    const blobToSubmit = recordingMode === "section" ? combineSectionBlobs() : audioBlob;
+    if (!blobToSubmit) return;
     setStatus("processing");
     setProcessingProgress(0);
     const progressInterval = setInterval(() => {
@@ -184,8 +296,8 @@ export function CloneVoiceTab() {
 
     try {
       const formData = new FormData();
-      formData.append("audio", audioBlob, "voice-sample.webm");
-      formData.append("voice_name", user?.tenant?.company_name ? `${user.tenant.company_name} Voice` : "My Voice Clone");
+      formData.append("audio", blobToSubmit, "voice-sample.webm");
+      formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
       const { data, error } = await supabase.functions.invoke("clone-voice", { body: formData });
       clearInterval(progressInterval);
@@ -193,12 +305,11 @@ export function CloneVoiceTab() {
 
       setProcessingProgress(100);
 
-      // Save to voices table
       const { data: voiceRow, error: insertError } = await supabase
         .from("voices" as any)
         .insert({
           tenant_id: user!.tenant.id,
-          name: user?.tenant?.company_name ? `${user.tenant.company_name} Voice` : "My Voice",
+          name: companyName ? `${companyName} Voice` : "My Voice",
           type: "cloned",
           provider: "eleven_labs",
           provider_voice_id: data.voice_id,
@@ -232,6 +343,13 @@ export function CloneVoiceTab() {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
+  const activeSectionIdx = SECTION_TIME_RANGES.findIndex(([start, end]) => duration >= start && duration < end);
+
+  const updateSectionText = (idx: number, text: string) => {
+    setEditedSections(prev => prev.map((s, i) => i === idx ? { ...s, text } : s));
+  };
+
+  // ── Gate: Enterprise only ──
   if (!isEnterprise) {
     return (
       <Card className="border-border">
@@ -247,7 +365,7 @@ export function CloneVoiceTab() {
     );
   }
 
-  // Existing clone — show test interface
+  // ── Existing clone: show test interface ──
   if (status === "ready" && clonedVoice) {
     return (
       <div className="space-y-6">
@@ -273,7 +391,6 @@ export function CloneVoiceTab() {
               />
             </div>
 
-            {/* Quick phrases */}
             <div className="space-y-3 pt-2">
               <p className="text-sm font-medium text-muted-foreground">Try different phrases:</p>
               {[
@@ -302,38 +419,278 @@ export function CloneVoiceTab() {
     );
   }
 
+  // ── Script display component ──
+  const ScriptDisplay = ({ highlight, editable }: { highlight?: number; editable?: boolean }) => (
+    <div className="space-y-1">
+      {sections.map((section, idx) => {
+        const isActive = highlight !== undefined && highlight === idx;
+        return (
+          <div
+            key={section.id}
+            className={`p-4 rounded-lg border transition-colors ${
+              isActive
+                ? "bg-primary/5 border-primary/30"
+                : "bg-secondary/50 border-transparent"
+            }`}
+          >
+            <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-2">
+              Section {section.id}: {section.title}
+            </p>
+            {editable && customizeScript ? (
+              <Textarea
+                value={editedSections[idx].text}
+                onChange={(e) => updateSectionText(idx, e.target.value)}
+                className="text-foreground border-border bg-background min-h-[100px]"
+                style={{ fontSize: "16px", lineHeight: 1.6 }}
+              />
+            ) : (
+              <p
+                className="text-foreground leading-relaxed"
+                style={{ fontSize: "18px", lineHeight: 1.7 }}
+              >
+                "{section.text}"
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // ── Section-by-section flow ──
+  if (recordingMode === "section" && status !== "processing" && status !== "error") {
+    const currentSection = sections[currentSectionIdx];
+    const currentBlob = sectionBlobs[currentSectionIdx];
+    const allRecorded = sectionBlobs.every(b => b !== null);
+    const isRecording = status === "recording";
+    const isRecorded = currentBlob !== null && status !== "recording";
+
+    return (
+      <Card className="border-border">
+        <CardContent className="p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mic className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Clone Your Voice — Section by Section</h3>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => { setRecordingMode("full"); reRecord(); }}>
+              Switch to Full Take
+            </Button>
+          </div>
+
+          {/* Progress dots */}
+          <div className="flex items-center gap-2">
+            {sections.map((s, idx) => (
+              <div key={s.id} className="flex items-center gap-1">
+                <div className={`h-3 w-3 rounded-full border-2 transition-colors ${
+                  sectionBlobs[idx] ? "bg-primary border-primary" :
+                  idx === currentSectionIdx ? "border-primary bg-transparent" :
+                  "border-muted-foreground/30 bg-transparent"
+                }`} />
+                {idx < 4 && <div className="w-6 h-px bg-border" />}
+              </div>
+            ))}
+            <span className="text-xs text-muted-foreground ml-2">
+              {sectionBlobs.filter(Boolean).length}/5 recorded
+            </span>
+          </div>
+
+          {/* Current section script */}
+          <div className="p-5 rounded-lg bg-secondary border border-border">
+            <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-2">
+              Section {currentSection.id}: {currentSection.title}
+            </p>
+            <p className="text-foreground leading-relaxed" style={{ fontSize: "18px", lineHeight: 1.7 }}>
+              "{currentSection.text}"
+            </p>
+          </div>
+
+          {/* Recording indicator */}
+          {isRecording && (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                  </span>
+                  <span className="text-sm font-medium text-destructive">Recording...</span>
+                </div>
+                <span className="text-lg font-mono text-foreground">{formatTime(duration)} / ~0:20</span>
+              </div>
+              <canvas ref={canvasRef} width={500} height={60} className="w-full h-14 rounded-lg" />
+              <Button onClick={stopRecording} variant="destructive" className="w-full gap-2" disabled={duration < 5}>
+                <Square className="h-4 w-4" /> Stop Recording
+              </Button>
+            </>
+          )}
+
+          {/* Section recorded — review */}
+          {isRecorded && !isRecording && (
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-primary" />
+              <span className="text-sm text-foreground">Section {currentSection.id} recorded ({formatTime(sectionDurations[currentSectionIdx] || duration)})</span>
+              <Button variant="ghost" size="sm" onClick={() => {
+                const url = URL.createObjectURL(currentBlob!);
+                playAudio(url);
+              }} className="gap-1 ml-auto">
+                <Play className="h-3 w-3" /> Play
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => {
+                setSectionBlobs(prev => { const n = [...prev]; n[currentSectionIdx] = null; return n; });
+                setStatus("idle");
+              }} className="gap-1">
+                <RotateCcw className="h-3 w-3" /> Re-record
+              </Button>
+            </div>
+          )}
+
+          {/* Not recorded yet & not recording */}
+          {!currentBlob && !isRecording && (
+            <Button onClick={startSectionRecording} className="w-full gap-2" size="lg">
+              <Mic className="h-4 w-4" /> Record Section {currentSection.id}
+            </Button>
+          )}
+
+          {/* Navigation */}
+          {!isRecording && (
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentSectionIdx === 0}
+                onClick={() => { setCurrentSectionIdx(prev => prev - 1); setStatus("idle"); }}
+                className="gap-1"
+              >
+                <ChevronLeft className="h-3 w-3" /> Previous
+              </Button>
+              {currentSectionIdx < 4 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!currentBlob}
+                  onClick={() => {
+                    setSectionDurations(prev => { const n = [...prev]; n[currentSectionIdx] = duration; return n; });
+                    setCurrentSectionIdx(prev => prev + 1);
+                    setStatus("idle");
+                    setDuration(0);
+                  }}
+                  className="gap-1"
+                >
+                  Next <ChevronRight className="h-3 w-3" />
+                </Button>
+              ) : allRecorded ? (
+                <Button onClick={submitVoiceClone} className="gap-2">
+                  <Mic className="h-4 w-4" /> Submit & Create My Voice
+                </Button>
+              ) : null}
+            </div>
+          )}
+
+          {/* All sections done — final review */}
+          {allRecorded && !isRecording && (
+            <div className="pt-3 border-t border-border space-y-3">
+              <p className="text-sm font-medium text-foreground">All sections recorded! Review your combined audio before submitting.</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => {
+                  const combined = combineSectionBlobs();
+                  const url = URL.createObjectURL(combined);
+                  playAudio(url);
+                }} className="gap-1">
+                  <Play className="h-3 w-3" /> Play Combined Audio
+                </Button>
+                <Button variant="outline" size="sm" onClick={reRecord} className="gap-1">
+                  <RotateCcw className="h-3 w-3" /> Start Over
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-border">
       <CardContent className="p-6">
         {/* IDLE */}
         {status === "idle" && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 mb-1">
               <Mic className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">Clone Your Voice</h3>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Record yourself reading the script below. The AI will learn your voice and use it on calls. Takes about 30 seconds.
-            </p>
-            <div className="p-4 rounded-lg bg-secondary border border-border">
-              <p className="text-sm text-foreground italic leading-relaxed">{SAMPLE_SCRIPT}</p>
+
+            <div className="p-4 rounded-lg bg-secondary/50 border border-border space-y-1">
+              <p className="text-sm text-foreground font-medium">
+                Read all five sections below in your normal speaking voice.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Speak naturally, like you would on a real phone call with a client. This takes about 90 seconds.
+              </p>
             </div>
-            <Button onClick={startRecording} className="w-full gap-2" size="lg">
-              <Mic className="h-4 w-4" /> Start Recording
-            </Button>
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Tips before you start:</p>
+
+            {/* Recording mode selector */}
+            <div className="space-y-3 p-4 rounded-lg border border-border">
+              <p className="text-sm font-medium text-foreground">Recording Mode:</p>
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecordingMode("full")}>
+                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${recordingMode === "full" ? "border-primary" : "border-muted-foreground/40"}`}>
+                    {recordingMode === "full" && <div className="h-2 w-2 rounded-full bg-primary" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Read the full script in one take (~90 seconds)</p>
+                    <p className="text-xs text-muted-foreground">Best quality. Read all five sections continuously.</p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecordingMode("section")}>
+                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${recordingMode === "section" ? "border-primary" : "border-muted-foreground/40"}`}>
+                    {recordingMode === "section" && <div className="h-2 w-2 rounded-full bg-primary" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Record section by section (~20 seconds each)</p>
+                    <p className="text-xs text-muted-foreground">Easier to do. Record each section separately and we'll combine them.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Customize toggle */}
+            <div className="flex items-center gap-3">
+              <Switch checked={customizeScript} onCheckedChange={setCustomizeScript} id="customize-script" />
+              <Label htmlFor="customize-script" className="text-sm text-foreground cursor-pointer flex items-center gap-1.5">
+                <Pencil className="h-3.5 w-3.5" /> Customize this script before recording
+              </Label>
+            </div>
+            {customizeScript && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+                Keep the overall length and variety similar. Don't shorten it significantly or the voice clone quality may suffer.
+              </p>
+            )}
+
+            {/* Script sections */}
+            <ScriptDisplay editable={customizeScript} />
+
+            {/* Tips */}
+            <div className="space-y-1 p-3 rounded-lg bg-muted/50">
+              <p className="text-xs font-semibold text-muted-foreground">Pro tips:</p>
               <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
-                <li>Find a quiet room with no background noise</li>
-                <li>Sit close to your microphone</li>
-                <li>Speak at your normal pace</li>
-                <li>Smile while you speak — it comes through in your voice</li>
+                <li>Read it like you're talking to a real client, not reading a script</li>
+                <li>Keep a steady pace — don't rush through it</li>
+                <li>If you stumble on a word, just keep going naturally</li>
+                <li>Smile while you speak — your clients will hear it</li>
               </ul>
             </div>
+
+            <Button onClick={recordingMode === "section" ? () => { setStatus("idle"); } : startRecording} className="w-full gap-2" size="lg"
+              {...(recordingMode === "section" ? {} : {})}
+            >
+              <Mic className="h-4 w-4" /> Start Recording
+            </Button>
           </div>
         )}
 
-        {/* RECORDING — script stays visible as teleprompter */}
+        {/* RECORDING — full take, script stays visible */}
         {status === "recording" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -344,16 +701,24 @@ export function CloneVoiceTab() {
                 </span>
                 <span className="text-sm font-medium text-destructive">Recording...</span>
               </div>
-              <span className="text-lg font-mono text-foreground">{formatTime(duration)} / {formatTime(TARGET_DURATION)}</span>
+              <span className="text-lg font-mono text-foreground">{formatTime(duration)} / ~{formatTime(TARGET_DISPLAY)}</span>
             </div>
-            <div className="p-5 rounded-lg bg-secondary border border-border">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Read this out loud:</p>
-              <p className="text-foreground italic" style={{ fontSize: "18px", lineHeight: 1.6 }}>{SAMPLE_SCRIPT}</p>
-            </div>
+
+            {/* Script with active section highlighting */}
+            <ScriptDisplay highlight={activeSectionIdx >= 0 ? activeSectionIdx : undefined} />
+
             <canvas ref={canvasRef} width={500} height={60} className="w-full h-14 rounded-lg" />
+
+            {duration >= 120 && (
+              <p className="text-xs text-primary font-medium text-center">
+                ✓ You can stop recording anytime — you've got plenty of audio!
+              </p>
+            )}
+
             {duration < MIN_DURATION && (
               <p className="text-xs text-muted-foreground">Keep going — need at least {MIN_DURATION - duration}s more</p>
             )}
+
             <Button onClick={stopRecording} variant="destructive" className="w-full gap-2" disabled={duration < MIN_DURATION}>
               <Square className="h-4 w-4" /> Stop Recording
             </Button>
@@ -368,7 +733,7 @@ export function CloneVoiceTab() {
               <h3 className="font-semibold text-foreground">Recording Complete — {formatTime(duration)}</h3>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={isPlaying ? pauseAudio : playAudio} className="gap-1">
+              <Button variant="outline" size="sm" onClick={isPlaying ? pauseAudio : () => playAudio()} className="gap-1">
                 {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                 {isPlaying ? "Pause" : "Play Back"}
               </Button>
