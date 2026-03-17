@@ -317,7 +317,8 @@ export function CloneVoiceTab() {
 
     try {
       const formData = new FormData();
-      formData.append("audio", audioBlob, "voice-sample.wav");
+      const fileExtension = audioBlob.type.includes("wav") ? "wav" : audioBlob.type.includes("mp4") ? "m4a" : audioBlob.type.includes("ogg") ? "ogg" : "webm";
+      formData.append("audio", audioBlob, `voice-sample.${fileExtension}`);
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
       const { data: sessionData } = await supabase.auth.getSession();
