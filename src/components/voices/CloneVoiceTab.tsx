@@ -146,8 +146,6 @@ export function CloneVoiceTab() {
         throw new Error("Microphone recording is not supported in this browser.");
       }
 
-      fallbackBlobRef.current = null;
-      rawChunksRef.current = [];
       chunksRef.current = [];
 
       if (audioUrl) {
@@ -162,45 +160,31 @@ export function CloneVoiceTab() {
         audio: {
           channelCount: 1,
           sampleRate: 44100,
-          sampleSize: 16,
-          echoCancellation: false,
-          noiseSuppression: false,
+          echoCancellation: true,
+          noiseSuppression: true,
           autoGainControl: false,
         },
       });
       streamRef.current = stream;
 
+      // AudioContext only for waveform visualization
       const audioCtx = new AudioContext({ sampleRate: 44100 });
       audioCtxRef.current = audioCtx;
+      if (audioCtx.state === "suspended") await audioCtx.resume();
       const source = audioCtx.createMediaStreamSource(stream);
-      sourceRef.current = source;
-
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      try {
-        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-        scriptProcessorRef.current = processor;
-        processor.onaudioprocess = (e) => {
-          const input = e.inputBuffer.getChannelData(0);
-          rawChunksRef.current.push(new Float32Array(input));
-        };
-        source.connect(processor);
-        processor.connect(audioCtx.destination);
-      } catch (processorError) {
-        console.warn("PCM capture unavailable, falling back to MediaRecorder blob only", processorError);
-        scriptProcessorRef.current = null;
-      }
-
+      // Use MediaRecorder for capture — same blob for playback and upload
       const candidateMimeTypes = [
         "audio/webm;codecs=opus",
         "audio/webm",
         "audio/mp4",
         "audio/ogg;codecs=opus",
       ];
-      const mimeType = candidateMimeTypes.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+      const mimeType = candidateMimeTypes.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
       mimeTypeRef.current = mimeType || "audio/webm";
 
       const mediaRecorder = mimeType
@@ -213,35 +197,19 @@ export function CloneVoiceTab() {
       };
 
       mediaRecorder.onstop = async () => {
-        const previewBlob = new Blob(chunksRef.current, { type: mimeTypeRef.current || "audio/webm" });
-        fallbackBlobRef.current = previewBlob.size > 0 ? previewBlob : null;
+        const recordedBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || mimeTypeRef.current });
 
-        const totalLength = rawChunksRef.current.reduce((acc, c) => acc + c.length, 0);
-        let finalBlob: Blob | null = fallbackBlobRef.current;
-
-        if (totalLength > 0) {
-          const merged = new Float32Array(totalLength);
-          let offset = 0;
-          for (const chunk of rawChunksRef.current) {
-            merged.set(chunk, offset);
-            offset += chunk.length;
-          }
-          finalBlob = encodeWav(merged, audioCtx.sampleRate);
-        }
-
-        if (finalBlob) {
-          setAudioBlob(finalBlob);
-        }
-
-        if (fallbackBlobRef.current) {
-          setAudioUrl((previousUrl) => {
-            if (previousUrl) URL.revokeObjectURL(previousUrl);
-            return URL.createObjectURL(fallbackBlobRef.current!);
+        if (recordedBlob.size > 0) {
+          setAudioBlob(recordedBlob);
+          setAudioUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return URL.createObjectURL(recordedBlob);
           });
+        } else {
+          console.warn("Recording produced empty blob");
+          toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone.", variant: "destructive" });
         }
 
-        scriptProcessorRef.current?.disconnect();
-        sourceRef.current?.disconnect();
         stream.getTracks().forEach((t) => t.stop());
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
         if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
@@ -249,7 +217,7 @@ export function CloneVoiceTab() {
         }
       };
 
-      mediaRecorder.start(250);
+      mediaRecorder.start(1000);
       setStatus("recording");
       setDuration(0);
       timerRef.current = setInterval(() => {
