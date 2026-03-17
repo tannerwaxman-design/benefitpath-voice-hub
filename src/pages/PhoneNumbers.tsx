@@ -94,6 +94,9 @@ export default function PhoneNumbers() {
   // Twilio credentials
   const [twilioSid, setTwilioSid] = useState("");
   const [twilioToken, setTwilioToken] = useState("");
+  const [twilioVerified, setTwilioVerified] = useState(false);
+  const [twilioVerifying, setTwilioVerifying] = useState(false);
+  const [twilioAccountName, setTwilioAccountName] = useState("");
 
   // Twilio import form
   const [importNumber, setImportNumber] = useState("");
