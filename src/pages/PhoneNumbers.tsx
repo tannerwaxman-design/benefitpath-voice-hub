@@ -275,7 +275,7 @@ export default function PhoneNumbers() {
                               : "border-primary/30 text-primary"
                           }`}
                         >
-                          {((pn as Record<string, unknown>).provider as string) || "vapi"}
+                          {((pn as Record<string, unknown>).provider as string) === "vapi" ? "platform" : ((pn as Record<string, unknown>).provider as string) || "platform"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
