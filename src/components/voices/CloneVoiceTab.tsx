@@ -475,7 +475,9 @@ export function CloneVoiceTab() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
                 </span>
-                <span className="text-sm font-medium text-destructive">Recording...</span>
+                <span className="text-sm font-medium text-destructive">
+                  {isFinalizingRecording ? "Saving recording..." : "Recording..."}
+                </span>
               </div>
               <span className="text-lg font-mono text-foreground">{formatTime(duration)}</span>
             </div>
@@ -489,12 +491,12 @@ export function CloneVoiceTab() {
 
             <canvas ref={canvasRef} width={500} height={60} className="w-full h-14 rounded-lg" />
 
-            {duration < MIN_DURATION && (
+            {!isFinalizingRecording && duration < MIN_DURATION && (
               <p className="text-xs text-muted-foreground">Keep going — need at least {MIN_DURATION - duration}s more</p>
             )}
 
-            <Button onClick={stopRecording} variant="destructive" className="w-full gap-2" disabled={duration < MIN_DURATION}>
-              <Square className="h-4 w-4" /> Stop Recording
+            <Button onClick={stopRecording} variant="destructive" className="w-full gap-2" disabled={duration < MIN_DURATION || isFinalizingRecording}>
+              <Square className="h-4 w-4" /> {isFinalizingRecording ? "Saving recording..." : "Stop Recording"}
             </Button>
           </div>
         )}
