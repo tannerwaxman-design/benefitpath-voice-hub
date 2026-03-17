@@ -28,11 +28,9 @@ export function TtsTestBox({ voiceId, defaultText = "", compact = false }: TtsTe
 
     setStatus("loading");
     try {
-      // play() returns a promise that resolves when audio finishes
-      const playPromise = play(text, voiceId);
-      // Once audio starts (play resolved the fetch), switch to playing
-      setStatus("playing");
-      await playPromise;
+      await play(text, voiceId, {
+        onPlaybackStart: () => setStatus("playing"),
+      });
       setStatus("idle");
     } catch (err) {
       console.error("TTS preview error:", err);
