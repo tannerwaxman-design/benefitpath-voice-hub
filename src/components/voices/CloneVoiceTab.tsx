@@ -6,11 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Mic, Square, Play, Pause, RotateCcw, Check, Loader2, Lock } from "lucide-react";
+import { Mic, Square, RotateCcw, Check, Loader2, Lock } from "lucide-react";
 import { TtsTestBox } from "./TtsTestBox";
 
 const MIN_DURATION = 15;
 const MAX_DURATION = 60;
+const MIN_RECORDING_SIZE_BYTES = 10 * 1024;
 
 type CloneStatus = "idle" | "recording" | "recorded" | "processing" | "ready" | "error";
 
