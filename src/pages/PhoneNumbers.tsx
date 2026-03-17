@@ -422,7 +422,7 @@ export default function PhoneNumbers() {
               </TabsTrigger>
               <TabsTrigger value="vapi-free" className="flex-1">
                 <Phone className="h-3.5 w-3.5 mr-1.5" />
-                VAPI Free
+                Free Number
               </TabsTrigger>
             </TabsList>
 
