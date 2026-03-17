@@ -3,6 +3,7 @@
 //
 // Accepts an audio recording, uploads it to ElevenLabs for
 // instant voice cloning, and returns the cloned voice_id.
+// Optimized for high-quality clone output.
 // ============================================================
 
 import {
@@ -40,11 +41,24 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Audio file too large (max 10MB)");
     }
 
-    // Upload to ElevenLabs voice cloning API
+    console.log(`[CLONE-VOICE] Starting clone for tenant=${auth.tenantId}, file size=${audioFile.size}, type=${audioFile.type}`);
+
+    // Upload to ElevenLabs voice cloning API with optimized labels
     const elFormData = new FormData();
     elFormData.append("name", `${voiceName} - ${auth.tenantId.substring(0, 8)}`);
-    elFormData.append("description", "Voice clone created via BenefitPath");
+    elFormData.append(
+      "description",
+      "Professional insurance agent voice clone created via BenefitPath"
+    );
     elFormData.append("files", audioFile);
+    // Labels help ElevenLabs optimize the voice model
+    elFormData.append(
+      "labels",
+      JSON.stringify({
+        accent: "american",
+        use_case: "conversational",
+      })
+    );
 
     const elResponse = await fetch("https://api.elevenlabs.io/v1/voices/add", {
       method: "POST",
@@ -56,9 +70,8 @@ Deno.serve(async (req: Request) => {
 
     if (!elResponse.ok) {
       const errBody = await elResponse.text();
-      console.error("ElevenLabs voice clone failed:", elResponse.status, errBody);
-      
-      // Update agent status if agent_id provided
+      console.error("[CLONE-VOICE] ElevenLabs failed:", elResponse.status, errBody);
+
       if (agentId) {
         const adminClient = createAdminClient();
         await adminClient
@@ -73,6 +86,7 @@ Deno.serve(async (req: Request) => {
 
     const result = await elResponse.json();
     const clonedVoiceId = result.voice_id;
+    console.log(`[CLONE-VOICE] Success, voice_id=${clonedVoiceId}`);
 
     // If agent_id provided, update the agent record
     if (agentId) {
@@ -95,7 +109,7 @@ Deno.serve(async (req: Request) => {
       message: "Voice clone created successfully",
     });
   } catch (err) {
-    console.error("clone-voice error:", err);
+    console.error("[CLONE-VOICE] Error:", err);
     return errorResponse(
       err instanceof Error ? err.message : "Internal server error",
       500
