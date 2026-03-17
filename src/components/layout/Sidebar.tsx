@@ -77,30 +77,30 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Credits Meter */}
+      {/* Credits */}
       {!collapsed && user?.tenant && (
         <div className="p-4 border-t border-slate-800">
-          <p className="text-xs text-slate-500 mb-2">Credits Used</p>
           {(() => {
-            const used = user.tenant.minutes_used_this_cycle ?? 0;
-            const limit = user.tenant.monthly_minute_limit ?? 5000;
-            const pct = limit > 0 ? (used / limit) * 100 : 0;
+            const balance = user.tenant.credit_balance ?? 0;
+            const autoRefill = user.tenant.auto_refill_enabled;
+            const isZero = balance === 0;
+            const isLow = balance > 0 && balance < 200;
             return (
               <>
-                <div className="w-full bg-slate-700 rounded-full h-2 mb-1.5">
-                  <div className={`h-2 rounded-full transition-all ${pct >= 90 ? "bg-red-400" : pct >= 70 ? "bg-yellow-400" : "bg-emerald-400"}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                </div>
-                <p className="text-xs text-slate-400">{used.toLocaleString()} / {limit.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mb-1">Credits</p>
+                <p className={`text-sm font-bold ${isZero ? "text-red-400" : isLow ? "text-yellow-400" : "text-emerald-400"}`}>
+                  {isZero ? "🔴" : isLow ? "⚠️" : "💰"} {balance.toLocaleString()} remaining
+                </p>
+                {isZero && <p className="text-[10px] text-red-400 mt-0.5">Calling paused</p>}
+                {autoRefill && !isZero && (
+                  <p className="text-[10px] text-slate-500 mt-0.5">🔄 Auto-refill ON</p>
+                )}
+                <button onClick={() => navigate("/billing")} className="text-xs mt-1.5 hover:underline" style={{ color: "#818CF8" }}>
+                  {isZero || isLow ? "Buy Credits Now" : "Buy Credits"}
+                </button>
               </>
             );
           })()}
-          <div className="mt-2">
-            <p className="text-xs text-slate-500">Balance</p>
-            <p className={`text-sm font-bold ${creditBalance <= 1 ? "text-red-400" : creditBalance <= 5 ? "text-yellow-400" : "text-emerald-400"}`}>
-              ${creditBalance.toFixed(2)}
-            </p>
-          </div>
-          <button onClick={() => navigate("/billing")} className="text-xs text-primary mt-1 hover:underline" style={{ color: "#818CF8" }}>Manage Credits</button>
         </div>
       )}
     </aside>

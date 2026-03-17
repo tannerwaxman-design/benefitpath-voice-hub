@@ -98,6 +98,9 @@ export function useUpdateBillingSettings() {
       hard_stop_enabled?: boolean;
       usage_alert_threshold?: number;
       margin_percent?: number;
+      auto_refill_enabled?: boolean;
+      auto_refill_threshold?: number;
+      auto_refill_package?: string;
     }) => {
       const { error } = await supabase
         .from("tenants")
