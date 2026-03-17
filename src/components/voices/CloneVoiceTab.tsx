@@ -43,6 +43,7 @@ export function CloneVoiceTab() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [clonedVoice, setClonedVoice] = useState<ClonedVoiceInfo | null>(null);
+  const [isFinalizingRecording, setIsFinalizingRecording] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -184,11 +185,14 @@ export function CloneVoiceTab() {
             if (prev) URL.revokeObjectURL(prev);
             return URL.createObjectURL(recordedBlob);
           });
+          setStatus("recorded");
         } else {
           console.warn("Recording produced empty blob");
-          toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone.", variant: "destructive" });
+          setStatus("idle");
+          toast({ title: "Recording failed", description: "No audio was captured. Please check your microphone and try again.", variant: "destructive" });
         }
 
+        setIsFinalizingRecording(false);
         stream.getTracks().forEach((t) => t.stop());
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
         if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
@@ -209,6 +213,7 @@ export function CloneVoiceTab() {
       drawWaveform();
     } catch (error) {
       console.error("Voice recording failed to start", error);
+      setIsFinalizingRecording(false);
       toast({
         title: "Microphone access required",
         description: error instanceof Error ? error.message : "Please allow microphone access in your browser settings.",
@@ -219,8 +224,8 @@ export function CloneVoiceTab() {
 
   const stopRecording = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setIsFinalizingRecording(true);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-    setStatus("recorded");
   };
 
   const playAudio = () => {
@@ -252,6 +257,7 @@ export function CloneVoiceTab() {
     setStatus("idle");
     setProcessingProgress(0);
     setClonedVoice(null);
+    setIsFinalizingRecording(false);
   };
 
   const submitVoiceClone = async () => {
@@ -469,7 +475,9 @@ export function CloneVoiceTab() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
                 </span>
-                <span className="text-sm font-medium text-destructive">Recording...</span>
+                <span className="text-sm font-medium text-destructive">
+                  {isFinalizingRecording ? "Saving recording..." : "Recording..."}
+                </span>
               </div>
               <span className="text-lg font-mono text-foreground">{formatTime(duration)}</span>
             </div>
@@ -483,12 +491,12 @@ export function CloneVoiceTab() {
 
             <canvas ref={canvasRef} width={500} height={60} className="w-full h-14 rounded-lg" />
 
-            {duration < MIN_DURATION && (
+            {!isFinalizingRecording && duration < MIN_DURATION && (
               <p className="text-xs text-muted-foreground">Keep going — need at least {MIN_DURATION - duration}s more</p>
             )}
 
-            <Button onClick={stopRecording} variant="destructive" className="w-full gap-2" disabled={duration < MIN_DURATION}>
-              <Square className="h-4 w-4" /> Stop Recording
+            <Button onClick={stopRecording} variant="destructive" className="w-full gap-2" disabled={duration < MIN_DURATION || isFinalizingRecording}>
+              <Square className="h-4 w-4" /> {isFinalizingRecording ? "Saving recording..." : "Stop Recording"}
             </Button>
           </div>
         )}
