@@ -8,6 +8,7 @@ import {
   useAssignPhoneNumber,
   useSetDefaultPhoneNumber,
 } from "@/hooks/use-phone-numbers";
+import { supabase } from "@/integrations/supabase/client";
 import { useAgents } from "@/hooks/use-agents";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +95,9 @@ export default function PhoneNumbers() {
   // Twilio credentials
   const [twilioSid, setTwilioSid] = useState("");
   const [twilioToken, setTwilioToken] = useState("");
+  const [twilioVerified, setTwilioVerified] = useState(false);
+  const [twilioVerifying, setTwilioVerifying] = useState(false);
+  const [twilioAccountName, setTwilioAccountName] = useState("");
 
   // Twilio import form
   const [importNumber, setImportNumber] = useState("");
@@ -136,13 +140,41 @@ export default function PhoneNumbers() {
     assignNumber.mutate({ phoneId, agentId: null });
   };
 
-  const validateTwilioCreds = (): boolean => {
+  const handleVerifyTwilio = async () => {
     if (!twilioSid.startsWith("AC") || twilioSid.length < 34) {
       toast({ title: "Invalid Account SID", description: "Twilio Account SIDs start with 'AC' and are 34 characters long.", variant: "destructive" });
-      return false;
+      return;
     }
     if (twilioToken.length < 32) {
       toast({ title: "Invalid Auth Token", description: "Twilio Auth Tokens are 32 characters long.", variant: "destructive" });
+      return;
+    }
+    setTwilioVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-twilio-credentials", {
+        body: { twilio_account_sid: twilioSid, twilio_auth_token: twilioToken },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast({ title: "Verification failed", description: data.error, variant: "destructive" });
+        setTwilioVerified(false);
+        return;
+      }
+      setTwilioVerified(true);
+      setTwilioAccountName(data?.account_name || "");
+      toast({ title: "Twilio credentials verified!", description: data?.account_name ? `Account: ${data.account_name}` : undefined });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Verification failed";
+      toast({ title: "Verification failed", description: msg, variant: "destructive" });
+      setTwilioVerified(false);
+    } finally {
+      setTwilioVerifying(false);
+    }
+  };
+
+  const validateTwilioCreds = (): boolean => {
+    if (!twilioVerified) {
+      toast({ title: "Please verify your Twilio credentials first", variant: "destructive" });
       return false;
     }
     return true;
@@ -228,6 +260,8 @@ export default function PhoneNumbers() {
     setShowNewModal(false);
     setSearchResults([]);
     setBuyingNumber(null);
+    setTwilioVerified(false);
+    setTwilioAccountName("");
   };
 
   return (
@@ -459,7 +493,7 @@ export default function PhoneNumbers() {
                   <Label className="text-xs">Twilio Account SID</Label>
                   <Input
                     value={twilioSid}
-                    onChange={(e) => setTwilioSid(e.target.value)}
+                    onChange={(e) => { setTwilioSid(e.target.value); setTwilioVerified(false); }}
                     placeholder="AC..."
                     className="mt-1 text-xs"
                   />
@@ -469,11 +503,30 @@ export default function PhoneNumbers() {
                   <Input
                     type="password"
                     value={twilioToken}
-                    onChange={(e) => setTwilioToken(e.target.value)}
+                    onChange={(e) => { setTwilioToken(e.target.value); setTwilioVerified(false); }}
                     placeholder="••••••••"
                     className="mt-1 text-xs"
                   />
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={twilioVerified ? "outline" : "secondary"}
+                  size="sm"
+                  onClick={handleVerifyTwilio}
+                  disabled={twilioVerifying || !twilioSid || !twilioToken}
+                >
+                  {twilioVerifying ? (
+                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Verifying...</>
+                  ) : twilioVerified ? (
+                    <><Check className="h-3.5 w-3.5 mr-1.5 text-success" /> Verified</>
+                  ) : (
+                    <><ShieldCheck className="h-3.5 w-3.5 mr-1.5" /> Test Connection</>
+                  )}
+                </Button>
+                {twilioVerified && twilioAccountName && (
+                  <span className="text-xs text-success">{twilioAccountName}</span>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Phone Number (E.164)</Label>
