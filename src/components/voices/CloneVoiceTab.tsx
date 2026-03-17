@@ -224,13 +224,22 @@ export function CloneVoiceTab() {
   };
 
   const playAudio = () => {
-    if (!audioUrl) return;
-    if (audioRef.current) audioRef.current.pause();
-    const audio = new Audio(audioUrl);
+    if (!audioBlob) return;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    const audio = new Audio();
+    audio.play().catch(() => {}); // Unlock for iOS Safari
+    audio.preload = "auto";
+    audio.src = URL.createObjectURL(audioBlob);
     audioRef.current = audio;
     audio.onended = () => setIsPlaying(false);
-    audio.play();
-    setIsPlaying(true);
+    audio.onerror = () => {
+      console.error("Audio playback error", audio.error);
+      setIsPlaying(false);
+    };
+    audio.play().then(() => setIsPlaying(true)).catch((err) => {
+      console.error("Playback failed", err);
+      setIsPlaying(false);
+    });
   };
 
   const pauseAudio = () => { audioRef.current?.pause(); setIsPlaying(false); };
