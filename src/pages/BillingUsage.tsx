@@ -172,7 +172,7 @@ export default function BillingUsage() {
     setCheckoutLoading(planId);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId: stripeplan.price_id },
+        body: { priceId: billingInterval === "annual" ? stripeplan.annual_price_id : stripeplan.price_id },
       });
       if (error) throw error;
       if (data?.url) {
