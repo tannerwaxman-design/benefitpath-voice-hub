@@ -59,7 +59,7 @@ const MIN_DURATION = 30;
 const MAX_DURATION = 180; // auto-stop at 3 min
 const TARGET_DISPLAY = 90; // "~1:30" shown in UI
 
-type CloneStatus = "idle" | "recording" | "recorded" | "processing" | "ready" | "error";
+type CloneStatus = "idle" | "recording" | "recorded" | "processing" | "ready" | "error" | "env-testing";
 type RecordingMode = "full" | "section";
 
 interface ClonedVoiceInfo {
