@@ -34,10 +34,10 @@ const sentimentDot: Record<string, string> = {
   negative: "bg-destructive",
 };
 
-function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
+const AnimatedNumber = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
   const animated = useCountUp(value);
-  return <>{animated.toLocaleString()}{suffix}</>;
-}
+  return <span>{animated.toLocaleString()}{suffix}</span>;
+};
 
 export default function Overview() {
   const { user } = useAuth();
