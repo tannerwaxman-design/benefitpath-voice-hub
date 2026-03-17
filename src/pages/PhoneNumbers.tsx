@@ -185,6 +185,7 @@ export default function PhoneNumbers() {
       toast({ title: "Please enter your Twilio credentials", variant: "destructive" });
       return;
     }
+    if (!validateTwilioCreds()) return;
     searchTwilio.mutate(
       {
         area_code: buyAreaCode,
