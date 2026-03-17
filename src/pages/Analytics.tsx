@@ -2,16 +2,17 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, TrendingDown, Download, Zap } from "lucide-react";
-import { useSmartSchedule, groupSlotsByScore, DAY_NAMES, formatSlotTime } from "@/hooks/use-smart-schedule";
-import {
-  ComposedChart, Bar, Line,
-  BarChart,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
-} from "recharts";
+import { Download, Zap, BarChart3 } from "lucide-react";
+import { useSmartSchedule, DAY_NAMES, formatSlotTime } from "@/hooks/use-smart-schedule";
+import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { AnalyticsSkeleton } from "@/components/ui/page-skeletons";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { useCountUp } from "@/hooks/use-count-up";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
+import { useNavigate } from "react-router-dom";
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "0:00";
@@ -20,16 +21,24 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function AnimatedKpi({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const animated = useCountUp(value);
+  return <>{animated.toLocaleString()}{suffix}</>;
+}
+
 export default function Analytics() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState("30");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [summary, setSummary] = useState<any>(null);
   const [callsPerDay, setCallsPerDay] = useState<any[]>([]);
   const [agentPerf, setAgentPerf] = useState<any[]>([]);
   const [funnel, setFunnel] = useState<any>(null);
-  const [tenant, setTenant] = useState<any>(null);
   const { data: smartSlots } = useSmartSchedule();
+
+  const showSkeleton = useDelayedLoading(loading);
 
   const dateFrom = useMemo(() => {
     const d = new Date();
@@ -38,33 +47,57 @@ export default function Analytics() {
   }, [dateRange]);
   const dateTo = useMemo(() => new Date().toISOString(), [dateRange]);
 
-  useEffect(() => {
-    async function fetchAnalytics() {
-      setLoading(true);
-      const [summaryRes, dailyRes, agentRes, funnelRes, tenantRes] = await Promise.all([
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const [summaryRes, dailyRes, agentRes, funnelRes] = await Promise.all([
         supabase.rpc("get_analytics_summary", { date_from: dateFrom, date_to: dateTo }),
         supabase.rpc("get_calls_per_day", { date_from: dateFrom, date_to: dateTo }),
         supabase.rpc("get_agent_performance", { date_from: dateFrom, date_to: dateTo }),
         supabase.rpc("get_conversion_funnel", { date_from: dateFrom, date_to: dateTo }),
-        supabase.from("tenants").select("minutes_used_this_cycle, monthly_minute_limit").single(),
       ]);
 
       if (summaryRes.data) setSummary(Array.isArray(summaryRes.data) ? summaryRes.data[0] : summaryRes.data);
       if (dailyRes.data) setCallsPerDay(dailyRes.data);
       if (agentRes.data) setAgentPerf(agentRes.data);
       if (funnelRes.data) setFunnel(Array.isArray(funnelRes.data) ? funnelRes.data[0] : funnelRes.data);
-      if (tenantRes.data) setTenant(tenantRes.data);
-      setLoading(false);
+    } catch {
+      setError(true);
     }
-    fetchAnalytics();
-  }, [dateFrom, dateTo]);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchAnalytics(); }, [dateFrom, dateTo]);
+
+  if (showSkeleton) return <AnalyticsSkeleton />;
+  if (error) return <ErrorState message="We couldn't load analytics data." onRetry={fetchAnalytics} />;
+
+  const totalCalls = Number(summary?.total_calls || 0);
+
+  if (!loading && totalCalls === 0) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <h1 className="page-title">Analytics</h1>
+        </div>
+        <EmptyState
+          icon={BarChart3}
+          title="Not enough data yet"
+          description="Analytics will populate after your agents make some calls. Start a campaign to get going."
+          actionLabel="Go to Campaigns"
+          onAction={() => navigate("/campaigns")}
+        />
+      </div>
+    );
+  }
 
   const kpis = summary ? [
-    { label: "Total Calls", value: (summary.total_calls || 0).toLocaleString() },
-    { label: "Connect Rate", value: `${summary.connect_rate || 0}%` },
-    { label: "Avg Duration", value: formatDuration(summary.avg_duration_seconds) },
-    { label: "Appointments Set", value: (summary.appointments_set || 0).toLocaleString() },
-    { label: "Conversion Rate", value: `${summary.conversion_rate || 0}%` },
+    { label: "Total Calls", value: totalCalls, render: <AnimatedKpi value={totalCalls} /> },
+    { label: "Connect Rate", value: Number(summary.connect_rate || 0), render: <>{summary.connect_rate || 0}%</> },
+    { label: "Avg Duration", value: 0, render: <>{formatDuration(summary.avg_duration_seconds)}</> },
+    { label: "Appointments Set", value: Number(summary.appointments_set || 0), render: <AnimatedKpi value={Number(summary.appointments_set || 0)} /> },
+    { label: "Conversion Rate", value: 0, render: <>{summary.conversion_rate || 0}%</> },
   ] : [];
 
   const funnelData = funnel ? [
@@ -83,7 +116,7 @@ export default function Analytics() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Analytics</h1>
         <div className="flex items-center gap-3">
@@ -100,14 +133,12 @@ export default function Analytics() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {loading ? Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-20 mb-2" /><Skeleton className="h-6 w-16" /></CardContent></Card>
-        )) : kpis.map(kpi => (
-          <Card key={kpi.label}>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {kpis.map(kpi => (
+          <Card key={kpi.label} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
-              <p className="text-xl font-bold text-foreground">{kpi.value}</p>
+              <p className="text-xl font-bold text-foreground">{kpi.render}</p>
             </CardContent>
           </Card>
         ))}
@@ -117,7 +148,7 @@ export default function Analytics() {
       <Card>
         <CardHeader><CardTitle className="card-title">Call Volume & Connect Rate</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <Skeleton className="h-[300px] w-full" /> : volumeData.length === 0 ? (
+          {volumeData.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-12">No call data for this period</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -139,38 +170,37 @@ export default function Analytics() {
       <Card>
         <CardHeader><CardTitle className="card-title">Agent Performance Comparison</CardTitle></CardHeader>
         <CardContent className="p-0">
-          {loading ? <Skeleton className="h-40 w-full m-4" /> : agentPerf.length === 0 ? (
+          {agentPerf.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No active agents</p>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-secondary/50">
-                  {["Agent", "Calls", "Connect Rate", "Avg Duration", "Appointments", "Sentiment", "Avg Score"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {agentPerf.map((a: any) => (
-                  <tr key={a.agent_id} className="border-t">
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{a.agent_name}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.total_calls).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{a.connect_rate != null ? `${a.connect_rate}%` : "—"}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(a.avg_duration)}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.appointments).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{a.positive_sentiment_pct != null ? `${a.positive_sentiment_pct}% pos` : "—"}</td>
-                    <td className="px-4 py-3 text-sm">
-                      {a.avg_score != null ? (
-                        <span className={`font-semibold ${
-                          a.avg_score >= 80 ? "text-success" :
-                          a.avg_score >= 60 ? "text-warning" : "text-destructive"
-                        }`}>{Math.round(a.avg_score)}/100</span>
-                      ) : <span className="text-muted-foreground">—</span>}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-secondary/50">
+                    {["Agent", "Calls", "Connect Rate", "Avg Duration", "Appointments", "Sentiment", "Avg Score"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left section-label">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {agentPerf.map((a: any) => (
+                    <tr key={a.agent_id} className="border-t hover:bg-secondary/20 transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">{a.agent_name}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.total_calls).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{a.connect_rate != null ? `${a.connect_rate}%` : "—"}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(a.avg_duration)}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.appointments).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{a.positive_sentiment_pct != null ? `${a.positive_sentiment_pct}% pos` : "—"}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {a.avg_score != null ? (
+                          <span className={`font-semibold ${a.avg_score >= 80 ? "text-success" : a.avg_score >= 60 ? "text-warning" : "text-destructive"}`}>{Math.round(a.avg_score)}/100</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -239,7 +269,7 @@ export default function Analytics() {
       <Card>
         <CardHeader><CardTitle className="card-title">Conversion Funnel</CardTitle></CardHeader>
         <CardContent>
-          {loading ? <Skeleton className="h-40 w-full" /> : !funnel || funnel.total_calls === 0 ? (
+          {!funnel || funnel.total_calls === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No data for this period</p>
           ) : (
             <div className="space-y-2">
@@ -250,7 +280,7 @@ export default function Analytics() {
                   <div key={stage.name} className="flex items-center gap-4">
                     <div className="w-40 text-sm text-foreground text-right">{stage.name}</div>
                     <div className="flex-1 relative">
-                      <div className="h-10 rounded-md flex items-center px-4" style={{ width: `${Math.max(Number(pct), 5)}%`, backgroundColor: stage.fill, minWidth: 80 }}>
+                      <div className="h-10 rounded-md flex items-center px-4 transition-all duration-500" style={{ width: `${Math.max(Number(pct), 5)}%`, backgroundColor: stage.fill, minWidth: 80 }}>
                         <span className="text-xs font-medium text-primary-foreground">{stage.value.toLocaleString()} ({pct}%)</span>
                       </div>
                     </div>

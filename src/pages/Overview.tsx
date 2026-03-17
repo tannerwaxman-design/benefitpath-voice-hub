@@ -1,8 +1,7 @@
-import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, RefreshCw, CheckCircle2, Circle, ExternalLink } from "lucide-react";
+import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, RefreshCw, CheckCircle2, Circle, ExternalLink, BarChart3, Bot } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useCampaigns } from "@/hooks/use-campaigns";
 import { useRecentCalls } from "@/hooks/use-calls";
 import { useAnalyticsSummary, useCallsPerDay } from "@/hooks/use-analytics";
@@ -11,6 +10,12 @@ import { usePostCallTasks, useUpdateTaskStatus } from "@/hooks/use-post-call-tas
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { subDays, format } from "date-fns";
+import { OverviewSkeleton } from "@/components/ui/page-skeletons";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { useCountUp } from "@/hooks/use-count-up";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
+import { useNavigate } from "react-router-dom";
 
 const OUTCOME_COLORS: Record<string, string> = {
   connected: "bg-success/10 text-success",
@@ -29,8 +34,14 @@ const sentimentDot: Record<string, string> = {
   negative: "bg-destructive",
 };
 
+function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const animated = useCountUp(value);
+  return <>{animated.toLocaleString()}{suffix}</>;
+}
+
 export default function Overview() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [chartRange, setChartRange] = useState(30);
   const [queryNow, setQueryNow] = useState(() => new Date());
 
@@ -42,12 +53,14 @@ export default function Overview() {
   const dateFrom = useMemo(() => subDays(queryNow, chartRange).toISOString(), [queryNow, chartRange]);
   const dateTo = useMemo(() => queryNow.toISOString(), [queryNow]);
 
-  const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useAnalyticsSummary(dateFrom, dateTo);
+  const { data: summary, isLoading: summaryLoading, isError: summaryError, refetch: refetchSummary } = useAnalyticsSummary(dateFrom, dateTo);
   const { data: callsPerDay, refetch: refetchChart } = useCallsPerDay(dateFrom, dateTo);
   const { data: campaigns, refetch: refetchCampaigns } = useCampaigns();
   const { data: recentCalls, refetch: refetchCalls } = useRecentCalls(8);
   const { data: tasks } = usePostCallTasks(5);
   const updateTask = useUpdateTaskStatus();
+
+  const showSkeleton = useDelayedLoading(summaryLoading);
 
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
@@ -74,7 +87,6 @@ export default function Overview() {
   const pieData = useMemo(() => {
     if (!summary) return [];
     const total = Number(summary.total_calls) || 1;
-    // Approximate from connect rate
     const connected = Math.round(total * (Number(summary.connect_rate) || 0) / 100);
     const remaining = total - connected;
     return [
@@ -90,11 +102,18 @@ export default function Overview() {
     return Math.round(scored.reduce((sum: number, c: any) => sum + c.quality_score, 0) / scored.length);
   }, [recentCalls]);
 
+  if (showSkeleton) return <OverviewSkeleton />;
+  if (summaryError) return <ErrorState message="We couldn't load your dashboard data. Check your connection and try again." onRetry={() => refetchSummary()} />;
+
+  const totalCalls = Number(summary?.total_calls || 0);
+  const connectRate = Number(summary?.connect_rate || 0);
+  const avgDuration = Number(summary?.avg_duration_seconds || 0);
+
   const statCards = [
-    { label: "Total Calls Made", value: summary ? Number(summary.total_calls).toLocaleString() : "—", sub: `Last ${chartRange} days`, icon: PhoneOutgoing, accent: "stat-card-accent-indigo", iconBg: "bg-primary/10 text-primary" },
-    { label: "Connect Rate", value: summary ? `${Number(summary.connect_rate || 0).toFixed(1)}%` : "—", sub: "Connected / total", icon: PhoneCall, accent: "stat-card-accent-green", iconBg: "bg-success/10 text-success" },
-    { label: "Avg Call Duration", value: summary ? `${Math.floor(Number(summary.avg_duration_seconds || 0) / 60)}m ${Math.round(Number(summary.avg_duration_seconds || 0) % 60)}s` : "—", sub: "Average per call", icon: Clock, accent: "stat-card-accent-amber", iconBg: "bg-warning/10 text-warning" },
-    { label: "Avg Call Score", value: avgScore != null ? `${avgScore}/100` : "—", sub: avgScore != null ? (avgScore >= 80 ? "Excellent" : avgScore >= 60 ? "Good" : "Needs work") : "No scored calls", icon: CalendarCheck, accent: "stat-card-accent-purple", iconBg: "bg-purple-100 text-purple-600" },
+    { label: "Total Calls Made", value: totalCalls, format: (v: number) => <AnimatedNumber value={v} />, sub: `Last ${chartRange} days`, icon: PhoneOutgoing, accent: "stat-card-accent-indigo", iconBg: "bg-primary/10 text-primary" },
+    { label: "Connect Rate", value: connectRate, format: (v: number) => <><AnimatedNumber value={Math.round(v * 10)} suffix="" /><span className="text-lg">.</span>{(v % 1).toFixed(1).slice(2)}%</>, sub: "Connected / total", icon: PhoneCall, accent: "stat-card-accent-green", iconBg: "bg-success/10 text-success" },
+    { label: "Avg Call Duration", value: avgDuration, format: (v: number) => <>{Math.floor(v / 60)}m {Math.round(v % 60)}s</>, sub: "Average per call", icon: Clock, accent: "stat-card-accent-amber", iconBg: "bg-warning/10 text-warning" },
+    { label: "Avg Call Score", value: avgScore ?? 0, format: (v: number) => avgScore != null ? <><AnimatedNumber value={v} />/100</> : <>—</>, sub: avgScore != null ? (avgScore >= 80 ? "Excellent" : avgScore >= 60 ? "Good" : "Needs work") : "No scored calls", icon: CalendarCheck, accent: "stat-card-accent-purple", iconBg: "bg-purple-100 text-purple-600" },
   ];
 
   function timeAgo(dt: string) {
@@ -111,28 +130,42 @@ export default function Overview() {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
+  // If no data at all, show welcome empty state
+  if (!summaryLoading && totalCalls === 0 && (!recentCalls || recentCalls.length === 0)) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <h1 className="page-title">Overview</h1>
+        </div>
+        <EmptyState
+          icon={BarChart3}
+          title="No data yet"
+          description="Make your first test call to see your dashboard come to life. Create an AI agent to get started."
+          actionLabel="Create Your First Agent"
+          onAction={() => navigate("/agents/new")}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Overview</h1>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
-        >
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="gap-2">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Refreshing…" : "Refresh"}
-        </button>
+        </Button>
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map(card => (
-          <div key={card.label} className={`stat-card ${card.accent}`}>
+          <div key={card.label} className={`stat-card ${card.accent} hover:shadow-md transition-shadow`}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{card.label}</p>
-                {summaryLoading ? <Skeleton className="h-8 w-20 mt-1" /> : <p className="text-2xl font-bold text-foreground mt-1">{card.value}</p>}
+                <p className="text-2xl font-bold text-foreground mt-1">{card.format(card.value)}</p>
                 <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
               </div>
               <div className={`p-2.5 rounded-full ${card.iconBg}`}>
@@ -151,7 +184,7 @@ export default function Overview() {
             <div className="flex gap-1">
               {[7, 30, 90].map(d => (
                 <button key={d} onClick={() => setChartRange(d)}
-                  className={`px-3 py-1 text-xs rounded-full ${chartRange === d ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${chartRange === d ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}
                 >{d} Days</button>
               ))}
             </div>
@@ -210,7 +243,7 @@ export default function Overview() {
             {activeCampaigns.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No active campaigns</p>
             ) : activeCampaigns.map(c => (
-              <div key={c.id} className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between">
+              <div key={c.id} className="p-3 rounded-lg bg-secondary/30 flex items-center justify-between hover:bg-secondary/50 transition-colors cursor-pointer" onClick={() => navigate(`/campaigns/${c.id}`)}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-medium text-foreground truncate">{c.name}</span>
@@ -220,7 +253,7 @@ export default function Overview() {
                   </div>
                   {c.total_contacts > 0 && (
                     <div className="w-full bg-secondary rounded-full h-1.5 mb-1">
-                      <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(c.contacts_called / c.total_contacts) * 100}%` }} />
+                      <div className="bg-primary h-1.5 rounded-full transition-all duration-500" style={{ width: `${(c.contacts_called / c.total_contacts) * 100}%` }} />
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">{c.contacts_called} / {c.total_contacts} contacted • {c.appointments_set} appointments</p>
@@ -239,7 +272,7 @@ export default function Overview() {
             {(!recentCalls || recentCalls.length === 0) ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No calls yet</p>
             ) : recentCalls.map(call => (
-              <div key={call.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+              <div key={call.id} className="flex items-center justify-between py-2 border-b border-border last:border-0 hover:bg-secondary/20 transition-colors rounded px-1">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{call.contact_name || "Unknown"}</p>
                   <p className="text-xs text-muted-foreground">{call.to_number}</p>
@@ -268,6 +301,7 @@ export default function Overview() {
                 <button
                   onClick={() => updateTask.mutate({ taskId: task.id, status: task.status === "done" ? "pending" : "done" })}
                   className="mt-0.5 shrink-0"
+                  aria-label={task.status === "done" ? "Mark as pending" : "Mark as done"}
                 >
                   {task.status === "done"
                     ? <CheckCircle2 className="h-5 w-5 text-success" />
@@ -306,8 +340,8 @@ export default function Overview() {
                   <span className="text-sm text-foreground">{user.tenant.minutes_used_this_cycle.toLocaleString()} / {user.tenant.monthly_minute_limit.toLocaleString()} credits</span>
                   <span className="text-sm text-muted-foreground">{((user.tenant.minutes_used_this_cycle / user.tenant.monthly_minute_limit) * 100).toFixed(1)}%</span>
                 </div>
-                <div className="w-full bg-secondary rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${Math.min(100, (user.tenant.minutes_used_this_cycle / user.tenant.monthly_minute_limit) * 100)}%` }} />
+                <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                  <div className="bg-primary h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.min(100, (user.tenant.minutes_used_this_cycle / user.tenant.monthly_minute_limit) * 100)}%` }} />
                 </div>
               </div>
             </div>
