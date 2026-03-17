@@ -117,6 +117,9 @@ export default function BillingUsage() {
   const { data: billing, isLoading } = useBillingUsage();
   const updateSettings = useUpdateBillingSettings();
   const { toast } = useToast();
+  const subscription = useSubscription();
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const tenant = billing?.tenant || user?.tenant;
   const plan = tenant?.plan || "voice_ai_pro";
