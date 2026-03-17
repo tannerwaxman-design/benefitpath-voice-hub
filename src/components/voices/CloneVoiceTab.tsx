@@ -598,7 +598,7 @@ export function CloneVoiceTab() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">Listen to the recording first. If it sounds wrong or silent, re-record before creating the clone.</p>
-            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg" disabled={!audioBlob || audioBlob.size < MIN_RECORDING_SIZE_BYTES || recordedDurationSeconds === null}>
+            <Button onClick={submitVoiceClone} className="w-full gap-2" size="lg" disabled={!audioBlob || audioBlob.size < MIN_RECORDING_SIZE_BYTES}>
               <Mic className="h-4 w-4" /> Submit & Create My Voice
             </Button>
           </div>
