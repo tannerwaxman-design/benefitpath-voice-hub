@@ -31,6 +31,7 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
   const { data: apiKeys = [] } = useToolApiKeys();
   const { data: agents = [] } = useAgents();
   const createTool = useCreateTool();
+  const assignTool = useAssignToolToAgents();
 
   const connectedServices = new Set(apiKeys.map((k) => k.service));
 
