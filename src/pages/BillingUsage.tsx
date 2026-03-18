@@ -199,22 +199,22 @@ export default function BillingUsage() {
                 {balanceStatus === "low" && <AlertTriangle className="h-5 w-5 text-amber-500" />}
                 {balanceStatus === "ok" && <Coins className="h-5 w-5 text-primary" />}
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  {balanceStatus === "zero" ? "No Credits" : balanceStatus === "low" ? "Low Balance" : "Your Credit Balance"}
+                  {balanceStatus === "zero" ? "No Balance" : balanceStatus === "low" ? "Low Balance" : "Your Balance"}
                 </h2>
               </div>
               <p className="text-4xl font-bold text-foreground">
-                {creditBalance.toLocaleString()} <span className="text-lg font-normal text-muted-foreground">credits remaining</span>
+                ${creditBalance.toFixed(2)} <span className="text-lg font-normal text-muted-foreground">remaining</span>
               </p>
               {balanceStatus === "zero" ? (
-                <p className="text-sm text-destructive">All calling is paused. Buy credits to resume.</p>
+                <p className="text-sm text-destructive">All calling is paused. Add funds to resume.</p>
               ) : balanceStatus === "low" ? (
                 <p className="text-sm text-amber-600">
-                  At your current usage (~{dailyAvg} credits/day), you'll run out in ~{daysRemaining} day{daysRemaining !== 1 ? "s" : ""}.
-                  Active campaigns will pause when credits hit 0.
+                  At your current usage (~${dailyAvg.toFixed(2)}/day), you'll run out in ~{daysRemaining} day{daysRemaining !== 1 ? "s" : ""}.
+                  Active campaigns will pause when balance hits $0.
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  At your current usage (~{dailyAvg} credits/day), your balance will last approximately {daysRemaining} more days.
+                  At your current usage (~${dailyAvg.toFixed(2)}/day), your balance will last approximately {daysRemaining} more days.
                 </p>
               )}
             </div>
