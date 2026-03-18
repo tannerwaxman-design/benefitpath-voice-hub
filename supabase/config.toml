@@ -37,3 +37,5 @@ project_id = "kpsilbmmedonhxjofixm"
     verify_jwt = false
   [functions.verify-twilio-credentials]
     verify_jwt = false
+  [functions.forge-chat]
+    verify_jwt = false
