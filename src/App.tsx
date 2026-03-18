@@ -25,6 +25,7 @@ import Team from "./pages/Team";
 import CoachingDashboard from "./pages/CoachingDashboard";
 import Voices from "./pages/Voices";
 import Training from "./pages/Training";
+import Forge from "./pages/Forge";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
