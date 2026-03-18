@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Flame, Send, RotateCcw, Phone as PhoneIcon } from "lucide-react";
+import { Flame, Send, RotateCcw, Phone as PhoneIcon, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,13 +33,19 @@ const WELCOME_TEMPLATES = [
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/forge-chat`;
 
+const FORGE_ALLOWED_PLANS = ["voice_ai_enterprise", "voice_ai_agency"];
+
 export default function Forge() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isForging, setIsForging] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const plan = user?.tenant?.plan || "voice_ai_starter";
+  const hasForgeAccess = FORGE_ALLOWED_PLANS.includes(plan);
 
   // Restore from session
   useEffect(() => {
@@ -196,6 +203,26 @@ export default function Forge() {
   };
 
   const showWelcome = messages.length === 0;
+
+  if (!hasForgeAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] bg-background text-center px-4">
+        <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
+          <Lock className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-semibold text-foreground mb-2">Forge is available on the Agency plan</h2>
+        <p className="text-sm text-muted-foreground max-w-md mb-8">
+          Build AI agents through conversation — just describe what you want and Forge handles the rest. Upgrade to unlock.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate("/billing")}>Compare Plans</Button>
+          <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white" onClick={() => navigate("/billing")}>
+            Upgrade to Agency — $199/mo
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-br from-background via-background to-amber-50/30">
