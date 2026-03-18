@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Flame, Send, RotateCcw, Phone as PhoneIcon } from "lucide-react";
+import { Flame, Send, RotateCcw, Phone as PhoneIcon, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,8 @@ const WELCOME_TEMPLATES = [
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/forge-chat`;
+
+const FORGE_ALLOWED_PLANS = ["voice_ai_enterprise", "voice_ai_agency"];
 
 export default function Forge() {
   const navigate = useNavigate();
