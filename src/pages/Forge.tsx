@@ -204,6 +204,26 @@ export default function Forge() {
 
   const showWelcome = messages.length === 0;
 
+  if (!hasForgeAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] bg-background text-center px-4">
+        <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
+          <Lock className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-semibold text-foreground mb-2">Forge is available on the Agency plan</h2>
+        <p className="text-sm text-muted-foreground max-w-md mb-8">
+          Build AI agents through conversation — just describe what you want and Forge handles the rest. Upgrade to unlock.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate("/billing")}>Compare Plans</Button>
+          <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white" onClick={() => navigate("/billing")}>
+            Upgrade to Agency — $199/mo
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-br from-background via-background to-amber-50/30">
       {/* Header */}
