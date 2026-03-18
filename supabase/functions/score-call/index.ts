@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabase = createAdminClient();
+    // supabase already declared above
 
     // Fetch the call
     const { data: call, error: callError } = await supabase
