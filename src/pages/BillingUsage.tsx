@@ -305,6 +305,7 @@ export default function BillingUsage() {
                 <div>
                   <Label className="text-sm text-muted-foreground">When balance drops below</Label>
                   <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-muted-foreground">$</span>
                     <Input
                       type="number"
                       value={autoRefillThreshold}
