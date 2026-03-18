@@ -54,7 +54,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const customerId = customers.data[0].id;
+    
     const origin = req.headers.get("origin") || "https://voicebenefitpath.lovable.app";
 
     const portalSession = await stripe.billingPortal.sessions.create({
