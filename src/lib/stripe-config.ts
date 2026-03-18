@@ -34,7 +34,7 @@ export const CREDIT_PACKAGES: readonly {
     id: "credits_500",
     credits: 500,
     price: 25,
-    perCredit: 0.05,
+    perCredit: 0.18,
     product_id: "prod_UAKJEI0Lwa8jXv",
     price_id: "price_1TBzelEpCunE9Xtl05gGjZBm",
   },
