@@ -74,21 +74,24 @@ export default function BillingUsage() {
   const autoRefillThreshold = tenant?.auto_refill_threshold ?? 100;
   const autoRefillPackage = tenant?.auto_refill_package ?? "1000";
 
-  const creditsUsed = tenant?.minutes_used_this_cycle ?? 0;
+  const totalSpent = billing?.costSummary?.withMargin ?? tenant?.total_cost_this_cycle ?? 0;
+  const totalMinutes = billing?.costSummary?.totalMinutes ?? 0;
   const cycleStart = tenant?.billing_cycle_start;
   const daysPassed = cycleStart ? Math.max(1, Math.ceil((Date.now() - new Date(cycleStart).getTime()) / 86400000)) : 1;
-  const dailyAvg = Math.round(creditsUsed / daysPassed);
+  const dailyAvg = totalSpent / daysPassed;
   const daysRemaining = dailyAvg > 0 ? Math.round(creditBalance / dailyAvg) : 999;
 
   const currentPlanConfig = STRIPE_PLANS[plan as keyof typeof STRIPE_PLANS];
   const currentPrice = currentPlanConfig?.price ?? 29;
 
-  const dailyData = billing?.usageHistory?.map(h => ({ name: h.month, credits: h.minutes })) || [];
+  const dailyData = billing?.usageHistory?.map(h => ({ name: h.day, spend: h.cost })) || [];
 
-  const outboundCredits = Math.round(creditsUsed * 0.829);
-  const inboundCredits = Math.round(creditsUsed * 0.098);
-  const voicemailCredits = Math.round(creditsUsed * 0.054);
-  const transferCredits = creditsUsed - outboundCredits - inboundCredits - voicemailCredits;
+  // Actual cost breakdown
+  const vapiCost = billing?.costSummary?.vapi ?? 0;
+  const sttCost = billing?.costSummary?.stt ?? 0;
+  const llmCost = billing?.costSummary?.llm ?? 0;
+  const ttsCost = billing?.costSummary?.tts ?? 0;
+  const transportCost = billing?.costSummary?.transport ?? 0;
 
   // Check URL for purchase success
   useEffect(() => {
