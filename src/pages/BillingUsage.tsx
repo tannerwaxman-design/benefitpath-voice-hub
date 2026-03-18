@@ -74,7 +74,7 @@ export default function BillingUsage() {
   const autoRefillThreshold = tenant?.auto_refill_threshold ?? 100;
   const autoRefillPackage = tenant?.auto_refill_package ?? "1000";
 
-  const totalSpent = billing?.costSummary?.withMargin ?? tenant?.total_cost_this_cycle ?? 0;
+  const totalSpent = billing?.costSummary?.withMargin ?? (billing?.tenant as any)?.total_cost_this_cycle ?? 0;
   const totalMinutes = billing?.costSummary?.totalMinutes ?? 0;
   const cycleStart = tenant?.billing_cycle_start;
   const daysPassed = cycleStart ? Math.max(1, Math.ceil((Date.now() - new Date(cycleStart).getTime()) / 86400000)) : 1;
