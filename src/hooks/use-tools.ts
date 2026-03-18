@@ -55,6 +55,8 @@ export interface ToolActivityEntry {
   created_at: string;
 }
 
+// ─── Queries ───
+
 export function useTools() {
   const { user } = useAuth();
   return useQuery({
@@ -97,11 +99,31 @@ export function useToolActivity(toolId: string) {
         .select("*")
         .eq("tool_id", toolId)
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(20);
       if (error) throw error;
       return (data || []) as unknown as ToolActivityEntry[];
     },
     enabled: !!user?.tenant_id && !!toolId,
+  });
+}
+
+// ─── Mutations ───
+
+export function useVerifyApiKey() {
+  return useMutation({
+    mutationFn: async (payload: {
+      service: string;
+      api_key?: string;
+      additional_config?: Record<string, unknown>;
+      reverify?: boolean;
+      tenant_id?: string;
+    }): Promise<{ valid: boolean; error?: string; account_name?: string; calendars?: any[] }> => {
+      const { data, error } = await supabase.functions.invoke("verify-api-key", {
+        body: payload,
+      });
+      if (error) throw error;
+      return data;
+    },
   });
 }
 
@@ -112,13 +134,26 @@ export function useCreateTool() {
 
   return useMutation({
     mutationFn: async (tool: Partial<Tool>) => {
+      // Step 1: Save to DB
       const { data, error } = await supabase
         .from("tools")
         .insert({ ...tool, tenant_id: user!.tenant_id } as any)
         .select()
         .single();
       if (error) throw error;
-      return data as unknown as Tool;
+      const savedTool = data as unknown as Tool;
+
+      // Step 2: Create in VAPI and save vapi_tool_id
+      try {
+        await supabase.functions.invoke("manage-tool", {
+          body: { action: "create", tool: savedTool, tool_id: savedTool.id },
+        });
+      } catch (e) {
+        console.error("VAPI tool creation failed:", e);
+        // Tool is saved locally even if VAPI fails
+      }
+
+      return savedTool;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tools"] });
@@ -161,6 +196,24 @@ export function useDeleteTool() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Get the tool to check for vapi_tool_id
+      const { data: tool } = await supabase
+        .from("tools")
+        .select("vapi_tool_id")
+        .eq("id", id)
+        .single();
+
+      // Delete from VAPI first
+      if (tool && (tool as any).vapi_tool_id) {
+        try {
+          await supabase.functions.invoke("manage-tool", {
+            body: { action: "delete", vapi_tool_id: (tool as any).vapi_tool_id },
+          });
+        } catch (e) {
+          console.error("VAPI tool deletion failed:", e);
+        }
+      }
+
       const { error } = await supabase.from("tools").delete().eq("id", id);
       if (error) throw error;
     },
@@ -184,7 +237,7 @@ export function useConnectApiKey() {
       const { data, error } = await supabase
         .from("tool_api_keys")
         .upsert(
-          { ...payload, tenant_id: user!.tenant_id, status: "active", connected_at: new Date().toISOString() } as any,
+          { ...payload, tenant_id: user!.tenant_id, status: "active", connected_at: new Date().toISOString(), last_verified_at: new Date().toISOString() } as any,
           { onConflict: "tenant_id,service" }
         )
         .select()
@@ -194,7 +247,7 @@ export function useConnectApiKey() {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["tool_api_keys"] });
-      toast({ title: `${vars.service} connected`, description: "API key saved securely." });
+      toast({ title: `${vars.display_name || vars.service} connected`, description: "API key verified and saved." });
     },
     onError: (err: Error) => {
       toast({ title: "Connection failed", description: err.message, variant: "destructive" });
@@ -204,19 +257,88 @@ export function useConnectApiKey() {
 
 export function useDisconnectApiKey() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, service }: { id: string; service: string }) => {
+      // Use manage-tool to properly disconnect (deactivate + remove VAPI tools)
+      try {
+        await supabase.functions.invoke("manage-tool", {
+          body: { action: "disconnect_service", service, tenant_id: user!.tenant_id },
+        });
+      } catch (e) {
+        console.error("Service disconnect via manage-tool failed:", e);
+      }
+
+      // Delete the key record
       const { error } = await supabase.from("tool_api_keys").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tool_api_keys"] });
+      queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "API key disconnected" });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+export function useAssignToolToAgents() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ toolId, agentIds }: { toolId: string; agentIds: string[] }) => {
+      // Update tool's assigned_agent_ids
+      const { error } = await supabase
+        .from("tools")
+        .update({ assigned_agent_ids: agentIds as any })
+        .eq("id", toolId);
+      if (error) throw error;
+
+      // For each agent, get their vapi_assistant_id and assign tools
+      for (const agentId of agentIds) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("vapi_assistant_id")
+          .eq("id", agentId)
+          .single();
+
+        if (agent?.vapi_assistant_id) {
+          // Get all tools assigned to this agent
+          const { data: agentTools } = await supabase
+            .from("tools")
+            .select("vapi_tool_id")
+            .eq("status", "active")
+            .contains("assigned_agent_ids", [agentId] as any);
+
+          const toolIds = (agentTools || [])
+            .map((t: any) => t.vapi_tool_id)
+            .filter(Boolean);
+
+          try {
+            await supabase.functions.invoke("manage-tool", {
+              body: {
+                action: "assign",
+                assistant_id: agent.vapi_assistant_id,
+                tool_ids: toolIds,
+              },
+            });
+          } catch (e) {
+            console.error(`Failed to assign tools to agent ${agentId}:`, e);
+          }
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tools"] });
+      toast({ title: "Tools assigned to agents" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error assigning tools", description: err.message, variant: "destructive" });
     },
   });
 }
