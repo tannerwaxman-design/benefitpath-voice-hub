@@ -329,7 +329,7 @@ export default function AgentEditor() {
                   </Select>
                 </div>
               </div>
-              <div><Label>Agent Description</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Internal note about this agent's purpose..." maxLength={200} /></div>
+              <div><Label>Agent Description</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Internal note about this agent's purpose..." /></div>
               <div className="flex items-center gap-3">
                 <Switch checked={agentActive} onCheckedChange={setAgentActive} />
                 <Label>Agent is {agentActive ? "Active" : "Inactive"}</Label>
