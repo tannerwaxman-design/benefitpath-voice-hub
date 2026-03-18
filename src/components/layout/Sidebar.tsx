@@ -11,7 +11,9 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   path: string;
-  roles?: string[]; // if undefined, all roles can see it
+  roles?: string[];
+  badge?: string;
+  special?: boolean;
 }
 
 const navItems: NavItem[] = [
