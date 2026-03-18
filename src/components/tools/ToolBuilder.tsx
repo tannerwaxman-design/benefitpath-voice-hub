@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToolPreview } from "./ToolPreview";
 import type { ToolTemplate } from "./ToolTemplates";
 import type { ToolParameter } from "@/hooks/use-tools";
-import { useToolApiKeys, useCreateTool } from "@/hooks/use-tools";
+import { useToolApiKeys, useCreateTool, useAssignToolToAgents } from "@/hooks/use-tools";
 import { useAgents } from "@/hooks/use-agents";
 
 const SERVICE_OPTIONS = [
@@ -31,6 +31,7 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
   const { data: apiKeys = [] } = useToolApiKeys();
   const { data: agents = [] } = useAgents();
   const createTool = useCreateTool();
+  const assignTool = useAssignToolToAgents();
 
   const connectedServices = new Set(apiKeys.map((k) => k.service));
 
@@ -82,8 +83,10 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
     setServiceConfig({ ...serviceConfig, [key]: value });
   };
 
+  const [lastCreatedToolId, setLastCreatedToolId] = useState<string | null>(null);
+
   const handleSave = async (andAssign = false) => {
-    await createTool.mutateAsync({
+    const savedTool = await createTool.mutateAsync({
       name,
       description,
       template: template.id,
@@ -93,14 +96,22 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
       message_complete: messageComplete,
       message_failed: messageFailed,
       service_config: serviceConfig as any,
-      assigned_agent_ids: selectedAgents as any,
+      assigned_agent_ids: [] as any,
       status: "active",
     });
+    setLastCreatedToolId(savedTool.id);
     if (andAssign) {
       setShowAssign(true);
     } else {
       onSaved();
     }
+  };
+
+  const handleAssignAndFinish = async () => {
+    if (lastCreatedToolId && selectedAgents.length > 0) {
+      await assignTool.mutateAsync({ toolId: lastCreatedToolId, agentIds: selectedAgents });
+    }
+    onSaved();
   };
 
   if (showAssign) {
@@ -130,7 +141,9 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
           {agents.length === 0 && <p className="text-sm text-muted-foreground">No agents yet. Create an agent first.</p>}
         </div>
         <div className="flex gap-3">
-          <Button onClick={onSaved}>Save Assignments</Button>
+          <Button onClick={handleAssignAndFinish} disabled={assignTool.isPending}>
+            {assignTool.isPending ? "Saving..." : "Save Assignments"}
+          </Button>
           <Button variant="ghost" onClick={onSaved}>Skip for now</Button>
         </div>
       </div>

@@ -39,3 +39,9 @@ project_id = "kpsilbmmedonhxjofixm"
     verify_jwt = false
   [functions.forge-chat]
     verify_jwt = false
+  [functions.verify-api-key]
+    verify_jwt = false
+  [functions.manage-tool]
+    verify_jwt = false
+  [functions.tool-webhook-handler]
+    verify_jwt = false
