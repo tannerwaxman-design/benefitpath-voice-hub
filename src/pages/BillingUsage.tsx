@@ -449,7 +449,7 @@ export default function BillingUsage() {
           })}
         </div>
         <p className="text-xs text-muted-foreground mt-3 text-center">
-          Credits purchased separately. 1 credit = 1 minute of calling. Credits never expire.
+          Usage is billed per minute at your package rate. Funds never expire.
         </p>
       </div>
 
