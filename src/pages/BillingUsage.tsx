@@ -353,7 +353,7 @@ export default function BillingUsage() {
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                 <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                 <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                <Bar dataKey="credits" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="spend" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Spend ($)" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
