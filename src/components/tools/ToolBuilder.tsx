@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToolPreview } from "./ToolPreview";
 import type { ToolTemplate } from "./ToolTemplates";
 import type { ToolParameter } from "@/hooks/use-tools";
-import { useToolApiKeys, useCreateTool } from "@/hooks/use-tools";
+import { useToolApiKeys, useCreateTool, useAssignToolToAgents } from "@/hooks/use-tools";
 import { useAgents } from "@/hooks/use-agents";
 
 const SERVICE_OPTIONS = [
