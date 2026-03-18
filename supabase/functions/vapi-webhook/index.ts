@@ -495,7 +495,7 @@ Deno.serve(async (req: Request) => {
                 call_id: null,
                 event_type: "call_minutes",
                 quantity: reportDurationMinutes || 0.1,
-                unit_cost: costData.totalCost > 0 ? parseFloat((costData.totalCost / Math.max(reportDurationMinutes, 0.1)).toFixed(4)) : 0.05,
+                unit_cost: costData.totalCost > 0 ? parseFloat((costData.totalCost / Math.max(reportDurationMinutes, 0.1)).toFixed(4)) : 0.18,
                 total_cost: parseFloat(costWithMargin.toFixed(4)),
                 billing_cycle_start: tenant.billing_cycle_start,
                 billing_cycle_end: tenant.billing_cycle_end,
