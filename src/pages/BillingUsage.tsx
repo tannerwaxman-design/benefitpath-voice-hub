@@ -263,7 +263,7 @@ export default function BillingUsage() {
 
       {/* Section 3: Buy Credits */}
       <div id="buy-credits">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Buy Credits</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Add Funds</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {CREDIT_PACKAGES.map(pkg => (
             <Card key={pkg.id} className={`relative ${pkg.bestValue ? "border-primary shadow-md ring-1 ring-primary/20" : ""}`}>
