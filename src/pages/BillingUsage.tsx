@@ -74,21 +74,24 @@ export default function BillingUsage() {
   const autoRefillThreshold = tenant?.auto_refill_threshold ?? 100;
   const autoRefillPackage = tenant?.auto_refill_package ?? "1000";
 
-  const creditsUsed = tenant?.minutes_used_this_cycle ?? 0;
+  const totalSpent = billing?.costSummary?.withMargin ?? (billing?.tenant as any)?.total_cost_this_cycle ?? 0;
+  const totalMinutes = billing?.costSummary?.totalMinutes ?? 0;
   const cycleStart = tenant?.billing_cycle_start;
   const daysPassed = cycleStart ? Math.max(1, Math.ceil((Date.now() - new Date(cycleStart).getTime()) / 86400000)) : 1;
-  const dailyAvg = Math.round(creditsUsed / daysPassed);
+  const dailyAvg = totalSpent / daysPassed;
   const daysRemaining = dailyAvg > 0 ? Math.round(creditBalance / dailyAvg) : 999;
 
   const currentPlanConfig = STRIPE_PLANS[plan as keyof typeof STRIPE_PLANS];
   const currentPrice = currentPlanConfig?.price ?? 29;
 
-  const dailyData = billing?.usageHistory?.map(h => ({ name: h.month, credits: h.minutes })) || [];
+  const dailyData = billing?.usageHistory?.map(h => ({ name: h.day, spend: h.cost })) || [];
 
-  const outboundCredits = Math.round(creditsUsed * 0.829);
-  const inboundCredits = Math.round(creditsUsed * 0.098);
-  const voicemailCredits = Math.round(creditsUsed * 0.054);
-  const transferCredits = creditsUsed - outboundCredits - inboundCredits - voicemailCredits;
+  // Actual cost breakdown
+  const vapiCost = billing?.costSummary?.vapi ?? 0;
+  const sttCost = billing?.costSummary?.stt ?? 0;
+  const llmCost = billing?.costSummary?.llm ?? 0;
+  const ttsCost = billing?.costSummary?.tts ?? 0;
+  const transportCost = billing?.costSummary?.transport ?? 0;
 
   // Check URL for purchase success
   useEffect(() => {
@@ -350,7 +353,7 @@ export default function BillingUsage() {
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                 <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                 <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                <Bar dataKey="credits" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="spend" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Spend ($)" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -358,20 +361,33 @@ export default function BillingUsage() {
           )}
 
           <div className="mt-6 space-y-2">
-            <p className="text-sm font-medium text-foreground">Total spent this cycle: ${creditsUsed.toFixed(2)}</p>
+            <p className="text-sm font-medium text-foreground">Total spent this cycle: ${totalSpent.toFixed(2)} ({totalMinutes.toFixed(1)} min)</p>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Spend</TableHead>
+                  <TableHead>Cost Component</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">%</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow><TableCell>Outbound calls</TableCell><TableCell className="text-right">${outboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">82.9%</TableCell></TableRow>
-                <TableRow><TableCell>Inbound calls</TableCell><TableCell className="text-right">${inboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">9.8%</TableCell></TableRow>
-                <TableRow><TableCell>Voicemail messages</TableCell><TableCell className="text-right">${voicemailCredits.toFixed(2)}</TableCell><TableCell className="text-right">5.4%</TableCell></TableRow>
-                <TableRow><TableCell>Transfer bridge time</TableCell><TableCell className="text-right">${transferCredits.toFixed(2)}</TableCell><TableCell className="text-right">2.0%</TableCell></TableRow>
+                {[
+                  { label: "Voice platform (VAPI)", cost: vapiCost },
+                  { label: "Speech-to-text", cost: sttCost },
+                  { label: "Language model (LLM)", cost: llmCost },
+                  { label: "Text-to-speech", cost: ttsCost },
+                  { label: "Transport / telephony", cost: transportCost },
+                ].map(row => {
+                  const rawTotal = billing?.costSummary?.total ?? 0;
+                  const pct = rawTotal > 0 ? ((row.cost / rawTotal) * 100).toFixed(1) : "0.0";
+                  return (
+                    <TableRow key={row.label}>
+                      <TableCell>{row.label}</TableCell>
+                      <TableCell className="text-right">${row.cost.toFixed(4)}</TableCell>
+                      <TableCell className="text-right">{pct}%</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             <p className="text-xs text-muted-foreground">Average daily spend: ~${dailyAvg.toFixed(2)}/day</p>
