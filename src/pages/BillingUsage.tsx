@@ -273,10 +273,9 @@ export default function BillingUsage() {
                 </div>
               )}
               <CardContent className="p-6 pt-8 text-center space-y-3">
-                <p className="text-2xl font-bold text-foreground">{pkg.credits.toLocaleString()} credits</p>
                 <div>
                   <p className="text-3xl font-extrabold text-foreground">${pkg.price}</p>
-                  <p className="text-xs text-muted-foreground">${pkg.perCredit}/credit</p>
+                  <p className="text-xs text-muted-foreground">${pkg.perCredit.toFixed(3)}/min</p>
                 </div>
                 <Button
                   className="w-full"
