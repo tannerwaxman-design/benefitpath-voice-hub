@@ -97,6 +97,11 @@ export default {
           "text-dark": "hsl(var(--landing-text-dark))",
           "text-muted": "hsl(var(--landing-text-muted))",
         },
+        forge: {
+          DEFAULT: "hsl(var(--forge))",
+          glow: "hsl(var(--forge-glow))",
+          foreground: "hsl(var(--forge-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
