@@ -37,11 +37,15 @@ const FORGE_ALLOWED_PLANS = ["voice_ai_enterprise", "voice_ai_agency"];
 
 export default function Forge() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isForging, setIsForging] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const plan = user?.tenant?.plan || "voice_ai_starter";
+  const hasForgeAccess = FORGE_ALLOWED_PLANS.includes(plan);
 
   // Restore from session
   useEffect(() => {
