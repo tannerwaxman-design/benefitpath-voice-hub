@@ -73,8 +73,17 @@ export function Sidebar() {
                 active ? "bg-slate-800 text-white border-l-2 border-primary" : "hover:bg-slate-800/50 hover:text-white"
               }`}
             >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              <item.icon className={`h-5 w-5 shrink-0 ${item.special ? "text-amber-400" : ""}`} />
+              {!collapsed && (
+                <span className="flex items-center gap-2">
+                  {item.label}
+                  {item.badge && (
+                    <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full leading-none">
+                      {item.badge}
+                    </span>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}
