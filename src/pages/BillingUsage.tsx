@@ -357,23 +357,23 @@ export default function BillingUsage() {
           )}
 
           <div className="mt-6 space-y-2">
-            <p className="text-sm font-medium text-foreground">Total credits used: {creditsUsed.toLocaleString()}</p>
+            <p className="text-sm font-medium text-foreground">Total spent this cycle: ${creditsUsed.toFixed(2)}</p>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Credits</TableHead>
+                  <TableHead className="text-right">Spend</TableHead>
                   <TableHead className="text-right">%</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow><TableCell>Outbound calls</TableCell><TableCell className="text-right">{outboundCredits.toLocaleString()}</TableCell><TableCell className="text-right">82.9%</TableCell></TableRow>
-                <TableRow><TableCell>Inbound calls</TableCell><TableCell className="text-right">{inboundCredits.toLocaleString()}</TableCell><TableCell className="text-right">9.8%</TableCell></TableRow>
-                <TableRow><TableCell>Voicemail messages</TableCell><TableCell className="text-right">{voicemailCredits.toLocaleString()}</TableCell><TableCell className="text-right">5.4%</TableCell></TableRow>
-                <TableRow><TableCell>Transfer bridge time</TableCell><TableCell className="text-right">{transferCredits.toLocaleString()}</TableCell><TableCell className="text-right">2.0%</TableCell></TableRow>
+                <TableRow><TableCell>Outbound calls</TableCell><TableCell className="text-right">${outboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">82.9%</TableCell></TableRow>
+                <TableRow><TableCell>Inbound calls</TableCell><TableCell className="text-right">${inboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">9.8%</TableCell></TableRow>
+                <TableRow><TableCell>Voicemail messages</TableCell><TableCell className="text-right">${voicemailCredits.toFixed(2)}</TableCell><TableCell className="text-right">5.4%</TableCell></TableRow>
+                <TableRow><TableCell>Transfer bridge time</TableCell><TableCell className="text-right">${transferCredits.toFixed(2)}</TableCell><TableCell className="text-right">2.0%</TableCell></TableRow>
               </TableBody>
             </Table>
-            <p className="text-xs text-muted-foreground">Average daily usage: ~{dailyAvg} credits/day</p>
+            <p className="text-xs text-muted-foreground">Average daily spend: ~${dailyAvg.toFixed(2)}/day</p>
           </div>
         </CardContent>
       </Card>
