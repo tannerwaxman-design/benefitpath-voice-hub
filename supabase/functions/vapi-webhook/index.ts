@@ -469,16 +469,19 @@ Deno.serve(async (req: Request) => {
               .single();
 
             if (tenant) {
-              const costWithMargin = costData.totalCost * (1 + (tenant.margin_percent || 20) / 100);
+              // Flat rate: $0.18 per minute
+              const RATE_PER_MINUTE = 0.18;
+              const billableMinutes = Math.max(reportDurationMinutes, 0.1);
+              const costWithMargin = parseFloat((billableMinutes * RATE_PER_MINUTE).toFixed(4));
 
               await supabase
                 .from("calls")
-                .update({ cost_with_margin: parseFloat(costWithMargin.toFixed(4)) })
+                .update({ cost_with_margin: costWithMargin })
                 .eq("vapi_call_id", vapiCallId);
 
               await supabase.rpc("deduct_tenant_credits", {
                 p_tenant_id: tenantId,
-                p_amount: parseFloat(costWithMargin.toFixed(4)),
+                p_amount: costWithMargin,
               });
 
               await supabase
@@ -494,9 +497,9 @@ Deno.serve(async (req: Request) => {
                 tenant_id: tenantId,
                 call_id: null,
                 event_type: "call_minutes",
-                quantity: reportDurationMinutes || 0.1,
-                unit_cost: costData.totalCost > 0 ? parseFloat((costData.totalCost / Math.max(reportDurationMinutes, 0.1)).toFixed(4)) : 0.18,
-                total_cost: parseFloat(costWithMargin.toFixed(4)),
+                quantity: billableMinutes,
+                unit_cost: RATE_PER_MINUTE,
+                total_cost: costWithMargin,
                 billing_cycle_start: tenant.billing_cycle_start,
                 billing_cycle_end: tenant.billing_cycle_end,
               });
