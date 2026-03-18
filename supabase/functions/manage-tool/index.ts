@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { vapiRequest } from "../_shared/vapi-client.ts";
 
 const corsHeaders = {
@@ -35,8 +36,9 @@ serve(async (req) => {
       });
     }
 
+    const adminClient = createAdminClient();
     const body = await req.json();
-    const { action, tool } = body;
+    const { action, tool, tool_id } = body;
 
     if (action === "create") {
       // Build VAPI tool payload
@@ -50,6 +52,14 @@ serve(async (req) => {
       });
 
       const vapiToolId = vapiRes.ok && vapiRes.data ? (vapiRes.data as any).id : null;
+
+      // Save the VAPI tool ID back to the tools table
+      if (vapiToolId && tool_id) {
+        await adminClient
+          .from("tools")
+          .update({ vapi_tool_id: vapiToolId })
+          .eq("id", tool_id);
+      }
 
       return new Response(JSON.stringify({ success: true, vapi_tool_id: vapiToolId }), {
         status: 200,
@@ -78,6 +88,57 @@ serve(async (req) => {
           body: { model: { toolIds: tool_ids } },
         });
       }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "disconnect_service") {
+      // Deactivate API key and remove all VAPI tools for this service
+      const { service, tenant_id } = body;
+
+      // Mark key as inactive
+      await adminClient
+        .from("tool_api_keys")
+        .update({ status: "inactive" })
+        .eq("tenant_id", tenant_id)
+        .eq("service", service);
+
+      // Find all tools using this service
+      const { data: affectedTools } = await adminClient
+        .from("tools")
+        .select("id, vapi_tool_id, assigned_agent_ids")
+        .eq("tenant_id", tenant_id)
+        .eq("service", service);
+
+      if (affectedTools) {
+        for (const t of affectedTools) {
+          // Delete from VAPI
+          if (t.vapi_tool_id) {
+            await vapiRequest({ method: "DELETE", endpoint: `/tool/${t.vapi_tool_id}` });
+          }
+          // Mark tool inactive
+          await adminClient
+            .from("tools")
+            .update({ status: "inactive", vapi_tool_id: null })
+            .eq("id", t.id);
+        }
+
+        // Update any agents that had these tools assigned
+        const vapiToolIds = affectedTools.filter(t => t.vapi_tool_id).map(t => t.vapi_tool_id);
+        if (vapiToolIds.length > 0) {
+          // Get all agents for this tenant that might reference these tools
+          const { data: agents } = await adminClient
+            .from("agents")
+            .select("id, vapi_assistant_id")
+            .eq("tenant_id", tenant_id);
+
+          // For each agent, we'd need to re-sync their tool list
+          // For now, the tools are removed from VAPI so they won't be called
+        }
+      }
+
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
