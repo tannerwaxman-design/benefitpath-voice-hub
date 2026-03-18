@@ -494,7 +494,7 @@ export default function Settings() {
             <>
               {/* Credit Balance */}
               <Card>
-                <CardHeader><CardTitle className="section-title">Credit Balance</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="section-title">Subscription & Credits</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
                     <div>
@@ -508,7 +508,25 @@ export default function Settings() {
                         Billing cycle: {new Date(billing.tenant.billing_cycle_start).toLocaleDateString()} – {new Date(billing.tenant.billing_cycle_end).toLocaleDateString()}
                       </p>
                     </div>
-                    <Button variant="outline" onClick={() => toast({ title: "Add credits coming soon" })}>Add Credits</Button>
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" onClick={() => {
+                        const w = window as any;
+                        w.location.href = "/billing";
+                      }}>
+                        Manage Plan & Credits
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={async () => {
+                        try {
+                          const { data, error } = await supabase.functions.invoke("customer-portal");
+                          if (error) throw error;
+                          if (data?.url) window.open(data.url, "_blank");
+                        } catch (err: any) {
+                          toast({ title: "Could not open billing portal", description: err.message, variant: "destructive" });
+                        }
+                      }}>
+                        Manage Payment Method
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
