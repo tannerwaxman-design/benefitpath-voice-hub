@@ -97,11 +97,6 @@ export default {
           "text-dark": "hsl(var(--landing-text-dark))",
           "text-muted": "hsl(var(--landing-text-muted))",
         },
-        forge: {
-          DEFAULT: "hsl(var(--forge))",
-          glow: "hsl(var(--forge-glow))",
-          foreground: "hsl(var(--forge-foreground))",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -117,16 +112,10 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "forge-progress": {
-          "0%": { width: "0%" },
-          "50%": { width: "70%" },
-          "100%": { width: "100%" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "forge-progress": "forge-progress 2s ease-in-out",
       },
     },
   },

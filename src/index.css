@@ -65,18 +65,7 @@
     --landing-gray-bg: 210 20% 96%;
     --landing-text-dark: 240 33% 14%;
     --landing-text-muted: 215 14% 45%;
-
-    /* Forge tokens */
-    --forge: 36 96% 53%;
-    --forge-glow: 25 95% 53%;
-    --forge-foreground: 0 0% 100%;
   }
-}
-
-@keyframes forge-progress {
-  0% { width: 0%; }
-  50% { width: 70%; }
-  100% { width: 100%; }
 }
 
 @layer base {
