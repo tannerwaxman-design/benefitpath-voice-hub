@@ -338,8 +338,8 @@ export default function BillingUsage() {
       {/* Section 4: Credit Usage */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Credit Usage — This Month</CardTitle>
-          <CardDescription>Daily credit consumption over the last 30 days</CardDescription>
+          <CardTitle className="text-lg">Usage — This Billing Cycle</CardTitle>
+          <CardDescription>Daily spend over the current billing cycle</CardDescription>
         </CardHeader>
         <CardContent>
           {dailyData.length > 0 ? (
