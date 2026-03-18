@@ -361,20 +361,33 @@ export default function BillingUsage() {
           )}
 
           <div className="mt-6 space-y-2">
-            <p className="text-sm font-medium text-foreground">Total spent this cycle: ${creditsUsed.toFixed(2)}</p>
+            <p className="text-sm font-medium text-foreground">Total spent this cycle: ${totalSpent.toFixed(2)} ({totalMinutes.toFixed(1)} min)</p>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Spend</TableHead>
+                  <TableHead>Cost Component</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">%</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow><TableCell>Outbound calls</TableCell><TableCell className="text-right">${outboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">82.9%</TableCell></TableRow>
-                <TableRow><TableCell>Inbound calls</TableCell><TableCell className="text-right">${inboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">9.8%</TableCell></TableRow>
-                <TableRow><TableCell>Voicemail messages</TableCell><TableCell className="text-right">${voicemailCredits.toFixed(2)}</TableCell><TableCell className="text-right">5.4%</TableCell></TableRow>
-                <TableRow><TableCell>Transfer bridge time</TableCell><TableCell className="text-right">${transferCredits.toFixed(2)}</TableCell><TableCell className="text-right">2.0%</TableCell></TableRow>
+                {[
+                  { label: "Voice platform (VAPI)", cost: vapiCost },
+                  { label: "Speech-to-text", cost: sttCost },
+                  { label: "Language model (LLM)", cost: llmCost },
+                  { label: "Text-to-speech", cost: ttsCost },
+                  { label: "Transport / telephony", cost: transportCost },
+                ].map(row => {
+                  const rawTotal = billing?.costSummary?.total ?? 0;
+                  const pct = rawTotal > 0 ? ((row.cost / rawTotal) * 100).toFixed(1) : "0.0";
+                  return (
+                    <TableRow key={row.label}>
+                      <TableCell>{row.label}</TableCell>
+                      <TableCell className="text-right">${row.cost.toFixed(4)}</TableCell>
+                      <TableCell className="text-right">{pct}%</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             <p className="text-xs text-muted-foreground">Average daily spend: ~${dailyAvg.toFixed(2)}/day</p>
