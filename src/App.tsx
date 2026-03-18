@@ -26,6 +26,7 @@ import CoachingDashboard from "./pages/CoachingDashboard";
 import Voices from "./pages/Voices";
 import Training from "./pages/Training";
 import Login from "./pages/Login";
+import Forge from "./pages/Forge";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/onboarding" element={<Onboarding />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/" element={<Overview />} />
+                <Route path="/forge" element={<Forge />} />
                 <Route path="/agents" element={<AgentBuilder />} />
                 <Route path="/agents/:id" element={<AgentEditor />} />
                 <Route path="/voices" element={<Voices />} />
