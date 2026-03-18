@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/use-permission";
 import {
-  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap
+  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap, Flame
 } from "lucide-react";
 import logo from "@/assets/benefit_path_icon.svg";
 
@@ -11,11 +11,14 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   path: string;
-  roles?: string[]; // if undefined, all roles can see it
+  roles?: string[];
+  badge?: string;
+  accentIcon?: boolean;
 }
 
 const navItems: NavItem[] = [
   { label: "Overview", icon: LayoutDashboard, path: "/" },
+  { label: "Forge", icon: Flame, path: "/forge", badge: "AI", accentIcon: true },
   { label: "Agent Builder", icon: Bot, path: "/agents" },
   { label: "Voices", icon: AudioLines, path: "/voices" },
   { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"] },
