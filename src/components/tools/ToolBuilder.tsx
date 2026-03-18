@@ -83,8 +83,10 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
     setServiceConfig({ ...serviceConfig, [key]: value });
   };
 
+  const [lastCreatedToolId, setLastCreatedToolId] = useState<string | null>(null);
+
   const handleSave = async (andAssign = false) => {
-    await createTool.mutateAsync({
+    const savedTool = await createTool.mutateAsync({
       name,
       description,
       template: template.id,
@@ -94,14 +96,22 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
       message_complete: messageComplete,
       message_failed: messageFailed,
       service_config: serviceConfig as any,
-      assigned_agent_ids: selectedAgents as any,
+      assigned_agent_ids: [] as any,
       status: "active",
     });
+    setLastCreatedToolId(savedTool.id);
     if (andAssign) {
       setShowAssign(true);
     } else {
       onSaved();
     }
+  };
+
+  const handleAssignAndFinish = async () => {
+    if (lastCreatedToolId && selectedAgents.length > 0) {
+      await assignTool.mutateAsync({ toolId: lastCreatedToolId, agentIds: selectedAgents });
+    }
+    onSaved();
   };
 
   if (showAssign) {
