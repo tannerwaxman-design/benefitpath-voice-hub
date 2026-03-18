@@ -199,28 +199,28 @@ export default function BillingUsage() {
                 {balanceStatus === "low" && <AlertTriangle className="h-5 w-5 text-amber-500" />}
                 {balanceStatus === "ok" && <Coins className="h-5 w-5 text-primary" />}
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  {balanceStatus === "zero" ? "No Credits" : balanceStatus === "low" ? "Low Balance" : "Your Credit Balance"}
+                  {balanceStatus === "zero" ? "No Balance" : balanceStatus === "low" ? "Low Balance" : "Your Balance"}
                 </h2>
               </div>
               <p className="text-4xl font-bold text-foreground">
-                {creditBalance.toLocaleString()} <span className="text-lg font-normal text-muted-foreground">credits remaining</span>
+                ${creditBalance.toFixed(2)} <span className="text-lg font-normal text-muted-foreground">remaining</span>
               </p>
               {balanceStatus === "zero" ? (
-                <p className="text-sm text-destructive">All calling is paused. Buy credits to resume.</p>
+                <p className="text-sm text-destructive">All calling is paused. Add funds to resume.</p>
               ) : balanceStatus === "low" ? (
                 <p className="text-sm text-amber-600">
-                  At your current usage (~{dailyAvg} credits/day), you'll run out in ~{daysRemaining} day{daysRemaining !== 1 ? "s" : ""}.
-                  Active campaigns will pause when credits hit 0.
+                  At your current usage (~${dailyAvg.toFixed(2)}/day), you'll run out in ~{daysRemaining} day{daysRemaining !== 1 ? "s" : ""}.
+                  Active campaigns will pause when balance hits $0.
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  At your current usage (~{dailyAvg} credits/day), your balance will last approximately {daysRemaining} more days.
+                  At your current usage (~${dailyAvg.toFixed(2)}/day), your balance will last approximately {daysRemaining} more days.
                 </p>
               )}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <Button onClick={() => document.getElementById("buy-credits")?.scrollIntoView({ behavior: "smooth" })}>
-                {balanceStatus === "zero" || balanceStatus === "low" ? "Buy Credits Now" : "Buy Credits"}
+                {balanceStatus === "zero" || balanceStatus === "low" ? "Add Funds" : "Add Funds"}
               </Button>
               {autoRefillEnabled && (
                 <Badge variant="secondary" className="gap-1">
@@ -263,7 +263,7 @@ export default function BillingUsage() {
 
       {/* Section 3: Buy Credits */}
       <div id="buy-credits">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Buy Credits</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Add Funds</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {CREDIT_PACKAGES.map(pkg => (
             <Card key={pkg.id} className={`relative ${pkg.bestValue ? "border-primary shadow-md ring-1 ring-primary/20" : ""}`}>
@@ -273,10 +273,9 @@ export default function BillingUsage() {
                 </div>
               )}
               <CardContent className="p-6 pt-8 text-center space-y-3">
-                <p className="text-2xl font-bold text-foreground">{pkg.credits.toLocaleString()} credits</p>
                 <div>
                   <p className="text-3xl font-extrabold text-foreground">${pkg.price}</p>
-                  <p className="text-xs text-muted-foreground">${pkg.perCredit}/credit</p>
+                  <p className="text-xs text-muted-foreground">${pkg.perCredit.toFixed(3)}/min</p>
                 </div>
                 <Button
                   className="w-full"
@@ -306,13 +305,14 @@ export default function BillingUsage() {
                 <div>
                   <Label className="text-sm text-muted-foreground">When balance drops below</Label>
                   <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-muted-foreground">$</span>
                     <Input
                       type="number"
                       value={autoRefillThreshold}
                       onChange={e => handleAutoRefillThreshold(e.target.value)}
                       className="w-24"
                     />
-                    <span className="text-sm text-muted-foreground">credits</span>
+                    
                   </div>
                 </div>
                 <div>
@@ -339,8 +339,8 @@ export default function BillingUsage() {
       {/* Section 4: Credit Usage */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Credit Usage — This Month</CardTitle>
-          <CardDescription>Daily credit consumption over the last 30 days</CardDescription>
+          <CardTitle className="text-lg">Usage — This Billing Cycle</CardTitle>
+          <CardDescription>Daily spend over the current billing cycle</CardDescription>
         </CardHeader>
         <CardContent>
           {dailyData.length > 0 ? (
@@ -358,23 +358,23 @@ export default function BillingUsage() {
           )}
 
           <div className="mt-6 space-y-2">
-            <p className="text-sm font-medium text-foreground">Total credits used: {creditsUsed.toLocaleString()}</p>
+            <p className="text-sm font-medium text-foreground">Total spent this cycle: ${creditsUsed.toFixed(2)}</p>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Credits</TableHead>
+                  <TableHead className="text-right">Spend</TableHead>
                   <TableHead className="text-right">%</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow><TableCell>Outbound calls</TableCell><TableCell className="text-right">{outboundCredits.toLocaleString()}</TableCell><TableCell className="text-right">82.9%</TableCell></TableRow>
-                <TableRow><TableCell>Inbound calls</TableCell><TableCell className="text-right">{inboundCredits.toLocaleString()}</TableCell><TableCell className="text-right">9.8%</TableCell></TableRow>
-                <TableRow><TableCell>Voicemail messages</TableCell><TableCell className="text-right">{voicemailCredits.toLocaleString()}</TableCell><TableCell className="text-right">5.4%</TableCell></TableRow>
-                <TableRow><TableCell>Transfer bridge time</TableCell><TableCell className="text-right">{transferCredits.toLocaleString()}</TableCell><TableCell className="text-right">2.0%</TableCell></TableRow>
+                <TableRow><TableCell>Outbound calls</TableCell><TableCell className="text-right">${outboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">82.9%</TableCell></TableRow>
+                <TableRow><TableCell>Inbound calls</TableCell><TableCell className="text-right">${inboundCredits.toFixed(2)}</TableCell><TableCell className="text-right">9.8%</TableCell></TableRow>
+                <TableRow><TableCell>Voicemail messages</TableCell><TableCell className="text-right">${voicemailCredits.toFixed(2)}</TableCell><TableCell className="text-right">5.4%</TableCell></TableRow>
+                <TableRow><TableCell>Transfer bridge time</TableCell><TableCell className="text-right">${transferCredits.toFixed(2)}</TableCell><TableCell className="text-right">2.0%</TableCell></TableRow>
               </TableBody>
             </Table>
-            <p className="text-xs text-muted-foreground">Average daily usage: ~{dailyAvg} credits/day</p>
+            <p className="text-xs text-muted-foreground">Average daily spend: ~${dailyAvg.toFixed(2)}/day</p>
           </div>
         </CardContent>
       </Card>
@@ -450,7 +450,7 @@ export default function BillingUsage() {
           })}
         </div>
         <p className="text-xs text-muted-foreground mt-3 text-center">
-          Credits purchased separately. 1 credit = 1 minute of calling. Credits never expire.
+          Usage is billed per minute at your package rate. Funds never expire.
         </p>
       </div>
 
