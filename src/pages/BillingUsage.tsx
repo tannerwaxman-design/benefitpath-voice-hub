@@ -220,7 +220,7 @@ export default function BillingUsage() {
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <Button onClick={() => document.getElementById("buy-credits")?.scrollIntoView({ behavior: "smooth" })}>
-                {balanceStatus === "zero" || balanceStatus === "low" ? "Buy Credits Now" : "Buy Credits"}
+                {balanceStatus === "zero" || balanceStatus === "low" ? "Add Funds" : "Add Funds"}
               </Button>
               {autoRefillEnabled && (
                 <Badge variant="secondary" className="gap-1">
