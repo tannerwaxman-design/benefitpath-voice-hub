@@ -372,7 +372,7 @@ export default function BillingUsage() {
               </TableHeader>
               <TableBody>
                 {[
-                  { label: "Voice platform (VAPI)", cost: vapiCost },
+                  { label: "Infrastructure", cost: vapiCost },
                   { label: "Speech-to-text", cost: sttCost },
                   { label: "Language model (LLM)", cost: llmCost },
                   { label: "Text-to-speech", cost: ttsCost },
