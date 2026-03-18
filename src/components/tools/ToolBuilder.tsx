@@ -141,7 +141,9 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
           {agents.length === 0 && <p className="text-sm text-muted-foreground">No agents yet. Create an agent first.</p>}
         </div>
         <div className="flex gap-3">
-          <Button onClick={onSaved}>Save Assignments</Button>
+          <Button onClick={handleAssignAndFinish} disabled={assignTool.isPending}>
+            {assignTool.isPending ? "Saving..." : "Save Assignments"}
+          </Button>
           <Button variant="ghost" onClick={onSaved}>Skip for now</Button>
         </div>
       </div>
