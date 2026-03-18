@@ -61,6 +61,7 @@ const App = () => (
               <Route path="/onboarding" element={<Onboarding />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/" element={<Overview />} />
+                <Route path="/forge" element={<Forge />} />
                 <Route path="/agents" element={<AgentBuilder />} />
                 <Route path="/agents/:id" element={<AgentEditor />} />
                 <Route path="/voices" element={<Voices />} />
