@@ -52,29 +52,19 @@ export function useBillingUsage() {
         { vapi: 0, transport: 0, stt: 0, llm: 0, tts: 0, total: 0, withMargin: 0, totalMinutes: 0, totalCalls: 0 }
       );
 
-      // Monthly usage history (last 6 months)
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      const { data: historyCalls } = await supabase
-        .from("calls")
-        .select("cost_minutes, cost_with_margin, started_at")
-        .eq("tenant_id", user.tenant_id)
-        .gte("started_at", sixMonthsAgo.toISOString())
-        .order("started_at", { ascending: true });
-
-      const monthlyHistory: Record<string, { minutes: number; cost: number }> = {};
-      for (const call of historyCalls || []) {
-        const month = new Date(call.started_at).toLocaleString("en-US", { month: "short" });
-        if (!monthlyHistory[month]) monthlyHistory[month] = { minutes: 0, cost: 0 };
-        monthlyHistory[month].minutes += Number(call.cost_minutes) || 0;
-        monthlyHistory[month].cost += Number(call.cost_with_margin) || 0;
+      // Daily usage history for current billing cycle
+      const dailyHistory: Record<string, { minutes: number; cost: number }> = {};
+      for (const call of calls || []) {
+        const day = new Date(call.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        if (!dailyHistory[day]) dailyHistory[day] = { minutes: 0, cost: 0 };
+        dailyHistory[day].minutes += Number(call.cost_minutes) || 0;
+        dailyHistory[day].cost += Number(call.cost_with_margin) || 0;
       }
 
-      const usageHistory = Object.entries(monthlyHistory).map(([month, data]) => ({
-        month,
+      const usageHistory = Object.entries(dailyHistory).map(([day, data]) => ({
+        day,
         minutes: parseFloat(data.minutes.toFixed(1)),
-        cost: parseFloat(data.cost.toFixed(2)),
+        cost: parseFloat(data.cost.toFixed(4)),
       }));
 
       return {
