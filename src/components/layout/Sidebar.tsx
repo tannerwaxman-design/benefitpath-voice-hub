@@ -18,6 +18,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Overview", icon: LayoutDashboard, path: "/" },
+  { label: "Forge", icon: Flame, path: "/forge", badge: "AI", special: true },
   { label: "Agent Builder", icon: Bot, path: "/agents" },
   { label: "Voices", icon: AudioLines, path: "/voices" },
   { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"] },
