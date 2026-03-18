@@ -40,9 +40,18 @@ serve(async (req) => {
     logStep("User authenticated", { email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    let customerId: string;
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
-      throw new Error("No Stripe customer found for this user. Please subscribe to a plan first.");
+      logStep("No Stripe customer found, creating one");
+      const newCustomer = await stripe.customers.create({
+        email: user.email,
+        metadata: { supabase_user_id: user.id },
+      });
+      customerId = newCustomer.id;
+      logStep("Created Stripe customer", { customerId });
+    } else {
+      customerId = customers.data[0].id;
     }
 
     const customerId = customers.data[0].id;
