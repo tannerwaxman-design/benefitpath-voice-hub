@@ -69,10 +69,10 @@ const plans = [
 ];
 
 const creditPackages = [
-  { credits: "500", price: "$25", perCredit: "$0.05" },
-  { credits: "1,000", price: "$45", perCredit: "$0.045" },
-  { credits: "5,000", price: "$175", perCredit: "$0.035", best: true },
-  { credits: "10,000", price: "$300", perCredit: "$0.030" },
+  { credits: "500", price: "$25", perCredit: "$0.18" },
+  { credits: "1,000", price: "$45", perCredit: "$0.18" },
+  { credits: "5,000", price: "$175", perCredit: "$0.18", best: true },
+  { credits: "10,000", price: "$300", perCredit: "$0.18" },
 ];
 
 export default function PricingSection() {
