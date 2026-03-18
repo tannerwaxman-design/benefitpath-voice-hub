@@ -390,7 +390,7 @@ export default function BillingUsage() {
                 })}
               </TableBody>
             </Table>
-            <p className="text-xs text-muted-foreground">Average daily spend: ~${dailyAvg.toFixed(2)}/day</p>
+            
           </div>
         </CardContent>
       </Card>
