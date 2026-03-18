@@ -312,7 +312,7 @@ export default function BillingUsage() {
                       onChange={e => handleAutoRefillThreshold(e.target.value)}
                       className="w-24"
                     />
-                    <span className="text-sm text-muted-foreground">credits</span>
+                    
                   </div>
                 </div>
                 <div>
