@@ -113,7 +113,7 @@ function ApiKeysSection() {
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(k.connected_at).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => disconnectMutation.mutate(k.id)}>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => disconnectMutation.mutate({ id: k.id, service: k.service })}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </td>
