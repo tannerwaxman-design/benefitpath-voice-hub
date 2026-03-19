@@ -163,6 +163,11 @@ export default function AgentEditor() {
     setClonedVoiceId((existingAgent as any).cloned_voice_id || null);
     setVoiceCloneStatus((existingAgent as any).voice_clone_status || null);
     setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
+    const flowData = (existingAgent as any).conversation_flow;
+    if (flowData) {
+      setConversationFlow(flowData);
+      setEditorMode("flow");
+    }
     const ea = existingAgent as any;
     setPostCallActions({
       post_call_email_enabled: ea.post_call_email_enabled ?? false,
