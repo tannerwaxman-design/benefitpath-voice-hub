@@ -285,8 +285,24 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
                       type: "string",
                       description: "One specific suggestion for improving the agent's script, or empty string if none needed",
                     },
+                    lead_score: {
+                      type: "integer",
+                      description: "Lead quality score 0-100: how likely the contact is to become a client",
+                    },
+                    lead_status: {
+                      type: "string",
+                      description: "One of: hot, warm, cold, dead",
+                    },
+                    lead_summary: {
+                      type: "string",
+                      description: "One sentence about this lead's situation and intent",
+                    },
+                    recommended_action: {
+                      type: "string",
+                      description: "What the agent should do next with this lead",
+                    },
                   },
-                  required: ["total_score", "breakdown", "went_well", "could_improve", "coaching_tags", "highlight_moments", "script_suggestion"],
+                  required: ["total_score", "breakdown", "went_well", "could_improve", "coaching_tags", "highlight_moments", "script_suggestion", "lead_score", "lead_status", "lead_summary", "recommended_action"],
                   additionalProperties: false,
                 },
               },
