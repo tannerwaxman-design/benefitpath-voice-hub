@@ -285,8 +285,6 @@ export default function AgentEditor() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-      </div>
-      <div className="flex items-center gap-4">
         <button onClick={() => navigate("/agents")} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="page-title">{isNew ? "Create New Agent" : `Edit: ${existingAgent?.agent_name}`}</h1>
         {existingAgent && (
