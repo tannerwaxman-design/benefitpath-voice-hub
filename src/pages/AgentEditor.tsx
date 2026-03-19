@@ -74,6 +74,8 @@ export default function AgentEditor() {
   const [knowledgeBase, setKnowledgeBase] = useState("");
   const [voicemailScript, setVoicemailScript] = useState("");
   const [voicemailEnabled, setVoicemailEnabled] = useState(true);
+  const [voicemailMethod, setVoicemailMethod] = useState<"live" | "drop">("live");
+  const [voicemailAudioUrl, setVoicemailAudioUrl] = useState<string | null>(null);
   const [recordCalls, setRecordCalls] = useState(true);
   const [disclosure, setDisclosure] = useState(true);
   const [transferPhone, setTransferPhone] = useState("");
