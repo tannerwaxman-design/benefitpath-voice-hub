@@ -1,0 +1,1 @@
+ALTER TABLE public.calls ADD COLUMN ai_commentary jsonb DEFAULT NULL;
