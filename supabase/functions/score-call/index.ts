@@ -182,6 +182,18 @@ COACHING TAGS (pick all that apply):
 - compliance_issue, missed_discovery, successful_booking, callback_secured
 - lost_lead, dnc_handled_well
 
+LEAD SCORING: Also evaluate the contact as a lead:
+- lead_score (1-100): How likely this person is to become a client
+  90-100: Ready to enroll, appointment booked, asking "how do I sign up?"
+  70-89: Clearly interested, engaged in conversation, asked specific questions
+  50-69: Somewhat interested but non-committal, said "maybe" or "call back later"
+  30-49: Not very engaged, gave short answers, seemed uninterested but didn't refuse
+  10-29: Clearly not interested but didn't request DNC
+  0-9: Requested DNC, wrong number, hostile
+- lead_status: One of "hot", "warm", "cold", "dead"
+- lead_summary: One sentence about this lead's situation and intent
+- recommended_action: What the agent should do next with this lead
+
 You MUST respond using the score_call function.`;
 
     const userPrompt = `TRANSCRIPT:
