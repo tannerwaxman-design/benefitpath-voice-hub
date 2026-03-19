@@ -205,11 +205,11 @@ export default function CoachingDashboard() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {call.recording_url && (
-                          <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedCall(call)}>
                             <Play className="h-3 w-3 mr-1" />Listen
                           </Button>
                         )}
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate("/call-logs")}>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedCall(call)}>
                           Review
                         </Button>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleMarkReviewed(call.id)}>
