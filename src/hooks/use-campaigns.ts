@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -5,8 +6,31 @@ import { useToast } from "@/hooks/use-toast";
 
 export function useCampaigns() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const tenantId = user?.tenant_id;
+
+  // Realtime: invalidate campaigns query on any row change
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const channel = supabase
+      .channel(`campaigns-realtime-${tenantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "campaigns", filter: `tenant_id=eq.${tenantId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["campaigns", tenantId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId, queryClient]);
+
   return useQuery({
-    queryKey: ["campaigns", user?.tenant_id],
+    queryKey: ["campaigns", tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campaigns")
@@ -15,8 +39,7 @@ export function useCampaigns() {
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.tenant_id,
-    refetchInterval: 5 * 60 * 1000,
+    enabled: !!tenantId,
   });
 }
 

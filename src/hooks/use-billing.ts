@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -5,16 +6,40 @@ import { useToast } from "@/hooks/use-toast";
 
 export function useBillingUsage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const tenantId = user?.tenant_id;
+
+  // Realtime: refresh billing data whenever the tenant row is updated
+  // (credit_balance and minutes_used_this_cycle change after every call)
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const channel = supabase
+      .channel(`tenants-realtime-${tenantId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tenants", filter: `id=eq.${tenantId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["billing-usage", tenantId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId, queryClient]);
+
   return useQuery({
-    queryKey: ["billing-usage", user?.tenant_id],
+    queryKey: ["billing-usage", tenantId],
     queryFn: async () => {
-      if (!user?.tenant_id) return null;
+      if (!tenantId) return null;
 
       // Get tenant info
       const { data: tenant } = await supabase
         .from("tenants")
         .select("*")
-        .eq("id", user.tenant_id)
+        .eq("id", tenantId)
         .single();
 
       if (!tenant) return null;
@@ -23,7 +48,7 @@ export function useBillingUsage() {
       const { data: usageLogs } = await supabase
         .from("usage_logs")
         .select("*")
-        .eq("tenant_id", user.tenant_id)
+        .eq("tenant_id", tenantId)
         .gte("created_at", tenant.billing_cycle_start)
         .lte("created_at", tenant.billing_cycle_end)
         .order("created_at", { ascending: false });
@@ -32,7 +57,7 @@ export function useBillingUsage() {
       const { data: calls } = await supabase
         .from("calls")
         .select("cost_vapi, cost_transport, cost_stt, cost_llm, cost_tts, cost_total, cost_with_margin, cost_minutes, duration_seconds, started_at, outcome")
-        .eq("tenant_id", user.tenant_id)
+        .eq("tenant_id", tenantId)
         .gte("started_at", tenant.billing_cycle_start)
         .order("started_at", { ascending: false });
 
@@ -74,7 +99,7 @@ export function useBillingUsage() {
         usageHistory,
       };
     },
-    enabled: !!user?.tenant_id,
+    enabled: !!tenantId,
   });
 }
 
