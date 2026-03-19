@@ -178,13 +178,13 @@ export function useCoachingStats() {
       const flaggedData = flagged.data || [];
 
       const needsReview = allData.filter(
-        (c: any) => c.review_status === "not_reviewed" && (c.coaching_category === "needs_improvement" || c.coaching_category === "poor")
+        (c) => c.review_status === "not_reviewed" && (c.coaching_category === "needs_improvement" || c.coaching_category === "poor")
       ).length;
 
-      const weekScores = weekData.map((c: any) => c.quality_score as number).filter(Boolean);
+      const weekScores = weekData.map((c) => c.quality_score as number).filter(Boolean);
       const avgScore = weekScores.length > 0 ? Math.round(weekScores.reduce((a: number, b: number) => a + b, 0) / weekScores.length) : 0;
-      const excellentCount = weekData.filter((c: any) => c.coaching_category === "excellent").length;
-      const needsWorkCount = weekData.filter((c: any) => c.coaching_category === "needs_improvement" || c.coaching_category === "poor").length;
+      const excellentCount = weekData.filter((c) => c.coaching_category === "excellent").length;
+      const needsWorkCount = weekData.filter((c) => c.coaching_category === "needs_improvement" || c.coaching_category === "poor").length;
 
       return {
         needs_review: needsReview,
@@ -214,7 +214,7 @@ export function useScoreDistribution() {
 
       const dist = { excellent: 0, good: 0, needs_improvement: 0, poor: 0 };
       for (const row of data || []) {
-        const s = (row as any).quality_score as number;
+        const s = row.quality_score as number;
         if (s >= 90) dist.excellent++;
         else if (s >= 75) dist.good++;
         else if (s >= 60) dist.needs_improvement++;
@@ -247,7 +247,7 @@ export function useTopCoachingTags() {
 
       const tagCounts: Record<string, number> = {};
       for (const row of data || []) {
-        const tags = (row as any).coaching_tags as string[];
+        const tags = row.coaching_tags as string[];
         if (Array.isArray(tags)) {
           for (const tag of tags) {
             tagCounts[tag] = (tagCounts[tag] || 0) + 1;

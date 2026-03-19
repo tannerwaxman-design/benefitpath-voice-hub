@@ -159,7 +159,7 @@ Deno.serve(async (req: Request) => {
       .map((m) => `${m.role === "assistant" ? "AGENT" : "CONTACT"}: ${m.text}`)
       .join("\n");
 
-    const callObjective = (call as any).agents?.call_objective || "appointment_setting";
+    const callObjective = (call.agents as { call_objective?: string } | null)?.call_objective || "appointment_setting";
 
     const systemPrompt = `You are a call quality analyst for an insurance agency's AI voice agent.
 Score this call from 1-100 and provide detailed coaching analysis.

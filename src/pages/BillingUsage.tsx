@@ -74,7 +74,7 @@ export default function BillingUsage() {
   const autoRefillThreshold = tenant?.auto_refill_threshold ?? 100;
   const autoRefillPackage = tenant?.auto_refill_package ?? "1000";
 
-  const totalSpent = billing?.costSummary?.withMargin ?? (billing?.tenant as any)?.total_cost_this_cycle ?? 0;
+  const totalSpent = billing?.costSummary?.withMargin ?? billing?.tenant?.total_cost_this_cycle ?? 0;
   const totalMinutes = billing?.costSummary?.totalMinutes ?? 0;
   const cycleStart = tenant?.billing_cycle_start;
   const daysPassed = cycleStart ? Math.max(1, Math.ceil((Date.now() - new Date(cycleStart).getTime()) / 86400000)) : 1;
@@ -118,8 +118,8 @@ export default function BillingUsage() {
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
-    } catch (err: any) {
-      toast({ title: "Checkout failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Checkout failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setCheckoutLoading(null);
     }
@@ -133,8 +133,8 @@ export default function BillingUsage() {
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
-    } catch (err: any) {
-      toast({ title: "Purchase failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Purchase failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setCreditLoading(null);
     }
@@ -146,26 +146,26 @@ export default function BillingUsage() {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
-    } catch (err: any) {
-      toast({ title: "Could not open billing portal", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Could not open billing portal", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setPortalLoading(false);
     }
   };
 
   const handleAutoRefillToggle = (checked: boolean) => {
-    updateSettings.mutate({ auto_refill_enabled: checked } as any);
+    updateSettings.mutate({ auto_refill_enabled: checked });
   };
 
   const handleAutoRefillThreshold = (val: string) => {
     const num = parseInt(val);
     if (!isNaN(num) && num > 0) {
-      updateSettings.mutate({ auto_refill_threshold: num } as any);
+      updateSettings.mutate({ auto_refill_threshold: num });
     }
   };
 
   const handleAutoRefillPackage = (val: string) => {
-    updateSettings.mutate({ auto_refill_package: val } as any);
+    updateSettings.mutate({ auto_refill_package: val });
   };
 
   if (isLoading) {

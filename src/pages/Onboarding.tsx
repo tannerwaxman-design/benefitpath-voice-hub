@@ -161,8 +161,8 @@ export default function Onboarding() {
       });
       if (error) throw error;
       toast({ title: "Agent created!" });
-    } catch (err: any) {
-      toast({ title: "Could not create agent", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Could not create agent", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
       setAgentCreating(false);
       return;
     }
@@ -174,7 +174,7 @@ export default function Onboarding() {
     setSaving(true);
     await supabase
       .from("tenants")
-      .update({ onboarding_completed: true } as any)
+      .update({ onboarding_completed: true })
       .eq("id", user!.tenant_id);
     await refreshProfile();
     setSaving(false);

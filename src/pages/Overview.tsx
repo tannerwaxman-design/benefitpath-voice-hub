@@ -79,7 +79,7 @@ export default function Overview() {
   }, [campaigns]);
 
   const chartData = useMemo(() => {
-    return (callsPerDay || []).map((d: any) => ({
+    return (callsPerDay || []).map((d) => ({
       date: d.day,
       calls: Number(d.total_calls),
     }));
@@ -98,9 +98,9 @@ export default function Overview() {
 
   const avgScore = useMemo(() => {
     if (!recentCalls || recentCalls.length === 0) return null;
-    const scored = recentCalls.filter((c: any) => c.quality_score != null);
+    const scored = recentCalls.filter((c) => c.quality_score != null);
     if (scored.length === 0) return null;
-    return Math.round(scored.reduce((sum: number, c: any) => sum + c.quality_score, 0) / scored.length);
+    return Math.round(scored.reduce((sum: number, c) => sum + c.quality_score, 0) / scored.length);
   }, [recentCalls]);
 
   if (showSkeleton) return <OverviewSkeleton />;
@@ -300,7 +300,7 @@ export default function Overview() {
             <CardTitle className="card-title">AI Follow-Up Tasks</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {tasks.map((task: any) => (
+            {tasks.map((task) => (
               <div key={task.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
                 <button
                   onClick={() => updateTask.mutate({ taskId: task.id, status: task.status === "done" ? "pending" : "done" })}

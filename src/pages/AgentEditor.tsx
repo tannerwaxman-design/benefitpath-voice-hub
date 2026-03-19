@@ -155,33 +155,33 @@ export default function AgentEditor() {
     setKnowledgeBase(existingAgent.knowledge_base_text || "");
     setVoicemailScript(existingAgent.voicemail_script || "");
     setVoicemailEnabled(existingAgent.voicemail_enabled);
-    setVoicemailMethod((existingAgent as any).voicemail_method || "live");
-    setVoicemailAudioUrl((existingAgent as any).voicemail_audio_url || null);
+    setVoicemailMethod(existingAgent.voicemail_method || "live");
+    setVoicemailAudioUrl(existingAgent.voicemail_audio_url || null);
     setRecordCalls(existingAgent.record_calls);
     setDisclosure(existingAgent.play_disclosure);
     setTransferPhone(existingAgent.transfer_phone_number || "");
     setBackupTransfer(existingAgent.backup_transfer_number || "");
     setTransferAnnouncement(existingAgent.transfer_announcement || "");
-    setCallDirection((existingAgent as any).call_direction || "outbound");
-    setInboundGreeting((existingAgent as any).inbound_greeting || "Thank you for calling. How can I help you today?");
-    setAnswerAfterRings((existingAgent as any).answer_after_rings ?? 2);
-    setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
-    setVoiceSource((existingAgent as any).voice_source || "preset");
-    setClonedVoiceId((existingAgent as any).cloned_voice_id || null);
-    setVoiceCloneStatus((existingAgent as any).voice_clone_status || null);
-    setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
-    const flowData = (existingAgent as any).conversation_flow;
+    setCallDirection(existingAgent.call_direction || "outbound");
+    setInboundGreeting(existingAgent.inbound_greeting || "Thank you for calling. How can I help you today?");
+    setAnswerAfterRings(existingAgent.answer_after_rings ?? 2);
+    setAfterHoursBehavior(existingAgent.after_hours_behavior || "voicemail");
+    setVoiceSource(existingAgent.voice_source || "preset");
+    setClonedVoiceId(existingAgent.cloned_voice_id || null);
+    setVoiceCloneStatus(existingAgent.voice_clone_status || null);
+    setAfterHoursVoicemailMessage(existingAgent.after_hours_voicemail_message || "");
+    const flowData = existingAgent.conversation_flow;
     if (flowData) {
       setConversationFlow(flowData);
       setEditorMode("flow");
     }
     setSoaConfig({
-      soa_enabled: (existingAgent as any).soa_enabled ?? false,
-      soa_script: (existingAgent as any).soa_script || soaConfig.soa_script,
-      soa_plan_types: (existingAgent as any).soa_plan_types || soaConfig.soa_plan_types,
-      soa_timing: (existingAgent as any).soa_timing || "after_greeting",
+      soa_enabled: existingAgent.soa_enabled ?? false,
+      soa_script: existingAgent.soa_script || soaConfig.soa_script,
+      soa_plan_types: existingAgent.soa_plan_types || soaConfig.soa_plan_types,
+      soa_timing: existingAgent.soa_timing || "after_greeting",
     });
-    const ea = existingAgent as any;
+    const ea = existingAgent;
     setPostCallActions({
       post_call_email_enabled: ea.post_call_email_enabled ?? false,
       post_call_email_subject: ea.post_call_email_subject || "Thanks for chatting with us!",

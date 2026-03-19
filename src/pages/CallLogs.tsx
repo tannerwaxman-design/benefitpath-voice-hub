@@ -151,7 +151,7 @@ export default function CallLogs() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paged.map((call: any, i: number) => {
+                  {paged.map((call, i: number) => {
                     const isLive = call.outcome === "in_progress";
                     return (
                     <tr key={call.id} className={`border-t hover:bg-secondary/20 cursor-pointer transition-colors ${isLive ? "bg-red-50/50 dark:bg-red-950/20" : i % 2 ? "bg-secondary/10" : ""}`} onClick={() => setSelectedCall(call)}>

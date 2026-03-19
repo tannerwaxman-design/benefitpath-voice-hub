@@ -67,8 +67,12 @@ export type CallWithRelations = {
   reviewed_at?: string | null;
   internal_notes?: string | null;
   tenant_id: string;
-  agents: { agent_name: string } | null;
+  agents: { agent_name: string; soa_enabled?: boolean | null } | null;
   campaigns: { name: string } | null;
+  soa_collected?: boolean | null;
+  soa_consent_given?: boolean | null;
+  soa_timestamp_seconds?: number | null;
+  soa_plan_types?: string[] | null;
   vapi_call_id?: string;
   quality_score?: number | null;
   score_breakdown?: Json | null;
@@ -201,26 +205,26 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
           <span className="text-xs text-muted-foreground">{formatDate(call.started_at)} • {formatDuration(call.duration_seconds)}</span>
         </div>
         {/* SOA Badge */}
-        {(call as any).soa_collected !== undefined && (call as any).soa_collected ? (
+        {call.soa_collected !== undefined && call.soa_collected ? (
           <div className="mt-2">
-            {(call as any).soa_consent_given ? (
+            {call.soa_consent_given ? (
               <div className="flex items-center gap-1.5 text-xs">
                 <Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px]">✅ SOA Collected</Badge>
                 <span className="text-muted-foreground">
-                  at {(call as any).soa_timestamp_seconds != null ? formatTimestamp((call as any).soa_timestamp_seconds) : "—"}
-                  {(call as any).soa_plan_types ? ` — Consent for ${((call as any).soa_plan_types as string[]).map(p => p.split("(")[0].trim()).join(", ")}` : ""}
+                  at {call.soa_timestamp_seconds != null ? formatTimestamp(call.soa_timestamp_seconds) : "—"}
+                  {call.soa_plan_types ? ` — Consent for ${(call.soa_plan_types as string[]).map(p => p.split("(")[0].trim()).join(", ")}` : ""}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-xs">
                 <Badge variant="secondary" className="bg-warning/10 text-warning border-0 text-[10px]">⚠️ SOA Declined</Badge>
                 <span className="text-muted-foreground">
-                  at {(call as any).soa_timestamp_seconds != null ? formatTimestamp((call as any).soa_timestamp_seconds) : "—"} — no plans discussed
+                  at {call.soa_timestamp_seconds != null ? formatTimestamp(call.soa_timestamp_seconds) : "—"} — no plans discussed
                 </span>
               </div>
             )}
           </div>
-        ) : (call as any).soa_collected === false && (call as any).agents?.soa_enabled ? (
+        ) : call.soa_collected === false && call.agents?.soa_enabled ? (
           <div className="mt-2">
             <Badge variant="secondary" className="bg-destructive/10 text-destructive border-0 text-[10px]">❌ SOA Not Collected — Compliance Review Needed</Badge>
           </div>
@@ -285,21 +289,21 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
 
             {call.score_feedback && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(call.score_feedback as any).went_well?.length > 0 && (
+                {(call.score_feedback as { went_well?: string[] } | null)?.went_well?.length ?? 0 > 0 && (
                   <div>
                     <p className="text-xs font-medium text-success mb-1.5">✅ What went well</p>
                     <ul className="space-y-1">
-                      {(call.score_feedback as any).went_well.map((item: string, i: number) => (
+                      {(call.score_feedback as { went_well?: string[] } | null)?.went_well?.map((item: string, i: number) => (
                         <li key={i} className="text-xs text-muted-foreground">• {item}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {(call.score_feedback as any).could_improve?.length > 0 && (
+                {(call.score_feedback as { could_improve?: string[] } | null)?.could_improve?.length ?? 0 > 0 && (
                   <div>
                     <p className="text-xs font-medium text-warning mb-1.5">⚡ Could improve</p>
                     <ul className="space-y-1">
-                      {(call.score_feedback as any).could_improve.map((item: string, i: number) => (
+                      {(call.score_feedback as { could_improve?: string[] } | null)?.could_improve?.map((item: string, i: number) => (
                         <li key={i} className="text-xs text-muted-foreground">• {item}</li>
                       ))}
                     </ul>
@@ -326,7 +330,7 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
                   ].map(([label, key]) => (
                     <div key={key} className="flex justify-between text-xs py-0.5">
                       <span className="text-muted-foreground">{label}:</span>
-                      <span className="font-medium text-foreground">{(call.score_breakdown as any)[key]}/10</span>
+                      <span className="font-medium text-foreground">{(call.score_breakdown as Record<string, number | null> | null)?.[key]}/10</span>
                     </div>
                   ))}
                 </div>

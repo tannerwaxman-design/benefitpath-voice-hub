@@ -51,7 +51,7 @@ serve(async (req) => {
         body: vapiPayload,
       });
 
-      const vapiToolId = vapiRes.ok && vapiRes.data ? (vapiRes.data as any).id : null;
+      const vapiToolId = vapiRes.ok && vapiRes.data ? (vapiRes.data as { id?: string }).id : null;
 
       // Save the VAPI tool ID back to the tools table
       if (vapiToolId && tool_id) {
@@ -158,11 +158,11 @@ serve(async (req) => {
   }
 });
 
-function buildVapiTool(tool: any) {
+function buildVapiTool(tool: Record<string, unknown>) {
   const properties: Record<string, any> = {};
   const required: string[] = [];
 
-  (tool.parameters || []).forEach((p: any) => {
+  (tool.parameters || []).forEach((p: Record<string, unknown>) => {
     if (!p.enabled) return;
     properties[p.name] = {
       type: p.type || "string",

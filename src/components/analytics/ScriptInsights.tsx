@@ -61,8 +61,8 @@ export default function ScriptInsights() {
       });
       if (error) throw error;
       setAnalysis(data);
-    } catch (err: any) {
-      toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Analysis failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
     setLoading(false);
   };
@@ -80,10 +80,10 @@ export default function ScriptInsights() {
     } else if (suggestion.area === "objection") {
       // Find and update matching objection handler
       const handlers = Array.isArray(agent.objection_handling)
-        ? [...(agent.objection_handling as any[])]
+        ? [...(agent.objection_handling as Array<{ response?: string }>)]
         : [];
       const matchIdx = handlers.findIndex(
-        (h: any) => suggestion.current_text.includes(h.response?.slice(0, 30) || "___NOMATCH___")
+        (h) => suggestion.current_text.includes(h.response?.slice(0, 30) || "___NOMATCH___")
       );
       if (matchIdx >= 0) {
         handlers[matchIdx] = { ...handlers[matchIdx], response: suggestion.suggested_text };
@@ -99,8 +99,8 @@ export default function ScriptInsights() {
       await updateAgent.mutateAsync(updates);
       setAppliedSuggestions(prev => new Set(prev).add(index));
       toast({ title: "Script updated!", description: `Applied: ${suggestion.title}` });
-    } catch (err: any) {
-      toast({ title: "Failed to apply", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Failed to apply", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 

@@ -110,8 +110,8 @@ export default function Team() {
       if (err) throw err;
       if (data?.error) throw new Error(data.error);
       setMembers(data?.members || []);
-    } catch (e: any) {
-      setError(e.message || "Failed to load team members");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load team members");
     } finally {
       setLoading(false);
     }
@@ -169,8 +169,8 @@ export default function Team() {
       setInviteEmail("");
       setInviteRole("manager");
       fetchMembers();
-    } catch (e: any) {
-      toast({ title: "Failed to invite", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Failed to invite", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
       setInviting(false);
     }
@@ -189,8 +189,8 @@ export default function Team() {
       setRemoveOpen(false);
       setRemoveMember(null);
       fetchMembers();
-    } catch (e: any) {
-      toast({ title: "Failed to remove", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Failed to remove", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
       setRemoving(false);
     }
@@ -209,8 +209,8 @@ export default function Team() {
       setRoleChangeOpen(false);
       setRoleChangeMember(null);
       fetchMembers();
-    } catch (e: any) {
-      toast({ title: "Failed to change role", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Failed to change role", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
       setChangingRole(false);
     }
@@ -224,8 +224,8 @@ export default function Team() {
       if (err) throw err;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Invite resent", description: `A new invitation was sent to ${member.email}.` });
-    } catch (e: any) {
-      toast({ title: "Failed to resend invite", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Failed to resend invite", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     }
   };
 
@@ -244,8 +244,8 @@ export default function Team() {
       setTransferConfirm("");
       fetchMembers();
       refreshProfile();
-    } catch (e: any) {
-      toast({ title: "Transfer failed", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Transfer failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
       setTransferring(false);
     }

@@ -10,7 +10,7 @@ export function usePhoneNumbers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("phone_numbers")
-        .select("*, agents(id, agent_name)")
+        .select("*, agents(id, agent_name, call_direction)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 
 export interface KnowledgeBase {
   id: string;
@@ -53,7 +54,7 @@ export function useUpdateKnowledgeBase() {
     mutationFn: async (updates: Partial<Pick<KnowledgeBase, "company_info" | "faq_pairs" | "website_url" | "website_content" | "website_imported_at" | "assigned_agent_ids">>) => {
       const { error } = await supabase
         .from("knowledge_base")
-        .update(updates as any)
+        .update(updates as TablesUpdate<"knowledge_base">)
         .eq("tenant_id", user?.tenant_id);
       if (error) throw error;
     },

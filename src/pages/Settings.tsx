@@ -162,7 +162,7 @@ function ApiKeysSection() {
 function PlatformApiKeySection() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [apiKey, setApiKey] = useState<{ id: string; api_key: string; status: string; last_used_at: string | null; created_at: string } | null>(null);
+  const [apiKey, setApiKey] = useState<{ id: string; api_key: string; status: string | null; last_used_at: string | null; created_at: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -172,10 +172,10 @@ function PlatformApiKeySection() {
   const fetchKey = async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("tenant_api_keys" as any)
+      .from("tenant_api_keys")
       .select("*")
       .maybeSingle();
-    setApiKey(data as any);
+    setApiKey(data);
     setLoading(false);
   };
 
@@ -186,12 +186,12 @@ function PlatformApiKeySection() {
     const newKey = `bp_${crypto.randomUUID().replace(/-/g, "")}`;
     if (apiKey) {
       await supabase
-        .from("tenant_api_keys" as any)
+        .from("tenant_api_keys")
         .update({ api_key: newKey, updated_at: new Date().toISOString() })
         .eq("id", apiKey.id);
     } else {
       await supabase
-        .from("tenant_api_keys" as any)
+        .from("tenant_api_keys")
         .insert({ tenant_id: user!.tenant_id, api_key: newKey });
     }
     setGenerating(false);
@@ -202,7 +202,7 @@ function PlatformApiKeySection() {
 
   const revokeKey = async () => {
     if (!apiKey || !confirm("Revoke this API key? Any integrations using it will stop working.")) return;
-    await supabase.from("tenant_api_keys" as any).delete().eq("id", apiKey.id);
+    await supabase.from("tenant_api_keys").delete().eq("id", apiKey.id);
     setApiKey(null);
     toast({ title: "API key revoked" });
   };
@@ -517,8 +517,7 @@ export default function Settings() {
                     </div>
                     <div className="flex flex-col gap-2">
                       <Button size="sm" onClick={() => {
-                        const w = window as any;
-                        w.location.href = "/billing";
+                        window.location.href = "/billing";
                       }}>
                         Manage Plan & Credits
                       </Button>
@@ -527,8 +526,8 @@ export default function Settings() {
                           const { data, error } = await supabase.functions.invoke("customer-portal");
                           if (error) throw error;
                           if (data?.url) window.open(data.url, "_blank");
-                        } catch (err: any) {
-                          toast({ title: "Could not open billing portal", description: err.message, variant: "destructive" });
+                        } catch (err: unknown) {
+                          toast({ title: "Could not open billing portal", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
                         }
                       }}>
                         Manage Payment Method

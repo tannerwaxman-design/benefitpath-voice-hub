@@ -27,7 +27,7 @@ serve(async (req) => {
     if (!tenantId) {
       console.error("No tenant_id in call metadata");
       return new Response(JSON.stringify({
-        results: toolCallList.map((tc: any) => ({
+        results: toolCallList.map((tc: { id: string }) => ({
           toolCallId: tc.id,
           result: "I wasn't able to complete that action right now, but I'll make sure someone follows up.",
         })),
@@ -48,7 +48,7 @@ serve(async (req) => {
 
       try {
         // Find the tool by vapi_tool_id
-        let tool: any = null;
+        let tool: Record<string, unknown> | null = null;
         if (vapiToolRef?.toolId) {
           const { data } = await supabase
             .from("tools")
@@ -69,7 +69,7 @@ serve(async (req) => {
 
           if (tools) {
             const sanitized = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "_").substring(0, 40);
-            tool = tools.find((t: any) => sanitized(t.name) === functionName);
+            tool = tools.find((t) => sanitized(t.name as string) === functionName) ?? null;
           }
         }
 
@@ -164,7 +164,7 @@ serve(async (req) => {
   }
 });
 
-async function logActivity(supabase: any, tenantId: string, toolId: string, callId: string | null, status: string, summary: string, errorMessage: string | null) {
+async function logActivity(supabase: ReturnType<typeof createAdminClient>, tenantId: string, toolId: string, callId: string | null, status: string, summary: string, errorMessage: string | null) {
   try {
     await supabase.from("tool_activity_log").insert({
       tenant_id: tenantId,
@@ -183,7 +183,7 @@ async function logActivity(supabase: any, tenantId: string, toolId: string, call
 // SERVICE HANDLERS
 // ==========================================
 
-async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args: any): Promise<string> {
+async function handleGHL(tool: Record<string, unknown>, apiKey: string, additionalConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const locationId = additionalConfig?.location_id;
   const template = tool.template;
   const serviceConfig = tool.service_config || {};
@@ -275,7 +275,7 @@ async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args:
   return "Action completed.";
 }
 
-async function handleHubSpot(tool: any, apiKey: string, args: any): Promise<string> {
+async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args: Record<string, unknown>): Promise<string> {
   const template = tool.template;
   const serviceConfig = tool.service_config || {};
 
@@ -332,14 +332,14 @@ async function handleHubSpot(tool: any, apiKey: string, args: any): Promise<stri
   return "Action completed.";
 }
 
-async function handleGoogleCalendar(tool: any, apiKey: string, serviceConfig: any, args: any): Promise<string> {
+async function handleGoogleCalendar(tool: Record<string, unknown>, apiKey: string, serviceConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const calendarId = serviceConfig.calendar_id || "primary";
   const duration = serviceConfig.duration_minutes || 30;
 
   const startTime = new Date(`${args.preferred_date}T${args.preferred_time || "10:00"}:00`);
   const endTime = new Date(startTime.getTime() + duration * 60000);
 
-  const eventBody: any = {
+  const eventBody: Record<string, unknown> = {
     summary: `Appointment with ${args.contact_name || "Client"}`,
     start: { dateTime: startTime.toISOString() },
     end: { dateTime: endTime.toISOString() },
@@ -376,7 +376,7 @@ async function handleGoogleCalendar(tool: any, apiKey: string, serviceConfig: an
   throw new Error(`Google Calendar event creation failed: ${errText}`);
 }
 
-async function handleSalesforce(tool: any, apiKey: string, additionalConfig: any, args: any): Promise<string> {
+async function handleSalesforce(tool: Record<string, unknown>, apiKey: string, additionalConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const instanceUrl = additionalConfig?.instance_url || "https://login.salesforce.com";
   const template = tool.template;
 
@@ -399,7 +399,7 @@ async function handleSalesforce(tool: any, apiKey: string, additionalConfig: any
   return "Action completed.";
 }
 
-async function handleCustomWebhook(serviceConfig: any, args: any): Promise<string> {
+async function handleCustomWebhook(serviceConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const url = serviceConfig.url;
   if (!url) throw new Error("No webhook URL configured");
 

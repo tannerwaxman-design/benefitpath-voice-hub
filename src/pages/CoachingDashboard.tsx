@@ -169,8 +169,8 @@ export default function CoachingDashboard() {
             <p className="text-sm text-muted-foreground py-6 text-center">All caught up — no calls need review right now.</p>
           ) : (
             <div className="space-y-3">
-              {needsReviewCalls.map((call: any) => {
-                const feedback = call.score_feedback as any;
+              {needsReviewCalls.map((call) => {
+                const feedback = call.score_feedback as { went_well?: string[]; could_improve?: string[] } | null;
                 const firstImprovement = feedback?.could_improve?.[0];
                 return (
                   <div key={call.id} className="p-4 rounded-lg bg-secondary/20 hover:bg-secondary/40 transition-colors">
@@ -244,11 +244,11 @@ export default function CoachingDashboard() {
             <p className="text-sm text-muted-foreground py-6 text-center">No excellent calls yet — keep improving!</p>
           ) : (
             <div className="space-y-3">
-              {excellentCalls.slice(0, 5).map((call: any) => {
-                const feedback = call.score_feedback as any;
+              {excellentCalls.slice(0, 5).map((call) => {
+                const feedback = call.score_feedback as { went_well?: string[]; could_improve?: string[] } | null;
                 const topStrength = feedback?.went_well?.[0];
-                const highlights = call.coaching_highlights as any[];
-                const bestMoment = highlights?.find((h: any) => h.type === "strength");
+                const highlights = call.coaching_highlights as Array<{ type?: string; quote?: string; commentary?: string }> | null;
+                const bestMoment = highlights?.find((h) => h.type === "strength");
                 return (
                   <div key={call.id} className="p-4 rounded-lg bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors border border-emerald-500/10">
                     <div className="flex items-start justify-between gap-3">
@@ -315,7 +315,7 @@ export default function CoachingDashboard() {
             <p className="text-sm text-muted-foreground py-6 text-center">No flagged calls.</p>
           ) : (
             <div className="space-y-3">
-              {flaggedCalls.map((call: any) => {
+              {flaggedCalls.map((call) => {
                 const latestNote = call.call_coaching_notes?.[0];
                 return (
                   <div key={call.id} className="p-4 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors border border-destructive/10">

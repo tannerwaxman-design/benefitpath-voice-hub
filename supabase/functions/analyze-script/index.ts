@@ -84,11 +84,11 @@ Deno.serve(async (req: Request) => {
       .eq("agent_id", agent_id)
       .gte("started_at", thirtyDaysAgo.toISOString());
 
-    const formatTranscripts = (calls: any[]) =>
+    const formatTranscripts = (calls: Array<{ transcript: unknown; outcome?: string }>) =>
       calls
         .map((c, i) => {
-          const lines = (c.transcript as any[])
-            .map((m: any) => `${m.role === "assistant" ? "AGENT" : "CONTACT"}: ${m.text}`)
+          const lines = (c.transcript as Array<{ role: string; text: string }>)
+            .map((m) => `${m.role === "assistant" ? "AGENT" : "CONTACT"}: ${m.text}`)
             .join("\n");
           return `--- Call ${i + 1} (Score: ${c.quality_score || "N/A"}, Outcome: ${c.outcome}, Duration: ${c.duration_seconds}s) ---\n${lines}`;
         })
@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
     const failText = failCalls?.length ? formatTranscripts(failCalls) : "No unsuccessful calls available.";
 
     const objectionText = Array.isArray(agent.objection_handling)
-      ? (agent.objection_handling as any[]).map((o: any) => `- "${o.objection}": "${o.response}"`).join("\n")
+      ? (agent.objection_handling as Array<{ objection?: string; response?: string }>).map((o) => `- "${o.objection}": "${o.response}"`).join("\n")
       : "None configured";
 
     const systemPrompt = `You are a script optimization analyst for an AI voice agent platform. 

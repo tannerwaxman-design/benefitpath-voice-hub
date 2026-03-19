@@ -39,8 +39,8 @@ serve(async (req) => {
 
     // Format transcript for LLM
     const transcriptText = call.transcript
-      .filter((m: any) => (m.text || m.message || m.content || "").length > 0)
-      .map((m: any) => {
+      .filter((m: { text?: string; message?: string; content?: string }) => (m.text || m.message || m.content || "").length > 0)
+      .map((m: { role?: string; text?: string; message?: string; content?: string; timestamp?: number; secondsFromStart?: number; time?: number }) => {
         const role = m.role === "assistant" || m.role === "bot" ? "Agent" : "Customer";
         const text = m.text || m.message || m.content || "";
         const ts = m.timestamp || m.secondsFromStart || m.time || 0;
@@ -143,7 +143,7 @@ Return ONLY commentary for the most important 8-15 moments. Not every line needs
     const commentary = parsed.comments || [];
 
     // Sort by timestamp
-    commentary.sort((a: any, b: any) => a.timestamp - b.timestamp);
+    commentary.sort((a: { timestamp?: number }, b: { timestamp?: number }) => a.timestamp - b.timestamp);
 
     // Cache on the call record
     await supabaseAdmin

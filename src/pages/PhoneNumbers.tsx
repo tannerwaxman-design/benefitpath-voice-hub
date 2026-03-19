@@ -357,7 +357,7 @@ export default function PhoneNumbers() {
                             >
                               {pn.agents.agent_name}
                             </Badge>
-                            {(pn.agents as any).call_direction && (pn.agents as any).call_direction !== "outbound" && (
+                            {pn.agents.call_direction && pn.agents.call_direction !== "outbound" && (
                               <p className="text-[10px] text-muted-foreground mt-0.5">Answers inbound calls</p>
                             )}
                           </div>

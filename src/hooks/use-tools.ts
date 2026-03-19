@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import type { TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
 
 export interface Tool {
   id: string;
@@ -117,7 +118,7 @@ export function useVerifyApiKey() {
       additional_config?: Record<string, unknown>;
       reverify?: boolean;
       tenant_id?: string;
-    }): Promise<{ valid: boolean; error?: string; account_name?: string; calendars?: any[] }> => {
+    }): Promise<{ valid: boolean; error?: string; account_name?: string; calendars?: { id: string; name: string }[] }> => {
       const { data, error } = await supabase.functions.invoke("verify-api-key", {
         body: payload,
       });
@@ -137,7 +138,7 @@ export function useCreateTool() {
       // Step 1: Save to DB
       const { data, error } = await supabase
         .from("tools")
-        .insert({ ...tool, tenant_id: user!.tenant_id } as any)
+        .insert({ ...tool, tenant_id: user!.tenant_id } as TablesInsert<"tools">)
         .select()
         .single();
       if (error) throw error;
@@ -173,7 +174,7 @@ export function useUpdateTool() {
     mutationFn: async ({ id, ...updates }: Partial<Tool> & { id: string }) => {
       const { data, error } = await supabase
         .from("tools")
-        .update(updates as any)
+        .update(updates as TablesUpdate<"tools">)
         .eq("id", id)
         .select()
         .single();
@@ -204,10 +205,10 @@ export function useDeleteTool() {
         .single();
 
       // Delete from VAPI first
-      if (tool && (tool as any).vapi_tool_id) {
+      if (tool && tool.vapi_tool_id) {
         try {
           await supabase.functions.invoke("manage-tool", {
-            body: { action: "delete", vapi_tool_id: (tool as any).vapi_tool_id },
+            body: { action: "delete", vapi_tool_id: tool.vapi_tool_id },
           });
         } catch (e) {
           console.error("VAPI tool deletion failed:", e);
@@ -237,7 +238,7 @@ export function useConnectApiKey() {
       const { data, error } = await supabase
         .from("tool_api_keys")
         .upsert(
-          { ...payload, tenant_id: user!.tenant_id, status: "active", connected_at: new Date().toISOString(), last_verified_at: new Date().toISOString() } as any,
+          { ...payload, tenant_id: user!.tenant_id, status: "active", connected_at: new Date().toISOString(), last_verified_at: new Date().toISOString() } as TablesInsert<"tool_api_keys">,
           { onConflict: "tenant_id,service" }
         )
         .select()
@@ -295,7 +296,7 @@ export function useAssignToolToAgents() {
       // Update tool's assigned_agent_ids
       const { error } = await supabase
         .from("tools")
-        .update({ assigned_agent_ids: agentIds as any })
+        .update({ assigned_agent_ids: agentIds as unknown as Json })
         .eq("id", toolId);
       if (error) throw error;
 
@@ -313,10 +314,10 @@ export function useAssignToolToAgents() {
             .from("tools")
             .select("vapi_tool_id")
             .eq("status", "active")
-            .contains("assigned_agent_ids", [agentId] as any);
+            .contains("assigned_agent_ids", [agentId] as unknown as string[]);
 
           const toolIds = (agentTools || [])
-            .map((t: any) => t.vapi_tool_id)
+            .map((t) => t.vapi_tool_id)
             .filter(Boolean);
 
           try {
