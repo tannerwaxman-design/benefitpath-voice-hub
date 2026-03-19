@@ -280,6 +280,7 @@ export default function AgentEditor() {
       after_hours_behavior: afterHoursBehavior,
       after_hours_voicemail_message: afterHoursVoicemailMessage || null,
       ...postCallActions,
+      ...soaConfig,
       ...compiledStages,
     };
   };
