@@ -19,6 +19,7 @@ import { useAgents } from "@/hooks/use-agents";
 
 const ScriptInsights = lazy(() => import("@/components/analytics/ScriptInsights"));
 const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
+const SoaComplianceReport = lazy(() => import("@/components/analytics/SoaComplianceReport"));
 
 function AbTestsAnalyticsTab() {
   const { data: agents, isLoading } = useAgents();
