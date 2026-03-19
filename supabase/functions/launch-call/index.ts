@@ -169,10 +169,38 @@ Deno.serve(async (req: Request) => {
       return errorResponse("No active voice-enabled phone number found", 400);
     }
 
+    // === A/B TEST ROUTING ===
+    let abTestId: string | null = null;
+    let abTestVersion: string | null = null;
+    let greetingToUse = agent.greeting_script;
+
+    // Check for active A/B tests on greeting field
+    const { data: activeAbTests } = await supabase
+      .from("ab_tests")
+      .select("*")
+      .eq("agent_id", agent.id)
+      .eq("status", "running");
+
+    if (activeAbTests && activeAbTests.length > 0) {
+      for (const abTest of activeAbTests) {
+        const roll = Math.random() * 100;
+        const version = roll < (100 - abTest.traffic_split) ? "a" : "b";
+        abTestId = abTest.id;
+        abTestVersion = version;
+
+        if (abTest.field === "greeting") {
+          greetingToUse = version === "a" ? abTest.version_a_text : abTest.version_b_text;
+        }
+        // Only handle one test per call for now
+        break;
+      }
+    }
+
     // Personalize greeting
     const firstName = contactName.split(" ")[0];
-    const personalizedGreeting = agent.greeting_script
+    const personalizedGreeting = greetingToUse
       .replace(/\[Contact Name\]/gi, firstName)
+      .replace(/\[First Name\]/gi, firstName)
       .replace(/\[Company\]/gi, tenant.company_name);
 
     // Build VAPI call payload with correct metadata keys
@@ -191,6 +219,8 @@ Deno.serve(async (req: Request) => {
           benefitpath_campaign_id: campaign_id || null,
           benefitpath_campaign_contact_id: campaign_contact_id || null,
           benefitpath_is_test_call: is_test_call || false,
+          benefitpath_ab_test_id: abTestId,
+          benefitpath_ab_test_version: abTestVersion,
         },
         firstMessage: personalizedGreeting,
       },
