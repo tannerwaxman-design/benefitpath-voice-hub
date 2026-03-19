@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import CallDetailPanel, { type CallWithRelations } from "@/components/calls/CallDetailPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   useCallsForCoaching,
