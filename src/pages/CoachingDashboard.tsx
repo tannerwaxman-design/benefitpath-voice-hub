@@ -72,8 +72,8 @@ function formatDuration(seconds: number | null) {
 }
 
 export default function CoachingDashboard() {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const [selectedCall, setSelectedCall] = useState<CallWithRelations | null>(null);
   const { data: stats, isLoading: statsLoading } = useCoachingStats();
   const { data: needsReviewCalls, isLoading: nrLoading } = useCallsForCoaching("needs_review");
   const { data: excellentCalls, isLoading: exLoading } = useCallsForCoaching("excellent");
