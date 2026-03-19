@@ -1,5 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
+import {
+  fetchWithTimeout,
+  isCircuitBlocking,
+  recordCircuitSuccess,
+  recordCircuitFailure,
+} from "../_shared/circuit-breaker.ts";
+
+type ApiKeyRecord = {
+  id: string;
+  api_key: string;
+  service: string;
+  additional_config: Record<string, unknown>;
+  failure_count: number;
+  circuit_opened_at: string | null;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,6 +61,7 @@ serve(async (req) => {
         : (toolCall.function?.arguments || toolCall.arguments || {});
       const toolCallId = toolCall.id;
 
+      let keyRecord: ApiKeyRecord | null = null;
       try {
         // Find the tool by vapi_tool_id
         let tool: Record<string, unknown> | null = null;
@@ -101,6 +117,19 @@ serve(async (req) => {
           continue;
         }
 
+        // Cast to include circuit breaker columns (added by migration)
+        keyRecord = apiKeyRecord as ApiKeyRecord | null;
+
+        // Fast-fail if circuit is open and not yet in the half-open window
+        if (keyRecord && isCircuitBlocking(keyRecord)) {
+          results.push({
+            toolCallId,
+            result: `I can't complete that action right now — the ${keyRecord.service} integration is temporarily unavailable. It should recover shortly.`,
+          });
+          void logActivity(supabase, tenantId, tool.id as string, metadata.benefitpath_call_id, "circuit_open", `Circuit open for ${keyRecord.service}`, "circuit_breaker_open");
+          continue;
+        }
+
         const apiKey = apiKeyRecord?.api_key || "";
         const additionalConfig = apiKeyRecord?.additional_config || {};
         const serviceConfig = tool.service_config || {};
@@ -128,6 +157,9 @@ serve(async (req) => {
             result = "Action completed.";
         }
 
+        // Record circuit success (fire-and-forget)
+        if (keyRecord) recordCircuitSuccess(supabase, keyRecord.id);
+
         // Log success
         await logActivity(supabase, tenantId, tool.id, metadata.benefitpath_call_id, "success", `${tool.name}: ${JSON.stringify(args).slice(0, 200)}`, null);
 
@@ -141,6 +173,9 @@ serve(async (req) => {
       } catch (err) {
         console.error(`Tool handler error for ${functionName}:`, err);
         const errMsg = err instanceof Error ? err.message : "Unknown error";
+
+        // Record circuit failure (fire-and-forget)
+        if (keyRecord) recordCircuitFailure(supabase, keyRecord.id, keyRecord.failure_count ?? 0);
 
         await logActivity(supabase, tenantId, toolCallList[i]?.tool_id || "", metadata.benefitpath_call_id, "failed", `Failed: ${errMsg}`, errMsg);
 
@@ -194,7 +229,7 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
 
     const startTime = args.preferred_date + "T" + (args.preferred_time || "10:00") + ":00";
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://services.leadconnectorhq.com/calendars/${calendarId}/appointments`,
       {
         method: "POST",
@@ -221,7 +256,7 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
   }
 
   if (template === "create_contact") {
-    const response = await fetch("https://services.leadconnectorhq.com/contacts/", {
+    const response = await fetchWithTimeout("https://services.leadconnectorhq.com/contacts/", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -246,7 +281,7 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
 
   if (template === "update_contact") {
     // Look up contact by phone
-    const searchRes = await fetch(
+    const searchRes = await fetchWithTimeout(
       `https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&query=${encodeURIComponent(args.contact_phone)}&limit=1`,
       { headers: { Authorization: `Bearer ${apiKey}`, Version: "2021-04-15" } }
     );
@@ -255,7 +290,7 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
       const searchData = await searchRes.json();
       const contact = searchData.contacts?.[0];
       if (contact) {
-        const updateRes = await fetch(`https://services.leadconnectorhq.com/contacts/${contact.id}`, {
+        const updateRes = await fetchWithTimeout(`https://services.leadconnectorhq.com/contacts/${contact.id}`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", Version: "2021-04-15" },
           body: JSON.stringify({ [args.field_to_update]: args.new_value }),
@@ -288,7 +323,7 @@ async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args
     if (args.phone || args.contact_phone) properties.phone = args.phone || args.contact_phone;
     if (serviceConfig.lifecycle_stage) properties.lifecyclestage = serviceConfig.lifecycle_stage;
 
-    const response = await fetch("https://api.hubapi.com/crm/v3/objects/contacts", {
+    const response = await fetchWithTimeout("https://api.hubapi.com/crm/v3/objects/contacts", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ properties }),
@@ -303,7 +338,7 @@ async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args
 
   if (template === "update_contact") {
     // Search by phone/email
-    const searchRes = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/search", {
+    const searchRes = await fetchWithTimeout("https://api.hubapi.com/crm/v3/objects/contacts/search", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -318,7 +353,7 @@ async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args
       const searchData = await searchRes.json();
       const contactId = searchData.results?.[0]?.id;
       if (contactId) {
-        const updateRes = await fetch(`https://api.hubapi.com/crm/v3/objects/contacts/${contactId}`, {
+        const updateRes = await fetchWithTimeout(`https://api.hubapi.com/crm/v3/objects/contacts/${contactId}`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({ properties: { [args.field_to_update]: args.new_value } }),
@@ -360,7 +395,7 @@ async function handleGoogleCalendar(tool: Record<string, unknown>, apiKey: strin
   }
 
   const conferenceParam = serviceConfig.include_meet_link ? "?conferenceDataVersion=1" : "";
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${conferenceParam}`,
     {
       method: "POST",
@@ -381,7 +416,7 @@ async function handleSalesforce(tool: Record<string, unknown>, apiKey: string, a
   const template = tool.template;
 
   if (template === "create_contact") {
-    const response = await fetch(`${instanceUrl}/services/data/v58.0/sobjects/Contact/`, {
+    const response = await fetchWithTimeout(`${instanceUrl}/services/data/v58.0/sobjects/Contact/`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -409,7 +444,7 @@ async function handleCustomWebhook(serviceConfig: Record<string, unknown>, args:
     headers["Authorization"] = serviceConfig.auth_header;
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method,
     headers,
     body: method !== "GET" ? JSON.stringify({
