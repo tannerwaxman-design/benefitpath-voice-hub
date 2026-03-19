@@ -325,8 +325,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // 10. Update VAPI assistant metadata with the real agent_id
+    // The initial creation used "PLACEHOLDER" because the DB ID wasn't yet known.
+    // This PATCH replaces it with the actual agent UUID.
     if (vapiAssistantId && agent) {
-      await vapiRequest({
+      const metaPatch = await vapiRequest({
         method: "PATCH",
         endpoint: `/assistant/${vapiAssistantId}`,
         body: {
@@ -337,6 +339,21 @@ Deno.serve(async (req: Request) => {
           },
         },
       });
+      if (!metaPatch.ok) {
+        // Non-fatal: the agent is saved in our DB with the correct ID.
+        // VAPI metadata is used for webhook correlation — log so it can be fixed manually if needed.
+        console.error(
+          `[create-agent] Failed to update VAPI metadata for agent ${agent.id} (vapi: ${vapiAssistantId}):`,
+          metaPatch.error
+        );
+        // Persist the warning so the dashboard can surface it
+        await supabase
+          .from("agents")
+          .update({
+            vapi_sync_error: `Metadata patch failed: ${metaPatch.error}. VAPI assistant metadata may still show benefitpath_agent_id=PLACEHOLDER.`,
+          })
+          .eq("id", agent.id);
+      }
     }
 
     // 11. Send notification about sync result

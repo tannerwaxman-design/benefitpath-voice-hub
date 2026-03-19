@@ -375,6 +375,7 @@ export default function Settings() {
           <TabsTrigger value="enrollment">Enrollment Periods</TabsTrigger>
           <TabsTrigger value="billing">Billing & Usage</TabsTrigger>
           <TabsTrigger value="team">Team & Access</TabsTrigger>
+          <TabsTrigger value="api">API</TabsTrigger>
         </TabsList>
 
         {/* General */}
@@ -739,9 +740,6 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Platform API Key */}
-          <PlatformApiKeySection />
-
           {/* Integration API Keys */}
           <ApiKeysSection />
 
@@ -784,6 +782,10 @@ export default function Settings() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </TabsContent>
+        {/* API */}
+        <TabsContent value="api" className="space-y-6 mt-6">
+          <PlatformApiKeySection />
         </TabsContent>
       </Tabs>
     </div>
