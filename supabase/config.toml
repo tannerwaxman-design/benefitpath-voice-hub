@@ -45,3 +45,5 @@ project_id = "kpsilbmmedonhxjofixm"
     verify_jwt = false
   [functions.tool-webhook-handler]
     verify_jwt = false
+  [functions.analyze-script]
+    verify_jwt = false
