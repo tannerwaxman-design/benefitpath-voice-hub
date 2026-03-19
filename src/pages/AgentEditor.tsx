@@ -21,6 +21,7 @@ import { lazy, Suspense } from "react";
 const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
+import { VoicemailDropSection } from "@/components/agents/VoicemailDropSection";
 import { useAvailableVoices, useTtsPreview, Voice } from "@/hooks/use-voice-management";
 import { Link } from "react-router-dom";
 
