@@ -175,6 +175,12 @@ export default function AgentEditor() {
       setConversationFlow(flowData);
       setEditorMode("flow");
     }
+    setSoaConfig({
+      soa_enabled: (existingAgent as any).soa_enabled ?? false,
+      soa_script: (existingAgent as any).soa_script || soaConfig.soa_script,
+      soa_plan_types: (existingAgent as any).soa_plan_types || soaConfig.soa_plan_types,
+      soa_timing: (existingAgent as any).soa_timing || "after_greeting",
+    });
     const ea = existingAgent as any;
     setPostCallActions({
       post_call_email_enabled: ea.post_call_email_enabled ?? false,
