@@ -130,12 +130,23 @@ Deno.serve(async (req: Request) => {
             priority: idx + 1,
           }));
 
-          // Insert in batches of 500
+          // Insert in batches of 500 — rollback all on any failure
           for (let i = 0; i < campaignContacts.length; i += 500) {
             const batch = campaignContacts.slice(i, i + 500);
-            await adminClient
+            const { error: insertError } = await adminClient
               .from("campaign_contacts")
               .insert(batch);
+
+            if (insertError) {
+              // Clean up any batches already inserted for this campaign
+              await adminClient
+                .from("campaign_contacts")
+                .delete()
+                .eq("campaign_id", campaign_id)
+                .eq("status", "pending");
+
+              throw new Error(`Failed to insert campaign contacts (batch ${Math.floor(i / 500) + 1}): ${insertError.message}`);
+            }
           }
         }
 
