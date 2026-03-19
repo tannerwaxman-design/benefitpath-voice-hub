@@ -35,14 +35,23 @@ export async function vapiRequest<T = Record<string, unknown>>(
   }
 
   try {
-    const response = await fetch(`${VAPI_BASE_URL}${endpoint}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      ...(body && { body: JSON.stringify(body) }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let response: Response;
+    try {
+      response = await fetch(`${VAPI_BASE_URL}${endpoint}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+        ...(body && { body: JSON.stringify(body) }),
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const responseText = await response.text();
     let data: T | null = null;

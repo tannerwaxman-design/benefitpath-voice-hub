@@ -47,7 +47,14 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "https://voicebenefitpath.lovable.app";
+    const ALLOWED_ORIGINS = [
+      "https://voicebenefitpath.lovable.app",
+      "https://benefitpath.com",
+    ];
+    const requestOrigin = req.headers.get("origin") || "";
+    const origin = ALLOWED_ORIGINS.includes(requestOrigin)
+      ? requestOrigin
+      : ALLOWED_ORIGINS[0];
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

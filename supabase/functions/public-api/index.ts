@@ -89,6 +89,9 @@ Deno.serve(async (req: Request) => {
       if (!first_name || !last_name || !phone) {
         return errorResponse("first_name, last_name, and phone are required");
       }
+      if (!/^\+?[\d\s\-().]{7,20}$/.test(phone)) {
+        return errorResponse("phone must be a valid phone number (7-20 digits, optional +, spaces, dashes, parens)");
+      }
       const { data, error } = await admin
         .from("contacts")
         .insert({ tenant_id: tenantId, first_name, last_name, phone, email, company, tags, contact_list_id })
@@ -157,6 +160,9 @@ Deno.serve(async (req: Request) => {
       const { agent_id, phone_number, contact_name } = body;
       if (!agent_id || !phone_number) {
         return errorResponse("agent_id and phone_number are required");
+      }
+      if (!/^\+?[\d\s\-().]{7,20}$/.test(phone_number)) {
+        return errorResponse("phone_number must be a valid phone number (7-20 digits, optional +, spaces, dashes, parens)");
       }
 
       // Verify agent belongs to tenant
