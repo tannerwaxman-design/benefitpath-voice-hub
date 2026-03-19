@@ -459,48 +459,80 @@ export default function AgentEditor() {
 
           {/* Section 3: Conversation Flow */}
           <Card id="section-conversation-flow">
-            <CardHeader><CardTitle className="section-title">Conversation Flow</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <AbTestField agentId={id} field="greeting" label="Greeting Script" currentValue={greeting} onValueChange={setGreeting} />
-                <p className="text-xs text-muted-foreground mt-1">Use [First Name], [Company] as placeholders</p>
-              </div>
-              <div>
-                <Label>Call Objective</Label>
-                <Select value={callObjective} onValueChange={setCallObjective}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="appointment_setting">Appointment Setting</SelectItem>
-                    <SelectItem value="lead_qualification">Lead Qualification</SelectItem>
-                    <SelectItem value="enrollment_followup">Enrollment Follow-Up</SelectItem>
-                    <SelectItem value="renewal_reminder">Renewal Reminder</SelectItem>
-                    <SelectItem value="survey">Survey / Feedback</SelectItem>
-                    <SelectItem value="payment_reminder">Payment Reminder</SelectItem>
-                    <SelectItem value="general_info">General Information</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <AbTestField agentId={id} field="voicemail" label="Voicemail Script" currentValue={voicemailScript} onValueChange={setVoicemailScript} />
-                <div className="flex items-center gap-3 mt-3">
-                  <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
-                  <Label>Leave voicemail on no answer</Label>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="section-title">Conversation Flow</CardTitle>
+                <div className="flex rounded-lg border border-border overflow-hidden">
+                  <button
+                    onClick={() => setEditorMode("script")}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${editorMode === "script" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-secondary"}`}
+                  >
+                    Script Mode
+                  </button>
+                  <button
+                    onClick={() => setEditorMode("flow")}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${editorMode === "flow" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-secondary"}`}
+                  >
+                    Flow Mode
+                  </button>
                 </div>
-                {voicemailEnabled && (
-                  <div className="mt-4">
-                    <VoicemailDropSection
-                      voicemailMethod={voicemailMethod}
-                      onMethodChange={setVoicemailMethod}
-                      voicemailScript={voicemailScript}
-                      onScriptChange={setVoicemailScript}
-                      voicemailAudioUrl={voicemailAudioUrl}
-                      onAudioUrlChange={setVoicemailAudioUrl}
-                      voiceId={voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice}
-                      voiceProvider="eleven_labs"
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {editorMode === "script" ? (
+                <>
+                  <div>
+                    <AbTestField agentId={id} field="greeting" label="Greeting Script" currentValue={greeting} onValueChange={setGreeting} />
+                    <p className="text-xs text-muted-foreground mt-1">Use [First Name], [Company] as placeholders</p>
+                  </div>
+                  <div>
+                    <Label>Call Objective</Label>
+                    <Select value={callObjective} onValueChange={setCallObjective}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="appointment_setting">Appointment Setting</SelectItem>
+                        <SelectItem value="lead_qualification">Lead Qualification</SelectItem>
+                        <SelectItem value="enrollment_followup">Enrollment Follow-Up</SelectItem>
+                        <SelectItem value="renewal_reminder">Renewal Reminder</SelectItem>
+                        <SelectItem value="survey">Survey / Feedback</SelectItem>
+                        <SelectItem value="payment_reminder">Payment Reminder</SelectItem>
+                        <SelectItem value="general_info">General Information</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <AbTestField agentId={id} field="voicemail" label="Voicemail Script" currentValue={voicemailScript} onValueChange={setVoicemailScript} />
+                    <div className="flex items-center gap-3 mt-3">
+                      <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
+                      <Label>Leave voicemail on no answer</Label>
+                    </div>
+                    {voicemailEnabled && (
+                      <div className="mt-4">
+                        <VoicemailDropSection
+                          voicemailMethod={voicemailMethod}
+                          onMethodChange={setVoicemailMethod}
+                          voicemailScript={voicemailScript}
+                          onScriptChange={setVoicemailScript}
+                          voicemailAudioUrl={voicemailAudioUrl}
+                          onAudioUrlChange={setVoicemailAudioUrl}
+                          voiceId={voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice}
+                          voiceProvider="eleven_labs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <Suspense fallback={<div className="h-[600px] flex items-center justify-center text-muted-foreground text-sm">Loading flow builder...</div>}>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-3">Drag nodes to position them. Connect outputs to inputs by dragging between handles. Click a node to configure it.</p>
+                    <FlowBuilder
+                      initialFlow={conversationFlow}
+                      onChange={setConversationFlow}
                     />
                   </div>
-                )}
-              </div>
+                </Suspense>
+              )}
             </CardContent>
           </Card>
 
