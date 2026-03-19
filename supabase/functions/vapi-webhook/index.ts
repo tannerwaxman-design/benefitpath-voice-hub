@@ -25,8 +25,12 @@ Deno.serve(async (req: Request) => {
     // 1. Verify webhook authenticity
     const providedSecret = req.headers.get("x-vapi-secret");
     if (WEBHOOK_SECRET && providedSecret !== WEBHOOK_SECRET) {
-      console.warn("Webhook signature mismatch");
-      // In production, uncomment: return new Response("Unauthorized", { status: 401 });
+      console.warn("Webhook signature mismatch - rejecting request");
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    if (!WEBHOOK_SECRET) {
+      console.warn("VAPI_WEBHOOK_SECRET is not set - webhook requests are unauthenticated");
     }
 
     // 2. Extract the message
