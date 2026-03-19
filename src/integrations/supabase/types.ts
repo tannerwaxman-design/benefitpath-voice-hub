@@ -388,6 +388,10 @@ export type Database = {
           answered_at: string | null
           campaign_contact_id: string | null
           campaign_id: string | null
+          coaching_category: string | null
+          coaching_highlights: Json | null
+          coaching_script_suggestion: string | null
+          coaching_tags: Json | null
           contact_id: string | null
           contact_name: string | null
           cost_amount: number | null
@@ -441,6 +445,10 @@ export type Database = {
           answered_at?: string | null
           campaign_contact_id?: string | null
           campaign_id?: string | null
+          coaching_category?: string | null
+          coaching_highlights?: Json | null
+          coaching_script_suggestion?: string | null
+          coaching_tags?: Json | null
           contact_id?: string | null
           contact_name?: string | null
           cost_amount?: number | null
@@ -494,6 +502,10 @@ export type Database = {
           answered_at?: string | null
           campaign_contact_id?: string | null
           campaign_id?: string | null
+          coaching_category?: string | null
+          coaching_highlights?: Json | null
+          coaching_script_suggestion?: string | null
+          coaching_tags?: Json | null
           contact_id?: string | null
           contact_name?: string | null
           cost_amount?: number | null
