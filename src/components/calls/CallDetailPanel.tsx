@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { MessageSquare, Send, Star, Bot, User, RefreshCw } from "lucide-react";
+import AiCommentaryPlayer from "./AiCommentaryPlayer";
 import { Progress } from "@/components/ui/progress";
 import type { Json } from "@/integrations/supabase/types";
 import { useCoachingNotes, useAddCoachingNote, useTranscriptComments, useAddTranscriptComment, useUpdateReviewStatus } from "@/hooks/use-coaching";

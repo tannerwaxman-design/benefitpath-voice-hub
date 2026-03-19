@@ -47,3 +47,5 @@ project_id = "kpsilbmmedonhxjofixm"
     verify_jwt = false
   [functions.analyze-script]
     verify_jwt = false
+  [functions.generate-commentary]
+    verify_jwt = false
