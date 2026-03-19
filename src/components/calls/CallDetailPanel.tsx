@@ -196,10 +196,35 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
     <div className="space-y-6">
       <SheetHeader>
         <SheetTitle>{call.contact_name || "Unknown Contact"}</SheetTitle>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex flex-wrap items-center gap-2 mt-1">
           <Badge variant="secondary" className={`${outcomeColors[call.outcome] || ""} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge>
           <span className="text-xs text-muted-foreground">{formatDate(call.started_at)} • {formatDuration(call.duration_seconds)}</span>
         </div>
+        {/* SOA Badge */}
+        {(call as any).soa_collected !== undefined && (call as any).soa_collected ? (
+          <div className="mt-2">
+            {(call as any).soa_consent_given ? (
+              <div className="flex items-center gap-1.5 text-xs">
+                <Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px]">✅ SOA Collected</Badge>
+                <span className="text-muted-foreground">
+                  at {(call as any).soa_timestamp_seconds != null ? formatTimestamp((call as any).soa_timestamp_seconds) : "—"}
+                  {(call as any).soa_plan_types ? ` — Consent for ${((call as any).soa_plan_types as string[]).map(p => p.split("(")[0].trim()).join(", ")}` : ""}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs">
+                <Badge variant="secondary" className="bg-warning/10 text-warning border-0 text-[10px]">⚠️ SOA Declined</Badge>
+                <span className="text-muted-foreground">
+                  at {(call as any).soa_timestamp_seconds != null ? formatTimestamp((call as any).soa_timestamp_seconds) : "—"} — no plans discussed
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (call as any).soa_collected === false && (call as any).agents?.soa_enabled ? (
+          <div className="mt-2">
+            <Badge variant="secondary" className="bg-destructive/10 text-destructive border-0 text-[10px]">❌ SOA Not Collected — Compliance Review Needed</Badge>
+          </div>
+        ) : null}
       </SheetHeader>
 
       {/* Review Status Bar */}

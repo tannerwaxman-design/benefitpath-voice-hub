@@ -42,6 +42,10 @@ interface AgentConfig {
   recording_disclosure_override: string | null;
   primary_cta: string;
   fallback_cta: string | null;
+  soa_enabled?: boolean;
+  soa_script?: string | null;
+  soa_plan_types?: string[];
+  soa_timing?: string;
 }
 
 interface TenantConfig {
@@ -312,6 +316,49 @@ export function compileSystemPrompt(
     "- Do NOT collect Social Security numbers, credit card numbers, or bank account numbers on the call.\n";
 
   sections.push(compliance);
+
+  // === SOA (SCOPE OF APPOINTMENT) — MEDICARE COMPLIANCE ===
+  if (agent.soa_enabled) {
+    let soa = "## CMS SCOPE OF APPOINTMENT COMPLIANCE\n";
+    soa += "You MUST collect verbal Scope of Appointment consent BEFORE discussing any specific Medicare plan types, carrier names, premiums, or benefits.\n\n";
+
+    // Determine timing instruction
+    if (agent.soa_timing === "after_greeting") {
+      soa += "After your greeting and confirming the caller's identity, say the SOA script EXACTLY as written. Do not paraphrase it. The wording matters for compliance.\n\n";
+    } else if (agent.soa_timing === "end_of_call") {
+      soa += "Before booking any appointment or concluding the call, collect SOA consent using the script below.\n\n";
+    } else if (agent.soa_timing === "on_interest") {
+      soa += "If the lead expresses interest in specific plans, collect SOA consent using the script below BEFORE discussing any plan details.\n\n";
+    }
+
+    // Insert the script with plan types filled in
+    const planTypesStr = (agent.soa_plan_types || []).join(", ");
+    const filledScript = (agent.soa_script || "").replace("[SELECTED_PLAN_TYPES]", planTypesStr);
+    soa += `SOA SCRIPT (say this EXACTLY):\n"${filledScript}"\n\n`;
+
+    soa += "Wait for a clear verbal response:\n";
+    soa += '- If they say "yes," "sure," "go ahead," "that\'s fine," or any affirmative:\n';
+    soa += '  Record the consent and proceed. Say: "Thank you. Let\'s take a look at what\'s available for you."\n';
+    soa += '- If they say "no," "I\'m not sure," or hesitate:\n';
+    soa += '  Do NOT proceed with plan-specific discussion. Say: "No problem at all. I completely understand. What I can do is send you some general information about your options, and if you\'d like to go over the details later, we can set up a time that works for you. Would you like me to send that to your email?"\n';
+    soa += '- If they ask "What does that mean?" or seem confused:\n';
+    soa += '  Explain: "It just means I\'m letting you know this is a conversation about Medicare insurance, and I need your okay before I go into specific plan details. It\'s a federal requirement to make sure you\'re comfortable with what we discuss."\n\n';
+
+    soa += "CRITICAL: If SOA consent is NOT given, you must NOT:\n";
+    soa += "- Name any specific carrier (Aetna, UnitedHealthcare, Humana, etc.)\n";
+    soa += "- Quote any premium amounts\n";
+    soa += "- Compare specific plan benefits\n";
+    soa += "- Discuss specific drug formularies\n";
+    soa += "- Recommend any particular plan\n\n";
+
+    soa += "You CAN still discuss:\n";
+    soa += "- General Medicare information (what Part A, B, C, D cover)\n";
+    soa += "- The enrollment timeline\n";
+    soa += "- The process of how a consultation works\n";
+    soa += "- General categories of plans without naming carriers\n";
+
+    sections.push(soa);
+  }
 
   // === REAL-TIME LEAD ASSESSMENT ===
   let leadAssessment = "## REAL-TIME LEAD ASSESSMENT\n";

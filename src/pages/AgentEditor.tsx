@@ -25,6 +25,7 @@ import { flowToStages } from "@/lib/flow-to-stages";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 import { VoicemailDropSection } from "@/components/agents/VoicemailDropSection";
+import { SoaSettingsSection, SoaConfig } from "@/components/agents/SoaSettingsSection";
 import { useAvailableVoices, useTtsPreview, Voice } from "@/hooks/use-voice-management";
 import { Link } from "react-router-dom";
 
@@ -99,6 +100,12 @@ export default function AgentEditor() {
   const [voiceCloneStatus, setVoiceCloneStatus] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<"script" | "flow">("script");
   const [conversationFlow, setConversationFlow] = useState<FlowData | null>(null);
+  const [soaConfig, setSoaConfig] = useState<SoaConfig>({
+    soa_enabled: false,
+    soa_script: 'Before we discuss any specific plan options, I need to let you know this is a conversation about Medicare insurance plans. Federal regulations require me to get your verbal permission before we go over specific options. Today I\'d like to discuss [SELECTED_PLAN_TYPES]. Do I have your permission to go over those with you?',
+    soa_plan_types: ["Medicare Advantage (MA) plans, including HMO, PPO, and PFFS", "Medicare Supplement (Medigap) plans", "Medicare Prescription Drug Plans (Part D / PDP)"],
+    soa_timing: "after_greeting",
+  });
   const [postCallActions, setPostCallActions] = useState<PostCallActionsConfig>({
     post_call_email_enabled: false,
     post_call_email_subject: "Thanks for chatting with us!",
@@ -168,6 +175,12 @@ export default function AgentEditor() {
       setConversationFlow(flowData);
       setEditorMode("flow");
     }
+    setSoaConfig({
+      soa_enabled: (existingAgent as any).soa_enabled ?? false,
+      soa_script: (existingAgent as any).soa_script || soaConfig.soa_script,
+      soa_plan_types: (existingAgent as any).soa_plan_types || soaConfig.soa_plan_types,
+      soa_timing: (existingAgent as any).soa_timing || "after_greeting",
+    });
     const ea = existingAgent as any;
     setPostCallActions({
       post_call_email_enabled: ea.post_call_email_enabled ?? false,
@@ -267,6 +280,7 @@ export default function AgentEditor() {
       after_hours_behavior: afterHoursBehavior,
       after_hours_voicemail_message: afterHoursVoicemailMessage || null,
       ...postCallActions,
+      ...soaConfig,
       ...compiledStages,
     };
   };
@@ -631,12 +645,15 @@ export default function AgentEditor() {
           <Card id="section-compliance">
             <CardHeader><CardTitle className="section-title">Compliance</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <p className="text-sm text-blue-800">BenefitPath Voice AI is designed to help you comply with TCPA, TSR, and state telemarketing regulations.</p>
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="text-sm text-foreground">BenefitPath Voice AI is designed to help you comply with TCPA, TSR, and state telemarketing regulations.</p>
               </div>
               <div className="flex items-center gap-3"><Switch checked={recordCalls} onCheckedChange={setRecordCalls} /><Label>Record all calls</Label></div>
               <div className="flex items-center gap-3"><Switch checked={disclosure} onCheckedChange={setDisclosure} /><Label>Play recording disclosure at start of call</Label></div>
               <div className="flex items-center gap-3"><Switch defaultChecked disabled /><Label>Respect Do-Not-Call requests immediately (required)</Label></div>
+
+              {/* SOA Settings */}
+              <SoaSettingsSection config={soaConfig} onChange={setSoaConfig} />
             </CardContent>
           </Card>
 

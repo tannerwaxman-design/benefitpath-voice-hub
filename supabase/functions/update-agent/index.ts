@@ -91,6 +91,10 @@ Deno.serve(async (req: Request) => {
       recording_disclosure_override: updatedConfig.disclosure_script || null,
       primary_cta: updatedConfig.primary_cta || "book_appointment",
       fallback_cta: updatedConfig.fallback_cta || "send_email",
+      soa_enabled: updatedConfig.soa_enabled ?? false,
+      soa_script: updatedConfig.soa_script || null,
+      soa_plan_types: updatedConfig.soa_plan_types || [],
+      soa_timing: updatedConfig.soa_timing || "after_greeting",
     };
 
     const compiledPrompt = compileSystemPrompt(promptInput, {
