@@ -137,6 +137,10 @@ export type Database = {
           require_verbal_consent: boolean
           respect_dnc: boolean
           silence_timeout_seconds: number
+          soa_enabled: boolean
+          soa_plan_types: Json
+          soa_script: string | null
+          soa_timing: string
           speaking_speed: number
           status: string
           success_rate: number | null
@@ -228,6 +232,10 @@ export type Database = {
           require_verbal_consent?: boolean
           respect_dnc?: boolean
           silence_timeout_seconds?: number
+          soa_enabled?: boolean
+          soa_plan_types?: Json
+          soa_script?: string | null
+          soa_timing?: string
           speaking_speed?: number
           status?: string
           success_rate?: number | null
@@ -319,6 +327,10 @@ export type Database = {
           require_verbal_consent?: boolean
           respect_dnc?: boolean
           silence_timeout_seconds?: number
+          soa_enabled?: boolean
+          soa_plan_types?: Json
+          soa_script?: string | null
+          soa_timing?: string
           speaking_speed?: number
           status?: string
           success_rate?: number | null
@@ -501,6 +513,11 @@ export type Database = {
           sentiment: string | null
           sentiment_score: number | null
           sentiment_timeline: Json | null
+          soa_collected: boolean
+          soa_consent_given: boolean | null
+          soa_plan_types: Json | null
+          soa_response_text: string | null
+          soa_timestamp_seconds: number | null
           started_at: string
           summary: string | null
           tenant_id: string
@@ -561,6 +578,11 @@ export type Database = {
           sentiment?: string | null
           sentiment_score?: number | null
           sentiment_timeline?: Json | null
+          soa_collected?: boolean
+          soa_consent_given?: boolean | null
+          soa_plan_types?: Json | null
+          soa_response_text?: string | null
+          soa_timestamp_seconds?: number | null
           started_at: string
           summary?: string | null
           tenant_id: string
@@ -621,6 +643,11 @@ export type Database = {
           sentiment?: string | null
           sentiment_score?: number | null
           sentiment_timeline?: Json | null
+          soa_collected?: boolean
+          soa_consent_given?: boolean | null
+          soa_plan_types?: Json | null
+          soa_response_text?: string | null
+          soa_timestamp_seconds?: number | null
           started_at?: string
           summary?: string | null
           tenant_id?: string
