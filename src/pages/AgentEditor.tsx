@@ -97,6 +97,8 @@ export default function AgentEditor() {
   const [voiceSource, setVoiceSource] = useState<"preset" | "cloned">("preset");
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [voiceCloneStatus, setVoiceCloneStatus] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<"script" | "flow">("script");
+  const [conversationFlow, setConversationFlow] = useState<FlowData | null>(null);
   const [postCallActions, setPostCallActions] = useState<PostCallActionsConfig>({
     post_call_email_enabled: false,
     post_call_email_subject: "Thanks for chatting with us!",
