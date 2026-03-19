@@ -45,20 +45,29 @@ Deno.serve(async (req: Request) => {
         .single();
       
       const tz = tenant?.default_timezone || "America/New_York";
-      const localTimeStr = now.toLocaleTimeString("en-US", { 
-        timeZone: tz, 
-        hour12: false, 
-        hour: "2-digit", 
-        minute: "2-digit" 
-      });
+      // Parse current local time as minutes-since-midnight using formatToParts
+      // (more reliable than toLocaleTimeString which can vary across runtimes)
+      const timeParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(now);
+      const localHour = parseInt(timeParts.find((p) => p.type === "hour")!.value, 10);
+      const localMinute = parseInt(timeParts.find((p) => p.type === "minute")!.value, 10);
+      const localMinutes = localHour * 60 + localMinute;
 
-      // Strip seconds from window values if present (e.g. "09:00:00" -> "09:00")
-      const windowStart = (campaign.calling_window_start || "09:00").substring(0, 5);
-      const windowEnd = (campaign.calling_window_end || "18:00").substring(0, 5);
+      // Parse "HH:MM" or "HH:MM:SS" window values to minutes-since-midnight
+      const toMinutes = (t: string) => {
+        const [h, m] = (t || "00:00").split(":").map(Number);
+        return h * 60 + m;
+      };
+      const windowStartMinutes = toMinutes(campaign.calling_window_start || "09:00");
+      const windowEndMinutes = toMinutes(campaign.calling_window_end || "18:00");
 
-      console.log(`Campaign ${campaign.name}: localTime=${localTimeStr}, window=${windowStart}-${windowEnd}, tz=${tz}`);
+      console.log(`Campaign ${campaign.name}: localTime=${localHour}:${String(localMinute).padStart(2, "0")}, window=${campaign.calling_window_start}-${campaign.calling_window_end}, tz=${tz}`);
 
-      if (localTimeStr < windowStart || localTimeStr > windowEnd) {
+      if (localMinutes < windowStartMinutes || localMinutes > windowEndMinutes) {
         console.log(`Campaign ${campaign.name}: outside calling window, skipping`);
         continue;
       }
