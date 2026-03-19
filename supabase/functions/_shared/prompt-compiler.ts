@@ -42,6 +42,10 @@ interface AgentConfig {
   recording_disclosure_override: string | null;
   primary_cta: string;
   fallback_cta: string | null;
+  soa_enabled?: boolean;
+  soa_script?: string | null;
+  soa_plan_types?: string[];
+  soa_timing?: string;
 }
 
 interface TenantConfig {
