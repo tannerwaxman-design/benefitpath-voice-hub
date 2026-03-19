@@ -645,12 +645,15 @@ export default function AgentEditor() {
           <Card id="section-compliance">
             <CardHeader><CardTitle className="section-title">Compliance</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <p className="text-sm text-blue-800">BenefitPath Voice AI is designed to help you comply with TCPA, TSR, and state telemarketing regulations.</p>
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="text-sm text-foreground">BenefitPath Voice AI is designed to help you comply with TCPA, TSR, and state telemarketing regulations.</p>
               </div>
               <div className="flex items-center gap-3"><Switch checked={recordCalls} onCheckedChange={setRecordCalls} /><Label>Record all calls</Label></div>
               <div className="flex items-center gap-3"><Switch checked={disclosure} onCheckedChange={setDisclosure} /><Label>Play recording disclosure at start of call</Label></div>
               <div className="flex items-center gap-3"><Switch defaultChecked disabled /><Label>Respect Do-Not-Call requests immediately (required)</Label></div>
+
+              {/* SOA Settings */}
+              <SoaSettingsSection config={soaConfig} onChange={setSoaConfig} />
             </CardContent>
           </Card>
 
