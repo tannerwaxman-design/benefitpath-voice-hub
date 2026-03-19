@@ -406,6 +406,13 @@ export default function CoachingDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Call Detail Sheet */}
+      <Sheet open={!!selectedCall} onOpenChange={() => setSelectedCall(null)}>
+        <SheetContent className="w-[500px] sm:w-[600px] overflow-auto">
+          {selectedCall && <CallDetailPanel call={selectedCall} onClose={() => setSelectedCall(null)} />}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
