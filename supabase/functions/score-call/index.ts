@@ -345,7 +345,33 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
       );
     }
 
-    const scoreData = JSON.parse(toolCall.function.arguments);
+    let scoreData: Record<string, unknown>;
+    try {
+      scoreData = JSON.parse(toolCall.function.arguments);
+    } catch {
+      console.error("Failed to parse AI scoring response as JSON:", toolCall.function.arguments);
+      return new Response(
+        JSON.stringify({ error: "AI returned malformed JSON in scoring response" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (typeof scoreData.total_score !== "number" || !Number.isFinite(scoreData.total_score)) {
+      console.error("AI scoring response missing valid total_score:", JSON.stringify(scoreData));
+      return new Response(
+        JSON.stringify({ error: "AI scoring response missing required field: total_score" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!scoreData.breakdown || typeof scoreData.breakdown !== "object") {
+      console.error("AI scoring response missing breakdown:", JSON.stringify(scoreData));
+      return new Response(
+        JSON.stringify({ error: "AI scoring response missing required field: breakdown" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const totalScore = Math.min(100, Math.max(1, scoreData.total_score));
     const category = deriveCategory(totalScore);
 
@@ -367,7 +393,7 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
       .eq("id", call_id);
 
     // Update lead score on the contact if contact_id exists
-    if (call.contact_id && scoreData.lead_score != null) {
+    if (call.contact_id && scoreData.lead_score != null && Number.isFinite(scoreData.lead_score as number)) {
       await supabase
         .from("contacts")
         .update({
