@@ -304,8 +304,9 @@ Deno.serve(async (req: Request) => {
                   reason: "contact_requested",
                   source: `call:${vapiCallId}`,
                   added_by: "system",
+                  updated_at: new Date().toISOString(),
                 },
-                { onConflict: "tenant_id,phone_number", ignoreDuplicates: true }
+                { onConflict: "tenant_id,phone_number", ignoreDuplicates: false }
               );
 
               if (contactId) {
