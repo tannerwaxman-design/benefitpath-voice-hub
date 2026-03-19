@@ -185,6 +185,9 @@ export default function Analytics() {
           <TabsTrigger value="script-insights" className="flex items-center gap-1.5">
             <Lightbulb className="h-4 w-4" /> Script Insights
           </TabsTrigger>
+          <TabsTrigger value="soa-compliance" className="flex items-center gap-1.5">
+            <ShieldCheck className="h-4 w-4" /> SOA Compliance
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-4">
