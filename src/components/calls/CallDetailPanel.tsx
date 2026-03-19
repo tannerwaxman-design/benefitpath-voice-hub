@@ -226,11 +226,9 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
         )}
       </div>
 
-      {/* Recording Player */}
+      {/* Recording Player with AI Commentary */}
       {call.recording_url && (
-        <div className="bg-secondary/30 rounded-lg p-4">
-          <audio controls className="w-full" src={call.recording_url} />
-        </div>
+        <AiCommentaryPlayer callId={call.id} recordingUrl={call.recording_url} />
       )}
 
       {/* Summary */}
