@@ -16,6 +16,7 @@ import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { useNavigate } from "react-router-dom";
 
 const ScriptInsights = lazy(() => import("@/components/analytics/ScriptInsights"));
+const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "0:00";
