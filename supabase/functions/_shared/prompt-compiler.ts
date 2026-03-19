@@ -390,6 +390,10 @@ export function compileSystemPrompt(
   leadAssessment += "- Dead → Thank them, end the call politely\n";
   sections.push(leadAssessment);
 
+  // === ENROLLMENT PERIOD CONTEXT ===
+  const enrollmentContext = getEnrollmentPromptContext();
+  sections.push(enrollmentContext);
+
   // === CLOSING ===
   if (agent.closing_script) {
     let closing = "## WRAPPING UP THE CALL\n";
