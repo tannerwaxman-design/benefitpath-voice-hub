@@ -448,8 +448,7 @@ export default function AgentEditor() {
                 </Select>
               </div>
               <div>
-                <Label>Voicemail Script</Label>
-                <Textarea value={voicemailScript} onChange={e => setVoicemailScript(e.target.value)} rows={3} className="mt-1" />
+                <AbTestField agentId={id} field="voicemail" label="Voicemail Script" currentValue={voicemailScript} onValueChange={setVoicemailScript} />
                 <div className="flex items-center gap-3 mt-3">
                   <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
                   <Label>Leave voicemail on no answer</Label>
