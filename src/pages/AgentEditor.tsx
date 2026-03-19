@@ -142,6 +142,8 @@ export default function AgentEditor() {
     setKnowledgeBase(existingAgent.knowledge_base_text || "");
     setVoicemailScript(existingAgent.voicemail_script || "");
     setVoicemailEnabled(existingAgent.voicemail_enabled);
+    setVoicemailMethod((existingAgent as any).voicemail_method || "live");
+    setVoicemailAudioUrl((existingAgent as any).voicemail_audio_url || null);
     setRecordCalls(existingAgent.record_calls);
     setDisclosure(existingAgent.play_disclosure);
     setTransferPhone(existingAgent.transfer_phone_number || "");
