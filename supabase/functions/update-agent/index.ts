@@ -145,7 +145,9 @@ Deno.serve(async (req: Request) => {
         maxDurationSeconds: (updatedConfig.max_call_duration_minutes || 10) * 60,
         recordingEnabled: updatedConfig.record_calls ?? tenant.recording_enabled,
         voicemailMessage: updatedConfig.voicemail_enabled
-          ? updatedConfig.voicemail_script
+          ? (updatedConfig.voicemail_method === "drop" && updatedConfig.voicemail_audio_url
+            ? updatedConfig.voicemail_audio_url
+            : updatedConfig.voicemail_script)
           : null,
         voicemailDetection: {
           enabled: updatedConfig.voicemail_enabled ?? true,

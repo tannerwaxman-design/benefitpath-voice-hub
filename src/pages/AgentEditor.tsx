@@ -21,6 +21,7 @@ import { lazy, Suspense } from "react";
 const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
+import { VoicemailDropSection } from "@/components/agents/VoicemailDropSection";
 import { useAvailableVoices, useTtsPreview, Voice } from "@/hooks/use-voice-management";
 import { Link } from "react-router-dom";
 
@@ -74,6 +75,8 @@ export default function AgentEditor() {
   const [knowledgeBase, setKnowledgeBase] = useState("");
   const [voicemailScript, setVoicemailScript] = useState("");
   const [voicemailEnabled, setVoicemailEnabled] = useState(true);
+  const [voicemailMethod, setVoicemailMethod] = useState<"live" | "drop">("live");
+  const [voicemailAudioUrl, setVoicemailAudioUrl] = useState<string | null>(null);
   const [recordCalls, setRecordCalls] = useState(true);
   const [disclosure, setDisclosure] = useState(true);
   const [transferPhone, setTransferPhone] = useState("");
@@ -140,6 +143,8 @@ export default function AgentEditor() {
     setKnowledgeBase(existingAgent.knowledge_base_text || "");
     setVoicemailScript(existingAgent.voicemail_script || "");
     setVoicemailEnabled(existingAgent.voicemail_enabled);
+    setVoicemailMethod((existingAgent as any).voicemail_method || "live");
+    setVoicemailAudioUrl((existingAgent as any).voicemail_audio_url || null);
     setRecordCalls(existingAgent.record_calls);
     setDisclosure(existingAgent.play_disclosure);
     setTransferPhone(existingAgent.transfer_phone_number || "");
@@ -225,6 +230,8 @@ export default function AgentEditor() {
     knowledge_base_text: knowledgeBase || null,
     voicemail_script: voicemailScript || null,
     voicemail_enabled: voicemailEnabled,
+    voicemail_method: voicemailMethod,
+    voicemail_audio_url: voicemailAudioUrl,
     record_calls: recordCalls,
     play_disclosure: disclosure,
     transfer_phone_number: transferPhone || null,
@@ -453,6 +460,20 @@ export default function AgentEditor() {
                   <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
                   <Label>Leave voicemail on no answer</Label>
                 </div>
+                {voicemailEnabled && (
+                  <div className="mt-4">
+                    <VoicemailDropSection
+                      voicemailMethod={voicemailMethod}
+                      onMethodChange={setVoicemailMethod}
+                      voicemailScript={voicemailScript}
+                      onScriptChange={setVoicemailScript}
+                      voicemailAudioUrl={voicemailAudioUrl}
+                      onAudioUrlChange={setVoicemailAudioUrl}
+                      voiceId={voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice}
+                      voiceProvider="eleven_labs"
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

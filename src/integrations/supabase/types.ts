@@ -159,7 +159,9 @@ export type Database = {
           voice_provider: string
           voice_source: string
           voicemail_after_attempt: number
+          voicemail_audio_url: string | null
           voicemail_enabled: boolean
+          voicemail_method: string
           voicemail_script: string | null
           warning_before_max_duration: boolean
         }
@@ -247,7 +249,9 @@ export type Database = {
           voice_provider?: string
           voice_source?: string
           voicemail_after_attempt?: number
+          voicemail_audio_url?: string | null
           voicemail_enabled?: boolean
+          voicemail_method?: string
           voicemail_script?: string | null
           warning_before_max_duration?: boolean
         }
@@ -335,7 +339,9 @@ export type Database = {
           voice_provider?: string
           voice_source?: string
           voicemail_after_attempt?: number
+          voicemail_audio_url?: string | null
           voicemail_enabled?: boolean
+          voicemail_method?: string
           voicemail_script?: string | null
           warning_before_max_duration?: boolean
         }
