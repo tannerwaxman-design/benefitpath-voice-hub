@@ -141,6 +141,9 @@ export default function Analytics() {
           <TabsTrigger value="overview" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
+          <TabsTrigger value="ab-tests" className="flex items-center gap-1.5">
+            <FlaskConical className="h-4 w-4" /> A/B Tests
+          </TabsTrigger>
           <TabsTrigger value="script-insights" className="flex items-center gap-1.5">
             <Lightbulb className="h-4 w-4" /> Script Insights
           </TabsTrigger>
