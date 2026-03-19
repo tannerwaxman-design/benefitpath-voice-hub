@@ -14,9 +14,45 @@ import { ErrorState } from "@/components/ui/error-state";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { useNavigate } from "react-router-dom";
+import { useAgents } from "@/hooks/use-agents";
 
 const ScriptInsights = lazy(() => import("@/components/analytics/ScriptInsights"));
 const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
+
+function AbTestsAnalyticsTab() {
+  const { data: agents, isLoading } = useAgents();
+  const [selectedAgent, setSelectedAgent] = useState<string>("");
+
+  const activeAgents = (agents || []).filter(a => a.status === "active" || a.status === "draft");
+
+  if (isLoading) return <div className="py-8 text-center text-muted-foreground text-sm">Loading agents...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Label className="text-sm shrink-0">Select Agent:</Label>
+        <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+          <SelectTrigger className="w-64"><SelectValue placeholder="Choose an agent..." /></SelectTrigger>
+          <SelectContent>
+            {activeAgents.map(a => (
+              <SelectItem key={a.id} value={a.id}>{a.agent_name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {selectedAgent ? (
+        <AbTestResults agentId={selectedAgent} />
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <FlaskConical className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Select an agent to view A/B test results.</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "0:00";
