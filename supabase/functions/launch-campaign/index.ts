@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
             const batch = campaignContacts.slice(i, i + 500);
             const { error: insertError } = await adminClient
               .from("campaign_contacts")
-              .insert(batch);
+              .upsert(batch, { onConflict: "campaign_id,contact_id", ignoreDuplicates: true });
 
             if (insertError) {
               // Clean up any batches already inserted for this campaign
