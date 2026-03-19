@@ -89,6 +89,12 @@ Deno.serve(async (req: Request) => {
       if (!first_name || !last_name || !phone) {
         return errorResponse("first_name, last_name, and phone are required");
       }
+      if (!/^\+?[1-9]\d{6,14}$/.test(phone.replace(/[\s\-().]/g, ""))) {
+        return errorResponse("phone must be a valid E.164 or national format number");
+      }
+      if (email !== undefined && email !== null && email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return errorResponse("email must be a valid email address");
+      }
       const { data, error } = await admin
         .from("contacts")
         .insert({ tenant_id: tenantId, first_name, last_name, phone, email, company, tags, contact_list_id })
@@ -102,6 +108,12 @@ Deno.serve(async (req: Request) => {
       const contactId = path.split("/contacts/")[1];
       const body = await req.json();
       const { first_name, last_name, phone, email, company, tags } = body;
+      if (phone !== undefined && phone !== null && phone !== "" && !/^\+?[1-9]\d{6,14}$/.test(phone.replace(/[\s\-().]/g, ""))) {
+        return errorResponse("phone must be a valid E.164 or national format number");
+      }
+      if (email !== undefined && email !== null && email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return errorResponse("email must be a valid email address");
+      }
       const { data, error } = await admin
         .from("contacts")
         .update({ first_name, last_name, phone, email, company, tags, updated_at: new Date().toISOString() })
