@@ -193,21 +193,7 @@ export default function CallLogs() {
                     </tr>
                     );
                   })}
-                      <td className="px-4 py-3">
-                        {call.quality_score != null ? (
-                          <span className={`text-sm font-semibold ${call.quality_score >= 80 ? "text-success" : call.quality_score >= 60 ? "text-warning" : "text-destructive"}`}>
-                            {call.quality_score}/100
-                          </span>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant="secondary" className={`${reviewStatusColors[call.review_status || "not_reviewed"] || "bg-secondary"} border-0 text-[10px]`}>
-                          {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary" aria-label="Play recording"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
-                    </tr>
-                  ))}
+                </tbody>
                 </tbody>
               </table>
             </div>
