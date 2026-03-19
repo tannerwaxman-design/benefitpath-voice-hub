@@ -229,6 +229,8 @@ export default function AgentEditor() {
     knowledge_base_text: knowledgeBase || null,
     voicemail_script: voicemailScript || null,
     voicemail_enabled: voicemailEnabled,
+    voicemail_method: voicemailMethod,
+    voicemail_audio_url: voicemailAudioUrl,
     record_calls: recordCalls,
     play_disclosure: disclosure,
     transfer_phone_number: transferPhone || null,
