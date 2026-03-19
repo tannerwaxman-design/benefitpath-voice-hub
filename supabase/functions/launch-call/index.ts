@@ -257,6 +257,8 @@ Deno.serve(async (req: Request) => {
         contact_name: contactName,
         started_at: new Date().toISOString(),
         outcome: "in_progress",
+        ab_test_id: abTestId || null,
+        ab_test_version: abTestVersion || null,
       })
       .select()
       .single();
