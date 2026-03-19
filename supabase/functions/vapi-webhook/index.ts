@@ -566,6 +566,22 @@ Deno.serve(async (req: Request) => {
           });
         }
 
+        // Push note to CRM if the contact has a crm_contact_id (fire-and-forget)
+        if (contactId && tenantId) {
+          const pushableOutcomes = ["connected", "completed", "transferred"];
+          const callOutcome = analysis.successEvaluation || "completed";
+          if (pushableOutcomes.includes(callOutcome) || pushableOutcomes.some(o => callOutcome.includes(o))) {
+            pushCrmNote(supabase, {
+              tenantId,
+              contactId,
+              outcome: callOutcome,
+              duration: Math.round(reportDuration),
+              summary: analysis.summary || "",
+              sentiment: sentimentResult.sentiment,
+            }).catch((err) => console.error("[webhook] CRM note push failed:", err));
+          }
+        }
+
         // Trigger AI call scoring asynchronously (fire-and-forget)
         // Only score connected/completed/transferred calls
         const scorableOutcomes = ["connected", "completed", "transferred"];
@@ -963,5 +979,133 @@ async function fireTenantWebhook(
     }
   } catch (err) {
     console.error("Error firing tenant webhook:", err);
+  }
+}
+
+// --- CRM Note Push (fire-and-forget after end-of-call-report) ---
+
+async function pushCrmNote(supabase: any, params: {
+  tenantId: string;
+  contactId: string;
+  outcome: string;
+  duration: number;
+  summary: string;
+  sentiment: string;
+}): Promise<void> {
+  const { tenantId, contactId, outcome, duration, summary, sentiment } = params;
+
+  const { data: contact } = await supabase
+    .from("contacts")
+    .select("custom_fields")
+    .eq("id", contactId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  const crmContactId = contact?.custom_fields?.crm_contact_id as string | undefined;
+  const crmSource = contact?.custom_fields?.crm_source as string | undefined;
+
+  if (!crmContactId || !crmSource) return;
+
+  const { data: apiKeyRecord } = await supabase
+    .from("tool_api_keys")
+    .select("api_key, additional_config")
+    .eq("tenant_id", tenantId)
+    .eq("service", crmSource)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!apiKeyRecord) {
+    console.log(`[webhook] No active ${crmSource} key for tenant ${tenantId} -- skipping CRM note`);
+    return;
+  }
+
+  const apiKey = apiKeyRecord.api_key as string;
+  const additionalConfig = (apiKeyRecord.additional_config || {}) as Record<string, any>;
+  const noteBody = `AI Call -- ${outcome} | ${duration}s\n\n${summary || "(no summary)"}\n\nSentiment: ${sentiment}`;
+
+  switch (crmSource) {
+    case "hubspot":
+      await pushHubSpotNote(apiKey, crmContactId, noteBody);
+      break;
+    case "ghl":
+      await pushGHLNote(apiKey, crmContactId, noteBody);
+      break;
+    case "salesforce":
+      await pushSalesforceTask(
+        apiKey,
+        (additionalConfig.instance_url as string) || "https://login.salesforce.com",
+        crmContactId,
+        outcome,
+        noteBody
+      );
+      break;
+    default:
+      console.log(`[webhook] CRM note push not supported for service: ${crmSource}`);
+  }
+}
+
+async function pushHubSpotNote(apiKey: string, crmContactId: string, noteBody: string): Promise<void> {
+  const noteRes = await fetch("https://api.hubapi.com/crm/v3/objects/notes", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      properties: {
+        hs_note_body: noteBody,
+        hs_timestamp: new Date().toISOString(),
+      },
+    }),
+  });
+
+  if (!noteRes.ok) {
+    const err = await noteRes.text();
+    throw new Error(`HubSpot note creation failed: ${err}`);
+  }
+
+  const note = await noteRes.json();
+  await fetch(
+    `https://api.hubapi.com/crm/v3/objects/notes/${note.id}/associations/contacts/${crmContactId}/note_to_contact`,
+    { method: "PUT", headers: { Authorization: `Bearer ${apiKey}` } }
+  );
+}
+
+async function pushGHLNote(apiKey: string, crmContactId: string, noteBody: string): Promise<void> {
+  const res = await fetch(`https://services.leadconnectorhq.com/contacts/${crmContactId}/notes`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Version: "2021-07-28",
+    },
+    body: JSON.stringify({ body: noteBody }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`GHL note push failed: ${err}`);
+  }
+}
+
+async function pushSalesforceTask(
+  apiKey: string,
+  instanceUrl: string,
+  crmContactId: string,
+  outcome: string,
+  noteBody: string
+): Promise<void> {
+  const res = await fetch(`${instanceUrl}/services/data/v58.0/sobjects/Task/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      WhoId: crmContactId,
+      Subject: `AI Call -- ${outcome}`,
+      Description: noteBody,
+      Status: "Completed",
+      ActivityDate: new Date().toISOString().split("T")[0],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Salesforce task push failed: ${err}`);
   }
 }

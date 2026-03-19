@@ -342,3 +342,41 @@ export function useAssignToolToAgents() {
     },
   });
 }
+
+// ─── CRM Contact Sync ───
+
+export interface CrmSyncResult {
+  imported: number;
+  updated: number;
+  skipped: number;
+  provider: string;
+}
+
+export function useCrmContactSync() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const importContacts = useMutation({
+    mutationFn: async (provider?: string): Promise<CrmSyncResult> => {
+      const { data, error } = await supabase.functions.invoke("sync-crm-contacts", {
+        body: { action: "import", ...(provider ? { provider } : {}) },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as CrmSyncResult;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["tool_api_keys"] });
+      toast({
+        title: "CRM sync complete",
+        description: `Imported ${result.imported} new, updated ${result.updated} existing contacts.`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "CRM sync failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return { importContacts };
+}

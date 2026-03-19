@@ -10,13 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus, Calendar } from "lucide-react";
+import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus, Calendar, Download, CheckCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { EnrollmentPeriodsSection } from "@/components/settings/EnrollmentPeriodsSection";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useToolApiKeys, useConnectApiKey, useDisconnectApiKey, type ToolApiKey } from "@/hooks/use-tools";
+import { useToolApiKeys, useConnectApiKey, useDisconnectApiKey, useCrmContactSync, type ToolApiKey } from "@/hooks/use-tools";
 
 const planNames: Record<string, string> = {
   voice_ai_starter: "Voice AI Starter",
@@ -303,6 +303,93 @@ function PlatformApiKeySection() {
   );
 }
 
+const CRM_SERVICES = [
+  { id: "hubspot", label: "HubSpot" },
+  { id: "salesforce", label: "Salesforce" },
+  { id: "ghl", label: "GoHighLevel" },
+];
+
+function CrmIntegrationsCard() {
+  const { data: apiKeys = [], isLoading } = useToolApiKeys();
+  const { importContacts } = useCrmContactSync();
+  const { toast } = useToast();
+
+  function getConnectedKey(serviceId: string): ToolApiKey | undefined {
+    return apiKeys.find((k) => k.service === serviceId && k.status === "active");
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="section-title">CRM Integrations</CardTitle>
+        <p className="text-sm text-muted-foreground">Import contacts from your CRM and automatically push call outcomes back as notes.</p>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {CRM_SERVICES.map((crm) => {
+            const key = getConnectedKey(crm.id);
+            const lastSyncAt = key?.additional_config?.last_sync_at as string | undefined;
+            const lastSyncCount = key?.additional_config?.last_sync_count as number | undefined;
+            const isPending = importContacts.isPending;
+
+            return (
+              <div key={crm.id} className="p-4 border rounded-lg space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{crm.label}</p>
+                    {key ? (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <CheckCircle className="h-3 w-3 text-green-500" />
+                        <span className="text-xs text-green-600">Connected</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-0.5">Not Connected</p>
+                    )}
+                  </div>
+                  {isLoading && <Skeleton className="h-4 w-16" />}
+                </div>
+
+                {key ? (
+                  <>
+                    {lastSyncAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Last sync: {new Date(lastSyncAt).toLocaleDateString()}{" "}
+                        {lastSyncCount != null && `· ${lastSyncCount} contacts`}
+                      </p>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      disabled={isPending}
+                      onClick={() => importContacts.mutate(crm.id)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      {isPending ? "Importing…" : "Import Contacts"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      toast({ title: "Connect your API key first", description: "Go to the API tab to add your " + crm.label + " key." });
+                    }}
+                  >
+                    <Key className="h-3.5 w-3.5 mr-1.5" />
+                    Connect in API tab
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -411,22 +498,7 @@ export default function Settings() {
 
         {/* Integrations */}
         <TabsContent value="integrations" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader><CardTitle className="section-title">CRM Integrations</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {["Salesforce", "HubSpot", "Zoho CRM"].map(crm => (
-                  <div key={crm} className="p-4 border rounded-lg flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{crm}</p>
-                      <p className="text-xs text-muted-foreground">Not Connected</p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => toast({ title: `${crm} integration coming soon` })}>Connect</Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <CrmIntegrationsCard />
           <Card>
             <CardHeader><CardTitle className="section-title">Webhook Configuration</CardTitle></CardHeader>
             <CardContent className="space-y-4 max-w-xl">
