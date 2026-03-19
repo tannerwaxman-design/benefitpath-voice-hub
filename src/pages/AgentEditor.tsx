@@ -100,6 +100,12 @@ export default function AgentEditor() {
   const [voiceCloneStatus, setVoiceCloneStatus] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<"script" | "flow">("script");
   const [conversationFlow, setConversationFlow] = useState<FlowData | null>(null);
+  const [soaConfig, setSoaConfig] = useState<SoaConfig>({
+    soa_enabled: false,
+    soa_script: 'Before we discuss any specific plan options, I need to let you know this is a conversation about Medicare insurance plans. Federal regulations require me to get your verbal permission before we go over specific options. Today I\'d like to discuss [SELECTED_PLAN_TYPES]. Do I have your permission to go over those with you?',
+    soa_plan_types: ["Medicare Advantage (MA) plans, including HMO, PPO, and PFFS", "Medicare Supplement (Medigap) plans", "Medicare Prescription Drug Plans (Part D / PDP)"],
+    soa_timing: "after_greeting",
+  });
   const [postCallActions, setPostCallActions] = useState<PostCallActionsConfig>({
     post_call_email_enabled: false,
     post_call_email_subject: "Thanks for chatting with us!",
