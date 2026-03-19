@@ -138,29 +138,21 @@ Deno.serve(async (req: Request) => {
             if (pn) phoneNumberId = pn.id;
           }
 
-          // Check if record already exists
-          const { data: existingCall } = await supabase
-            .from("calls")
-            .select("id")
-            .eq("vapi_call_id", vapiCallId)
-            .maybeSingle();
-
-          if (!existingCall) {
-            await supabase.from("calls").insert({
-              vapi_call_id: vapiCallId,
-              tenant_id: tenantId,
-              agent_id: agentId || null,
-              contact_id: matchedContactId,
-              phone_number_id: phoneNumberId,
-              direction: "inbound",
-              from_number: customerNumber,
-              to_number: phoneNumber,
-              started_at: new Date().toISOString(),
-              outcome: "in_progress",
-              contact_name: message.call?.customer?.name || null,
-            });
-            console.log(`[webhook] Created inbound call record: vapi=${vapiCallId} tenant=${tenantId} agent=${agentId}`);
-          }
+          // Upsert inbound call record — ignoreDuplicates makes VAPI retries safe
+          await supabase.from("calls").upsert({
+            vapi_call_id: vapiCallId,
+            tenant_id: tenantId,
+            agent_id: agentId || null,
+            contact_id: matchedContactId,
+            phone_number_id: phoneNumberId,
+            direction: "inbound",
+            from_number: customerNumber,
+            to_number: phoneNumber,
+            started_at: new Date().toISOString(),
+            outcome: "in_progress",
+            contact_name: message.call?.customer?.name || null,
+          }, { onConflict: "vapi_call_id", ignoreDuplicates: true });
+          console.log(`[webhook] Created inbound call record: vapi=${vapiCallId} tenant=${tenantId} agent=${agentId}`);
         }
 
         if (status === "ended") {
@@ -430,17 +422,12 @@ Deno.serve(async (req: Request) => {
           reportUpdate.cost_minutes = reportDurationMinutes;
         }
 
-        // Upsert: if call record doesn't exist yet (e.g. inbound where status-update was missed), create it
-        const { data: existingCallForReport } = await supabase
-          .from("calls")
-          .select("id")
-          .eq("vapi_call_id", vapiCallId)
-          .maybeSingle();
-
-        if (!existingCallForReport && tenantId) {
+        if (tenantId) {
           const customerNumber = message.call?.customer?.number || "";
           const phoneNumber = message.call?.phoneNumber?.number || "";
-          await supabase.from("calls").insert({
+          // Create the record if it doesn't exist yet (e.g. missed status-update).
+          // ignoreDuplicates: true + unique constraint makes VAPI retries safe — no duplicate rows.
+          await supabase.from("calls").upsert({
             vapi_call_id: vapiCallId,
             tenant_id: tenantId,
             agent_id: agentId || null,
@@ -450,15 +437,14 @@ Deno.serve(async (req: Request) => {
             started_at: new Date().toISOString(),
             outcome: "completed",
             contact_name: message.call?.customer?.name || null,
-            ...reportUpdate,
-          });
-          console.log(`[webhook] Created missing call record in end-of-call-report: vapi=${vapiCallId}`);
-        } else {
-          // Update call record with rich data
+          }, { onConflict: "vapi_call_id", ignoreDuplicates: true });
+
+          // Always apply report data — idempotent, safe to re-run on retry
           await supabase
             .from("calls")
             .update(reportUpdate)
             .eq("vapi_call_id", vapiCallId);
+          console.log(`[webhook] Applied end-of-call-report data: vapi=${vapiCallId}`);
         }
 
         // Fetch and store costs (end-of-call-report arrives after VAPI has finalized costs)
