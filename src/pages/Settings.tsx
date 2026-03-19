@@ -372,6 +372,7 @@ export default function Settings() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="enrollment">Enrollment Periods</TabsTrigger>
           <TabsTrigger value="billing">Billing & Usage</TabsTrigger>
           <TabsTrigger value="team">Team & Access</TabsTrigger>
         </TabsList>
