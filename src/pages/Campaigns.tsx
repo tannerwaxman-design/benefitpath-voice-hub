@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
+import { CampaignSuggestions } from "@/components/campaigns/CampaignSuggestions";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success",
@@ -111,6 +112,9 @@ export default function Campaigns() {
         <h1 className="page-title">Campaigns</h1>
         <Button onClick={() => navigate("/campaigns/new")}><Plus className="h-4 w-4 mr-2" /> Create Campaign</Button>
       </div>
+
+      {/* Enrollment-based campaign suggestions */}
+      <CampaignSuggestions />
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">

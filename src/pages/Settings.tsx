@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus } from "lucide-react";
+import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { EnrollmentPeriodsSection } from "@/components/settings/EnrollmentPeriodsSection";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -371,6 +372,7 @@ export default function Settings() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="enrollment">Enrollment Periods</TabsTrigger>
           <TabsTrigger value="billing">Billing & Usage</TabsTrigger>
           <TabsTrigger value="team">Team & Access</TabsTrigger>
         </TabsList>
@@ -481,6 +483,11 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Enrollment Periods */}
+        <TabsContent value="enrollment" className="space-y-6 mt-6">
+          <EnrollmentPeriodsSection />
         </TabsContent>
 
         {/* Billing */}

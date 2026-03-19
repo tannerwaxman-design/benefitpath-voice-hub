@@ -1,3 +1,4 @@
+import { EnrollmentBanner } from "@/components/overview/EnrollmentBanner";
 import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, RefreshCw, CheckCircle2, Circle, ExternalLink, BarChart3, Bot } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -157,6 +158,9 @@ export default function Overview() {
           {refreshing ? "Refreshing…" : "Refresh"}
         </Button>
       </div>
+
+      {/* Enrollment Period Banner */}
+      <EnrollmentBanner />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

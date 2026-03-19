@@ -7,6 +7,57 @@
 // directly determines how good the AI agent sounds on calls.
 // ============================================================
 
+function getEnrollmentPromptContext(): string {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const year = now.getFullYear();
+
+  // AEP: Oct 15 - Dec 7
+  if ((month === 10 && day >= 15) || month === 11 || (month === 12 && day <= 7)) {
+    const dec7 = new Date(year, 11, 7);
+    const daysLeft = Math.max(0, Math.ceil((dec7.getTime() - now.getTime()) / 86400000));
+    return `## CURRENT ENROLLMENT PERIOD: Annual Enrollment Period (AEP)
+You are calling during the most important time of year for Medicare enrollment. AEP runs from October 15 to December 7.
+
+KEY BEHAVIORS:
+- Lead with urgency: "The annual enrollment window is open right now and closes on December 7th."
+- Emphasize that plan options change every year.
+- If someone says "I'll think about it," remind them of the deadline.
+
+DAYS REMAINING: ${daysLeft} days left in the enrollment window.`;
+  }
+
+  // OEP: Jan 1 - Mar 31
+  if (month >= 1 && month <= 3) {
+    const mar31 = new Date(year, 2, 31);
+    const daysLeft = Math.max(0, Math.ceil((mar31.getTime() - now.getTime()) / 86400000));
+    return `## CURRENT ENROLLMENT PERIOD: Open Enrollment Period (OEP)
+OEP runs from January 1 to March 31. People already in a Medicare Advantage plan can switch or drop to Original Medicare.
+
+KEY BEHAVIORS:
+- Lower urgency than AEP but still time-limited.
+- OEP only allows ONE change.
+
+DAYS REMAINING: ${daysLeft} days left in OEP.`;
+  }
+
+  // No general enrollment: Apr 1 - Oct 14 or Dec 8-31
+  const oct15Target = month === 12 ? new Date(year + 1, 9, 15) : new Date(year, 9, 15);
+  const daysUntilAEP = Math.max(0, Math.ceil((oct15Target.getTime() - now.getTime()) / 86400000));
+
+  let prompt = `## CURRENT ENROLLMENT PERIOD: None (Special Enrollment Periods only)
+No general enrollment period right now. Screen for SEP triggers: turning 65, moving, losing coverage, etc.
+
+DAYS UNTIL AEP: ${daysUntilAEP} days until AEP opens.`;
+
+  if (month >= 8 && month <= 9) {
+    prompt += `\n\nPRE-AEP SEASON: Shift messaging to AEP prep and pre-book consultations for October 15th.`;
+  }
+
+  return prompt;
+}
+
 interface AgentConfig {
   agent_name: string;
   agent_title: string | null;
@@ -389,6 +440,10 @@ export function compileSystemPrompt(
   leadAssessment += "- Low interest → Offer to send an email instead, suggest a specific callback time\n";
   leadAssessment += "- Dead → Thank them, end the call politely\n";
   sections.push(leadAssessment);
+
+  // === ENROLLMENT PERIOD CONTEXT ===
+  const enrollmentContext = getEnrollmentPromptContext();
+  sections.push(enrollmentContext);
 
   // === CLOSING ===
   if (agent.closing_script) {
