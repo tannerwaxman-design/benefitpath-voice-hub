@@ -25,6 +25,7 @@ const navItems: NavItem[] = [
   { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"] },
   { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
   { label: "Contact Lists", icon: Users, path: "/contacts" },
+  { label: "Leads", icon: Thermometer, path: "/leads" },
   { label: "Call Logs", icon: Phone, path: "/call-logs" },
   { label: "Training", icon: GraduationCap, path: "/training", roles: ["owner", "admin", "manager"] },
   { label: "Coaching", icon: BookOpen, path: "/coaching", roles: ["owner", "admin", "manager"] },

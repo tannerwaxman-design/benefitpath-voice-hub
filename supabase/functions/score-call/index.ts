@@ -366,6 +366,20 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
       })
       .eq("id", call_id);
 
+    // Update lead score on the contact if contact_id exists
+    if (call.contact_id && scoreData.lead_score != null) {
+      await supabase
+        .from("contacts")
+        .update({
+          lead_score: Math.min(100, Math.max(0, scoreData.lead_score)),
+          lead_status: scoreData.lead_status || null,
+          lead_summary: scoreData.lead_summary || null,
+          recommended_action: scoreData.recommended_action || null,
+          lead_score_updated_at: new Date().toISOString(),
+        })
+        .eq("id", call.contact_id);
+    }
+
     return new Response(
       JSON.stringify({
         score: totalScore,
@@ -378,6 +392,8 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
         coaching_tags: scoreData.coaching_tags,
         highlights: scoreData.highlight_moments,
         script_suggestion: scoreData.script_suggestion,
+        lead_score: scoreData.lead_score,
+        lead_status: scoreData.lead_status,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

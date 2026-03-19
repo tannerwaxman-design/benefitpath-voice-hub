@@ -72,6 +72,7 @@ const App = () => (
                 <Route path="/campaigns/new" element={<CampaignWizard />} />
                 <Route path="/campaigns/:id" element={<CampaignDetail />} />
                 <Route path="/contacts" element={<ContactLists />} />
+                <Route path="/leads" element={<Leads />} />
                 <Route path="/call-logs" element={<CallLogs />} />
                 <Route path="/coaching" element={<CoachingDashboard />} />
                 <Route path="/training" element={<Training />} />
