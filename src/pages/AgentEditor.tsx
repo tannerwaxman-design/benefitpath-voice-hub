@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAgent, useCreateAgent, useUpdateAgent, useDeleteAgent, useTestCall } from "@/hooks/use-agents";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,9 @@ import { AbTestField } from "@/components/agents/AbTestField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense } from "react";
 const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
+const FlowBuilder = lazy(() => import("@/components/agents/FlowBuilder").then(m => ({ default: m.FlowBuilder })));
+import type { FlowData } from "@/components/agents/FlowBuilder";
+import { flowToStages } from "@/lib/flow-to-stages";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 import { VoicemailDropSection } from "@/components/agents/VoicemailDropSection";
@@ -94,6 +97,8 @@ export default function AgentEditor() {
   const [voiceSource, setVoiceSource] = useState<"preset" | "cloned">("preset");
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [voiceCloneStatus, setVoiceCloneStatus] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<"script" | "flow">("script");
+  const [conversationFlow, setConversationFlow] = useState<FlowData | null>(null);
   const [postCallActions, setPostCallActions] = useState<PostCallActionsConfig>({
     post_call_email_enabled: false,
     post_call_email_subject: "Thanks for chatting with us!",
@@ -158,6 +163,11 @@ export default function AgentEditor() {
     setClonedVoiceId((existingAgent as any).cloned_voice_id || null);
     setVoiceCloneStatus((existingAgent as any).voice_clone_status || null);
     setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
+    const flowData = (existingAgent as any).conversation_flow;
+    if (flowData) {
+      setConversationFlow(flowData);
+      setEditorMode("flow");
+    }
     const ea = existingAgent as any;
     setPostCallActions({
       post_call_email_enabled: ea.post_call_email_enabled ?? false,
@@ -207,43 +217,59 @@ export default function AgentEditor() {
     );
   }
 
-  const buildFormData = () => ({
-    agent_id: isNew ? undefined : id,
-    agent_name: name,
-    agent_title: title || null,
-    industry,
-    company_name_override: companyName || null,
-    description: description || null,
-    status: agentActive ? "active" : "draft",
-    voice_id: voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice,
-    voice_provider: "eleven_labs",
-    voice_name: voiceSource === "cloned" ? "My Voice Clone" : (availableVoices?.find(v => v.provider_voice_id === selectedVoice)?.name || null),
-    voice_source: voiceSource,
-    cloned_voice_id: clonedVoiceId,
-    voice_clone_status: voiceCloneStatus,
-    speaking_speed: speed[0],
-    tone,
-    enthusiasm_level: enthusiasm[0],
-    filler_words_enabled: fillerWords,
-    greeting_script: greeting,
-    call_objective: callObjective,
-    knowledge_base_text: knowledgeBase || null,
-    voicemail_script: voicemailScript || null,
-    voicemail_enabled: voicemailEnabled,
-    voicemail_method: voicemailMethod,
-    voicemail_audio_url: voicemailAudioUrl,
-    record_calls: recordCalls,
-    play_disclosure: disclosure,
-    transfer_phone_number: transferPhone || null,
-    backup_transfer_number: backupTransfer || null,
-    transfer_announcement: transferAnnouncement || null,
-    call_direction: callDirection,
-    inbound_greeting: inboundGreeting || null,
-    answer_after_rings: answerAfterRings,
-    after_hours_behavior: afterHoursBehavior,
-    after_hours_voicemail_message: afterHoursVoicemailMessage || null,
-    ...postCallActions,
-  });
+  const buildFormData = () => {
+    // If in flow mode, compile flow to stages
+    let compiledStages = {};
+    if (editorMode === "flow" && conversationFlow) {
+      const compiled = flowToStages(conversationFlow.nodes, conversationFlow.edges);
+      compiledStages = {
+        conversation_stages: compiled.conversation_stages,
+        objection_handling: compiled.objection_handling,
+        closing_script: compiled.closing_script,
+        transfer_announcement: compiled.transfer_announcement || transferAnnouncement || null,
+        conversation_flow: conversationFlow,
+      };
+    }
+
+    return {
+      agent_id: isNew ? undefined : id,
+      agent_name: name,
+      agent_title: title || null,
+      industry,
+      company_name_override: companyName || null,
+      description: description || null,
+      status: agentActive ? "active" : "draft",
+      voice_id: voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice,
+      voice_provider: "eleven_labs",
+      voice_name: voiceSource === "cloned" ? "My Voice Clone" : (availableVoices?.find(v => v.provider_voice_id === selectedVoice)?.name || null),
+      voice_source: voiceSource,
+      cloned_voice_id: clonedVoiceId,
+      voice_clone_status: voiceCloneStatus,
+      speaking_speed: speed[0],
+      tone,
+      enthusiasm_level: enthusiasm[0],
+      filler_words_enabled: fillerWords,
+      greeting_script: greeting,
+      call_objective: callObjective,
+      knowledge_base_text: knowledgeBase || null,
+      voicemail_script: voicemailScript || null,
+      voicemail_enabled: voicemailEnabled,
+      voicemail_method: voicemailMethod,
+      voicemail_audio_url: voicemailAudioUrl,
+      record_calls: recordCalls,
+      play_disclosure: disclosure,
+      transfer_phone_number: transferPhone || null,
+      backup_transfer_number: backupTransfer || null,
+      transfer_announcement: transferAnnouncement || null,
+      call_direction: callDirection,
+      inbound_greeting: inboundGreeting || null,
+      answer_after_rings: answerAfterRings,
+      after_hours_behavior: afterHoursBehavior,
+      after_hours_voicemail_message: afterHoursVoicemailMessage || null,
+      ...postCallActions,
+      ...compiledStages,
+    };
+  };
 
   const handleSave = async (activate: boolean) => {
     if (!name.trim()) {
@@ -433,48 +459,80 @@ export default function AgentEditor() {
 
           {/* Section 3: Conversation Flow */}
           <Card id="section-conversation-flow">
-            <CardHeader><CardTitle className="section-title">Conversation Flow</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <AbTestField agentId={id} field="greeting" label="Greeting Script" currentValue={greeting} onValueChange={setGreeting} />
-                <p className="text-xs text-muted-foreground mt-1">Use [First Name], [Company] as placeholders</p>
-              </div>
-              <div>
-                <Label>Call Objective</Label>
-                <Select value={callObjective} onValueChange={setCallObjective}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="appointment_setting">Appointment Setting</SelectItem>
-                    <SelectItem value="lead_qualification">Lead Qualification</SelectItem>
-                    <SelectItem value="enrollment_followup">Enrollment Follow-Up</SelectItem>
-                    <SelectItem value="renewal_reminder">Renewal Reminder</SelectItem>
-                    <SelectItem value="survey">Survey / Feedback</SelectItem>
-                    <SelectItem value="payment_reminder">Payment Reminder</SelectItem>
-                    <SelectItem value="general_info">General Information</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <AbTestField agentId={id} field="voicemail" label="Voicemail Script" currentValue={voicemailScript} onValueChange={setVoicemailScript} />
-                <div className="flex items-center gap-3 mt-3">
-                  <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
-                  <Label>Leave voicemail on no answer</Label>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="section-title">Conversation Flow</CardTitle>
+                <div className="flex rounded-lg border border-border overflow-hidden">
+                  <button
+                    onClick={() => setEditorMode("script")}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${editorMode === "script" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-secondary"}`}
+                  >
+                    Script Mode
+                  </button>
+                  <button
+                    onClick={() => setEditorMode("flow")}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${editorMode === "flow" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-secondary"}`}
+                  >
+                    Flow Mode
+                  </button>
                 </div>
-                {voicemailEnabled && (
-                  <div className="mt-4">
-                    <VoicemailDropSection
-                      voicemailMethod={voicemailMethod}
-                      onMethodChange={setVoicemailMethod}
-                      voicemailScript={voicemailScript}
-                      onScriptChange={setVoicemailScript}
-                      voicemailAudioUrl={voicemailAudioUrl}
-                      onAudioUrlChange={setVoicemailAudioUrl}
-                      voiceId={voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice}
-                      voiceProvider="eleven_labs"
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {editorMode === "script" ? (
+                <>
+                  <div>
+                    <AbTestField agentId={id} field="greeting" label="Greeting Script" currentValue={greeting} onValueChange={setGreeting} />
+                    <p className="text-xs text-muted-foreground mt-1">Use [First Name], [Company] as placeholders</p>
+                  </div>
+                  <div>
+                    <Label>Call Objective</Label>
+                    <Select value={callObjective} onValueChange={setCallObjective}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="appointment_setting">Appointment Setting</SelectItem>
+                        <SelectItem value="lead_qualification">Lead Qualification</SelectItem>
+                        <SelectItem value="enrollment_followup">Enrollment Follow-Up</SelectItem>
+                        <SelectItem value="renewal_reminder">Renewal Reminder</SelectItem>
+                        <SelectItem value="survey">Survey / Feedback</SelectItem>
+                        <SelectItem value="payment_reminder">Payment Reminder</SelectItem>
+                        <SelectItem value="general_info">General Information</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <AbTestField agentId={id} field="voicemail" label="Voicemail Script" currentValue={voicemailScript} onValueChange={setVoicemailScript} />
+                    <div className="flex items-center gap-3 mt-3">
+                      <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
+                      <Label>Leave voicemail on no answer</Label>
+                    </div>
+                    {voicemailEnabled && (
+                      <div className="mt-4">
+                        <VoicemailDropSection
+                          voicemailMethod={voicemailMethod}
+                          onMethodChange={setVoicemailMethod}
+                          voicemailScript={voicemailScript}
+                          onScriptChange={setVoicemailScript}
+                          voicemailAudioUrl={voicemailAudioUrl}
+                          onAudioUrlChange={setVoicemailAudioUrl}
+                          voiceId={voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice}
+                          voiceProvider="eleven_labs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <Suspense fallback={<div className="h-[600px] flex items-center justify-center text-muted-foreground text-sm">Loading flow builder...</div>}>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-3">Drag nodes to position them. Connect outputs to inputs by dragging between handles. Click a node to configure it.</p>
+                    <FlowBuilder
+                      initialFlow={conversationFlow}
+                      onChange={setConversationFlow}
                     />
                   </div>
-                )}
-              </div>
+                </Suspense>
+              )}
             </CardContent>
           </Card>
 

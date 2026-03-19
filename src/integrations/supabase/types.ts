@@ -93,6 +93,7 @@ export type Database = {
           company_name_override: string | null
           compiled_system_prompt: string | null
           consent_script: string | null
+          conversation_flow: Json | null
           conversation_stages: Json
           cooloff_days_not_interested: number
           created_at: string
@@ -183,6 +184,7 @@ export type Database = {
           company_name_override?: string | null
           compiled_system_prompt?: string | null
           consent_script?: string | null
+          conversation_flow?: Json | null
           conversation_stages?: Json
           cooloff_days_not_interested?: number
           created_at?: string
@@ -273,6 +275,7 @@ export type Database = {
           company_name_override?: string | null
           compiled_system_prompt?: string | null
           consent_script?: string | null
+          conversation_flow?: Json | null
           conversation_stages?: Json
           cooloff_days_not_interested?: number
           created_at?: string

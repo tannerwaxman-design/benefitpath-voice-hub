@@ -1,0 +1,1 @@
+ALTER TABLE public.agents ADD COLUMN conversation_flow jsonb DEFAULT NULL;
