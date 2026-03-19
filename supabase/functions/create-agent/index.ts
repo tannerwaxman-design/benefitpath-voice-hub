@@ -126,7 +126,11 @@ Deno.serve(async (req: Request) => {
       maxDurationSeconds: (body.max_call_duration_minutes || 10) * 60,
       recordingEnabled: body.record_calls ?? tenant.recording_enabled,
 
-      voicemailMessage: body.voicemail_enabled ? body.voicemail_script : null,
+      voicemailMessage: body.voicemail_enabled
+        ? (body.voicemail_method === "drop" && body.voicemail_audio_url
+          ? body.voicemail_audio_url
+          : body.voicemail_script)
+        : null,
       voicemailDetection: {
         enabled: body.voicemail_enabled ?? true,
         provider: "twilio",
