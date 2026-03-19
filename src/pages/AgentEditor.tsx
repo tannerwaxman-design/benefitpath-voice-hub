@@ -25,6 +25,7 @@ import { flowToStages } from "@/lib/flow-to-stages";
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 import { VoicemailDropSection } from "@/components/agents/VoicemailDropSection";
+import { SoaSettingsSection, SoaConfig } from "@/components/agents/SoaSettingsSection";
 import { useAvailableVoices, useTtsPreview, Voice } from "@/hooks/use-voice-management";
 import { Link } from "react-router-dom";
 
