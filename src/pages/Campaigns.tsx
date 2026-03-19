@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
+import { CampaignSuggestions } from "@/components/campaigns/CampaignSuggestions";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success",
