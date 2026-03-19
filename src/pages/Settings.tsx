@@ -485,6 +485,11 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
+        {/* Enrollment Periods */}
+        <TabsContent value="enrollment" className="space-y-6 mt-6">
+          <EnrollmentPeriodsSection />
+        </TabsContent>
+
         {/* Billing */}
         <TabsContent value="billing" className="space-y-6 mt-6">
           {billingLoading ? (
