@@ -919,7 +919,12 @@ export type Database = {
           last_called_at: string | null
           last_name: string
           last_outcome: string | null
+          lead_score: number | null
+          lead_score_updated_at: string | null
+          lead_status: string | null
+          lead_summary: string | null
           phone: string
+          recommended_action: string | null
           tags: string[] | null
           tenant_id: string
           total_calls: number
@@ -937,7 +942,12 @@ export type Database = {
           last_called_at?: string | null
           last_name: string
           last_outcome?: string | null
+          lead_score?: number | null
+          lead_score_updated_at?: string | null
+          lead_status?: string | null
+          lead_summary?: string | null
           phone: string
+          recommended_action?: string | null
           tags?: string[] | null
           tenant_id: string
           total_calls?: number
@@ -955,7 +965,12 @@ export type Database = {
           last_called_at?: string | null
           last_name?: string
           last_outcome?: string | null
+          lead_score?: number | null
+          lead_score_updated_at?: string | null
+          lead_status?: string | null
+          lead_summary?: string | null
           phone?: string
+          recommended_action?: string | null
           tags?: string[] | null
           tenant_id?: string
           total_calls?: number

@@ -182,6 +182,18 @@ COACHING TAGS (pick all that apply):
 - compliance_issue, missed_discovery, successful_booking, callback_secured
 - lost_lead, dnc_handled_well
 
+LEAD SCORING: Also evaluate the contact as a lead:
+- lead_score (1-100): How likely this person is to become a client
+  90-100: Ready to enroll, appointment booked, asking "how do I sign up?"
+  70-89: Clearly interested, engaged in conversation, asked specific questions
+  50-69: Somewhat interested but non-committal, said "maybe" or "call back later"
+  30-49: Not very engaged, gave short answers, seemed uninterested but didn't refuse
+  10-29: Clearly not interested but didn't request DNC
+  0-9: Requested DNC, wrong number, hostile
+- lead_status: One of "hot", "warm", "cold", "dead"
+- lead_summary: One sentence about this lead's situation and intent
+- recommended_action: What the agent should do next with this lead
+
 You MUST respond using the score_call function.`;
 
     const userPrompt = `TRANSCRIPT:
@@ -273,8 +285,24 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
                       type: "string",
                       description: "One specific suggestion for improving the agent's script, or empty string if none needed",
                     },
+                    lead_score: {
+                      type: "integer",
+                      description: "Lead quality score 0-100: how likely the contact is to become a client",
+                    },
+                    lead_status: {
+                      type: "string",
+                      description: "One of: hot, warm, cold, dead",
+                    },
+                    lead_summary: {
+                      type: "string",
+                      description: "One sentence about this lead's situation and intent",
+                    },
+                    recommended_action: {
+                      type: "string",
+                      description: "What the agent should do next with this lead",
+                    },
                   },
-                  required: ["total_score", "breakdown", "went_well", "could_improve", "coaching_tags", "highlight_moments", "script_suggestion"],
+                  required: ["total_score", "breakdown", "went_well", "could_improve", "coaching_tags", "highlight_moments", "script_suggestion", "lead_score", "lead_status", "lead_summary", "recommended_action"],
                   additionalProperties: false,
                 },
               },
@@ -338,6 +366,20 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
       })
       .eq("id", call_id);
 
+    // Update lead score on the contact if contact_id exists
+    if (call.contact_id && scoreData.lead_score != null) {
+      await supabase
+        .from("contacts")
+        .update({
+          lead_score: Math.min(100, Math.max(0, scoreData.lead_score)),
+          lead_status: scoreData.lead_status || null,
+          lead_summary: scoreData.lead_summary || null,
+          recommended_action: scoreData.recommended_action || null,
+          lead_score_updated_at: new Date().toISOString(),
+        })
+        .eq("id", call.contact_id);
+    }
+
     return new Response(
       JSON.stringify({
         score: totalScore,
@@ -350,6 +392,8 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
         coaching_tags: scoreData.coaching_tags,
         highlights: scoreData.highlight_moments,
         script_suggestion: scoreData.script_suggestion,
+        lead_score: scoreData.lead_score,
+        lead_status: scoreData.lead_status,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

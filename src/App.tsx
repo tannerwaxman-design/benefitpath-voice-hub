@@ -26,6 +26,7 @@ import CoachingDashboard from "./pages/CoachingDashboard";
 import Voices from "./pages/Voices";
 import Training from "./pages/Training";
 import Forge from "./pages/Forge";
+import Leads from "./pages/Leads";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="/campaigns/new" element={<CampaignWizard />} />
                 <Route path="/campaigns/:id" element={<CampaignDetail />} />
                 <Route path="/contacts" element={<ContactLists />} />
+                <Route path="/leads" element={<Leads />} />
                 <Route path="/call-logs" element={<CallLogs />} />
                 <Route path="/coaching" element={<CoachingDashboard />} />
                 <Route path="/training" element={<Training />} />

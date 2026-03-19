@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/use-permission";
 import {
-  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap, Flame
+  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap, Flame, Thermometer
 } from "lucide-react";
 import logo from "@/assets/benefit_path_icon.svg";
 
@@ -25,6 +25,7 @@ const navItems: NavItem[] = [
   { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"] },
   { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
   { label: "Contact Lists", icon: Users, path: "/contacts" },
+  { label: "Leads", icon: Thermometer, path: "/leads" },
   { label: "Call Logs", icon: Phone, path: "/call-logs" },
   { label: "Training", icon: GraduationCap, path: "/training", roles: ["owner", "admin", "manager"] },
   { label: "Coaching", icon: BookOpen, path: "/coaching", roles: ["owner", "admin", "manager"] },
