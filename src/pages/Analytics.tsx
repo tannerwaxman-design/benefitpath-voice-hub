@@ -364,6 +364,12 @@ export default function Analytics() {
             <ScriptInsights />
           </Suspense>
         </TabsContent>
+
+        <TabsContent value="soa-compliance" className="mt-4">
+          <Suspense fallback={<div className="py-12 text-center text-muted-foreground text-sm">Loading...</div>}>
+            <SoaComplianceReport dateFrom={dateFrom} dateTo={dateTo} />
+          </Suspense>
+        </TabsContent>
       </Tabs>
     </div>
   );
