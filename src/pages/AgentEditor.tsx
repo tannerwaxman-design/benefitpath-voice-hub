@@ -217,43 +217,59 @@ export default function AgentEditor() {
     );
   }
 
-  const buildFormData = () => ({
-    agent_id: isNew ? undefined : id,
-    agent_name: name,
-    agent_title: title || null,
-    industry,
-    company_name_override: companyName || null,
-    description: description || null,
-    status: agentActive ? "active" : "draft",
-    voice_id: voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice,
-    voice_provider: "eleven_labs",
-    voice_name: voiceSource === "cloned" ? "My Voice Clone" : (availableVoices?.find(v => v.provider_voice_id === selectedVoice)?.name || null),
-    voice_source: voiceSource,
-    cloned_voice_id: clonedVoiceId,
-    voice_clone_status: voiceCloneStatus,
-    speaking_speed: speed[0],
-    tone,
-    enthusiasm_level: enthusiasm[0],
-    filler_words_enabled: fillerWords,
-    greeting_script: greeting,
-    call_objective: callObjective,
-    knowledge_base_text: knowledgeBase || null,
-    voicemail_script: voicemailScript || null,
-    voicemail_enabled: voicemailEnabled,
-    voicemail_method: voicemailMethod,
-    voicemail_audio_url: voicemailAudioUrl,
-    record_calls: recordCalls,
-    play_disclosure: disclosure,
-    transfer_phone_number: transferPhone || null,
-    backup_transfer_number: backupTransfer || null,
-    transfer_announcement: transferAnnouncement || null,
-    call_direction: callDirection,
-    inbound_greeting: inboundGreeting || null,
-    answer_after_rings: answerAfterRings,
-    after_hours_behavior: afterHoursBehavior,
-    after_hours_voicemail_message: afterHoursVoicemailMessage || null,
-    ...postCallActions,
-  });
+  const buildFormData = () => {
+    // If in flow mode, compile flow to stages
+    let compiledStages = {};
+    if (editorMode === "flow" && conversationFlow) {
+      const compiled = flowToStages(conversationFlow.nodes, conversationFlow.edges);
+      compiledStages = {
+        conversation_stages: compiled.conversation_stages,
+        objection_handling: compiled.objection_handling,
+        closing_script: compiled.closing_script,
+        transfer_announcement: compiled.transfer_announcement || transferAnnouncement || null,
+        conversation_flow: conversationFlow,
+      };
+    }
+
+    return {
+      agent_id: isNew ? undefined : id,
+      agent_name: name,
+      agent_title: title || null,
+      industry,
+      company_name_override: companyName || null,
+      description: description || null,
+      status: agentActive ? "active" : "draft",
+      voice_id: voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice,
+      voice_provider: "eleven_labs",
+      voice_name: voiceSource === "cloned" ? "My Voice Clone" : (availableVoices?.find(v => v.provider_voice_id === selectedVoice)?.name || null),
+      voice_source: voiceSource,
+      cloned_voice_id: clonedVoiceId,
+      voice_clone_status: voiceCloneStatus,
+      speaking_speed: speed[0],
+      tone,
+      enthusiasm_level: enthusiasm[0],
+      filler_words_enabled: fillerWords,
+      greeting_script: greeting,
+      call_objective: callObjective,
+      knowledge_base_text: knowledgeBase || null,
+      voicemail_script: voicemailScript || null,
+      voicemail_enabled: voicemailEnabled,
+      voicemail_method: voicemailMethod,
+      voicemail_audio_url: voicemailAudioUrl,
+      record_calls: recordCalls,
+      play_disclosure: disclosure,
+      transfer_phone_number: transferPhone || null,
+      backup_transfer_number: backupTransfer || null,
+      transfer_announcement: transferAnnouncement || null,
+      call_direction: callDirection,
+      inbound_greeting: inboundGreeting || null,
+      answer_after_rings: answerAfterRings,
+      after_hours_behavior: afterHoursBehavior,
+      after_hours_voicemail_message: afterHoursVoicemailMessage || null,
+      ...postCallActions,
+      ...compiledStages,
+    };
+  };
 
   const handleSave = async (activate: boolean) => {
     if (!name.trim()) {
