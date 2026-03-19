@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Zap, BarChart3, Lightbulb } from "lucide-react";
+import { Download, Zap, BarChart3, FlaskConical, Lightbulb } from "lucide-react";
 import { useSmartSchedule, DAY_NAMES, formatSlotTime } from "@/hooks/use-smart-schedule";
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { AnalyticsSkeleton } from "@/components/ui/page-skeletons";
