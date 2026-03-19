@@ -88,7 +88,11 @@ Deno.serve(async (req: Request) => {
               new_cycle_start: today,
               new_cycle_end: newCycleEndStr,
             }),
-          }).catch(() => {});
+          }).then((res) => {
+            if (!res.ok) {
+              console.error(`Billing cycle reset webhook returned HTTP ${res.status} for tenant ${tenant.id} (${tenant.company_name})`);
+            }
+          }).catch((err) => console.error(`Billing cycle reset webhook error for tenant ${tenant.id} (${tenant.company_name}):`, err));
         }
       }
     }

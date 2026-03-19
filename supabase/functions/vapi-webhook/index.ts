@@ -576,6 +576,10 @@ Deno.serve(async (req: Request) => {
                 Authorization: `Bearer ${serviceRoleKey}`,
               },
               body: JSON.stringify({ call_id: callRecord.id }),
+            }).then((res) => {
+              if (!res.ok) {
+                console.error(`Call scoring returned HTTP ${res.status} for call ${callRecord.id}`);
+              }
             }).catch((err) =>
               console.error("Failed to trigger call scoring:", err)
             );
@@ -949,7 +953,11 @@ async function fireTenantWebhook(
         body: JSON.stringify({
           text: `📞 Call ${data.outcome}: ${data.contact_id || "Unknown contact"} — Duration: ${data.duration}s`,
         }),
-      }).catch(() => {});
+      }).then((res) => {
+        if (!res.ok) {
+          console.error(`Slack webhook returned HTTP ${res.status} for tenant ${tenantId}`);
+        }
+      }).catch((err) => console.error(`Slack webhook error for tenant ${tenantId}:`, err));
     }
   } catch (err) {
     console.error("Error firing tenant webhook:", err);
