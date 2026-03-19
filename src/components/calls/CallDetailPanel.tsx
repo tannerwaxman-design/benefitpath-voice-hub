@@ -98,6 +98,9 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
   const [commentText, setCommentText] = useState("");
   const [isRefetching, setIsRefetching] = useState(false);
 
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [seekTarget, setSeekTarget] = useState<number | undefined>(undefined);
+
   const { data: notes } = useCoachingNotes(call.id);
   const addNote = useAddCoachingNote();
   const { data: transcriptComments } = useTranscriptComments(call.id);
@@ -192,6 +195,20 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
 
   const hasAssistantMessages = transcriptMessages.some(m => m.role === "assistant" || m.role === "bot");
 
+  // Determine which transcript line is active based on audio playback time.
+  // Only relevant when a recording is playing (playbackTime > 0).
+  const activeTranscriptIndex = useMemo(() => {
+    if (!call.recording_url || playbackTime === 0) return -1;
+    let idx = -1;
+    for (let i = transcriptMessages.length - 1; i >= 0; i--) {
+      if (transcriptMessages[i].timestamp > 0 && playbackTime >= transcriptMessages[i].timestamp) {
+        idx = i;
+        break;
+      }
+    }
+    return idx;
+  }, [playbackTime, transcriptMessages, call.recording_url]);
+
   return (
     <div className="space-y-6">
       <SheetHeader>
@@ -254,7 +271,12 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
 
       {/* Recording Player with AI Commentary */}
       {call.recording_url && (
-        <AiCommentaryPlayer callId={call.id} recordingUrl={call.recording_url} />
+        <AiCommentaryPlayer
+          callId={call.id}
+          recordingUrl={call.recording_url}
+          onTimeUpdate={setPlaybackTime}
+          seekToSeconds={seekTarget}
+        />
       )}
 
       {/* Summary */}
@@ -357,8 +379,9 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
           <div className="space-y-3">
             {transcriptMessages.map((msg, i) => {
               const isAssistant = msg.role === "assistant" || msg.role === "bot";
+              const isActive = i === activeTranscriptIndex;
               return (
-                <div key={i}>
+                <div key={i} className={`rounded-lg transition-colors ${isActive ? "bg-primary/5 -mx-2 px-2 py-1" : ""}`}>
                   {/* Message header with role label and timestamp */}
                   <div className={`flex items-center gap-1.5 mb-1 ${isAssistant ? "" : "justify-end"}`}>
                     {isAssistant && <Bot className="h-3.5 w-3.5 text-primary" />}
@@ -366,9 +389,15 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
                       {isAssistant ? agentName : "Customer"}
                     </span>
                     {msg.timestamp > 0 && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <button
+                        className={`text-[10px] hover:underline transition-colors ${call.recording_url ? "cursor-pointer hover:text-primary" : "cursor-default"} ${isActive ? "text-primary font-medium" : "text-muted-foreground"}`}
+                        title={call.recording_url ? "Click to seek audio here" : undefined}
+                        onClick={() => {
+                          if (call.recording_url) setSeekTarget(msg.timestamp);
+                        }}
+                      >
                         {formatTimestamp(msg.timestamp)}
-                      </span>
+                      </button>
                     )}
                     {!isAssistant && <User className="h-3.5 w-3.5 text-muted-foreground" />}
                   </div>
@@ -380,7 +409,7 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
                         isAssistant
                           ? "bg-primary/10 text-foreground rounded-tl-sm"
                           : "bg-secondary text-foreground rounded-tr-sm"
-                      }`}
+                      } ${isActive ? "ring-1 ring-primary/40" : ""}`}
                     >
                       <p>{msg.text}</p>
                       <button
