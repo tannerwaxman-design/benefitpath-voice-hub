@@ -2,7 +2,7 @@
 // EDGE FUNCTION: score-call
 //
 // Uses Lovable AI to score a call transcript from 1-100
-// with detailed breakdown and feedback.
+// with detailed breakdown, feedback, and coaching analysis.
 // ============================================================
 
 import { createAdminClient } from "../_shared/supabase-admin.ts";
@@ -12,6 +12,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+function deriveCategory(score: number): string {
+  if (score >= 90) return "excellent";
+  if (score >= 75) return "good";
+  if (score >= 60) return "needs_improvement";
+  return "poor";
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -63,7 +70,6 @@ Deno.serve(async (req: Request) => {
       const artifact = (vapiCall.artifact || {}) as Record<string, unknown>;
       const rawMessages = (artifact.messages || []) as Record<string, unknown>[];
 
-      // Log raw structure for debugging
       if (rawMessages.length > 0) {
         console.log("[refetch] Raw message sample:", JSON.stringify(rawMessages.slice(0, 3)));
         console.log("[refetch] All roles:", [...new Set(rawMessages.map(m => m.role))]);
@@ -118,8 +124,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // supabase already declared above
-
     // Fetch the call
     const { data: call, error: callError } = await supabase
       .from("calls")
@@ -158,18 +162,25 @@ Deno.serve(async (req: Request) => {
     const callObjective = (call as any).agents?.call_objective || "appointment_setting";
 
     const systemPrompt = `You are a call quality analyst for an insurance agency's AI voice agent.
-Score this call from 1-100 based on these criteria:
+Score this call from 1-100 and provide detailed coaching analysis.
 
-1. Opening & Hook (10 points): Did the agent grab attention quickly?
-2. Value Proposition (10 points): Was the reason for calling clear and compelling?
-3. Objection Handling (10 points): Were objections addressed effectively?
-4. Discovery Questions (10 points): Did the agent ask good qualifying questions?
-5. Call-to-Action (10 points): Was there a clear next step proposed?
-6. Professionalism (10 points): Was the tone appropriate and respectful?
-7. Compliance (10 points): Were all compliance rules followed (DNC, disclosure, etc.)?
-8. Outcome Achievement (10 points): Did the call achieve its objective?
-9. Conversation Flow (10 points): Was the conversation natural and well-paced?
-10. Overall Effectiveness (10 points): General quality assessment.
+SCORING CRITERIA (10 points each):
+1. Opening & Hook: Did the agent grab attention quickly?
+2. Value Proposition: Was the reason for calling clear and compelling?
+3. Objection Handling: Were objections addressed effectively?
+4. Discovery Questions: Did the agent ask good qualifying questions?
+5. Call-to-Action: Was there a clear next step proposed?
+6. Professionalism: Was the tone appropriate and respectful?
+7. Compliance: Were all compliance rules followed (DNC, disclosure, etc.)?
+8. Outcome Achievement: Did the call achieve its objective?
+9. Conversation Flow: Was the conversation natural and well-paced?
+10. Overall Effectiveness: General quality assessment.
+
+COACHING TAGS (pick all that apply):
+- great_opening, great_objection_handling, great_close, great_rapport, great_discovery
+- slow_opening, missed_objection, weak_close, too_scripted, too_pushy
+- compliance_issue, missed_discovery, successful_booking, callback_secured
+- lost_lead, dnc_handled_well
 
 You MUST respond using the score_call function.`;
 
@@ -199,7 +210,7 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
               type: "function",
               function: {
                 name: "score_call",
-                description: "Submit the call quality score with breakdown and feedback.",
+                description: "Submit the call quality score with breakdown, feedback, and coaching analysis.",
                 parameters: {
                   type: "object",
                   properties: {
@@ -232,15 +243,38 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
                     went_well: {
                       type: "array",
                       items: { type: "string" },
-                      description: "3-4 bullet points of what went well",
+                      description: "3-4 bullet points of what went well, referencing specific transcript moments",
                     },
                     could_improve: {
                       type: "array",
                       items: { type: "string" },
-                      description: "2-3 bullet points of what could improve",
+                      description: "2-3 bullet points of what could improve, referencing specific transcript moments",
+                    },
+                    coaching_tags: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "Array of applicable coaching tags from the predefined list",
+                    },
+                    highlight_moments: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          type: { type: "string", description: "strength or improvement" },
+                          quote: { type: "string", description: "The exact quote from the transcript" },
+                          commentary: { type: "string", description: "Why this moment matters and what to do differently" },
+                        },
+                        required: ["type", "quote", "commentary"],
+                        additionalProperties: false,
+                      },
+                      description: "1-3 specific transcript moments worth reviewing",
+                    },
+                    script_suggestion: {
+                      type: "string",
+                      description: "One specific suggestion for improving the agent's script, or empty string if none needed",
                     },
                   },
-                  required: ["total_score", "breakdown", "went_well", "could_improve"],
+                  required: ["total_score", "breakdown", "went_well", "could_improve", "coaching_tags", "highlight_moments", "script_suggestion"],
                   additionalProperties: false,
                 },
               },
@@ -284,28 +318,38 @@ CALL DURATION: ${call.duration_seconds || 0} seconds`;
     }
 
     const scoreData = JSON.parse(toolCall.function.arguments);
+    const totalScore = Math.min(100, Math.max(1, scoreData.total_score));
+    const category = deriveCategory(totalScore);
 
-    // Store scores
+    // Store scores + coaching data
     await supabase
       .from("calls")
       .update({
-        quality_score: Math.min(100, Math.max(1, scoreData.total_score)),
+        quality_score: totalScore,
         score_breakdown: scoreData.breakdown,
         score_feedback: {
           went_well: scoreData.went_well,
           could_improve: scoreData.could_improve,
         },
+        coaching_category: category,
+        coaching_tags: scoreData.coaching_tags || [],
+        coaching_highlights: scoreData.highlight_moments || [],
+        coaching_script_suggestion: scoreData.script_suggestion || null,
       })
       .eq("id", call_id);
 
     return new Response(
       JSON.stringify({
-        score: scoreData.total_score,
+        score: totalScore,
+        category,
         breakdown: scoreData.breakdown,
         feedback: {
           went_well: scoreData.went_well,
           could_improve: scoreData.could_improve,
         },
+        coaching_tags: scoreData.coaching_tags,
+        highlights: scoreData.highlight_moments,
+        script_suggestion: scoreData.script_suggestion,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
