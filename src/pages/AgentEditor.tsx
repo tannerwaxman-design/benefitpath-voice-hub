@@ -14,7 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, FlaskConical, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
+import { AbTestField } from "@/components/agents/AbTestField";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { lazy, Suspense } from "react";
+const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
 import { AgentTemplatePicker, AgentTemplate } from "@/components/agents/AgentTemplatePicker";
 import { PostCallActionsSection, PostCallActionsConfig } from "@/components/agents/PostCallActionsSection";
 import { useAvailableVoices, useTtsPreview, Voice } from "@/hooks/use-voice-management";
@@ -425,8 +429,7 @@ export default function AgentEditor() {
             <CardHeader><CardTitle className="section-title">Conversation Flow</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <Label>Greeting Script</Label>
-                <Textarea value={greeting} onChange={e => setGreeting(e.target.value)} rows={3} className="mt-1" />
+                <AbTestField agentId={id} field="greeting" label="Greeting Script" currentValue={greeting} onValueChange={setGreeting} />
                 <p className="text-xs text-muted-foreground mt-1">Use [First Name], [Company] as placeholders</p>
               </div>
               <div>
@@ -445,8 +448,7 @@ export default function AgentEditor() {
                 </Select>
               </div>
               <div>
-                <Label>Voicemail Script</Label>
-                <Textarea value={voicemailScript} onChange={e => setVoicemailScript(e.target.value)} rows={3} className="mt-1" />
+                <AbTestField agentId={id} field="voicemail" label="Voicemail Script" currentValue={voicemailScript} onValueChange={setVoicemailScript} />
                 <div className="flex items-center gap-3 mt-3">
                   <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
                   <Label>Leave voicemail on no answer</Label>

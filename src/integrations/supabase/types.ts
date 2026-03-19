@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      ab_tests: {
+        Row: {
+          agent_id: string
+          created_at: string
+          ended_at: string | null
+          field: string
+          id: string
+          started_at: string
+          status: string
+          tenant_id: string
+          traffic_split: number
+          version_a_text: string
+          version_b_text: string
+          winner: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          ended_at?: string | null
+          field: string
+          id?: string
+          started_at?: string
+          status?: string
+          tenant_id: string
+          traffic_split?: number
+          version_a_text: string
+          version_b_text: string
+          winner?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          ended_at?: string | null
+          field?: string
+          id?: string
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          traffic_split?: number
+          version_a_text?: string
+          version_b_text?: string
+          winner?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ab_tests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ab_tests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           after_hours_behavior: string
@@ -384,6 +444,8 @@ export type Database = {
       }
       calls: {
         Row: {
+          ab_test_id: string | null
+          ab_test_version: string | null
           agent_id: string | null
           answered_at: string | null
           campaign_contact_id: string | null
@@ -441,6 +503,8 @@ export type Database = {
           was_transferred: boolean
         }
         Insert: {
+          ab_test_id?: string | null
+          ab_test_version?: string | null
           agent_id?: string | null
           answered_at?: string | null
           campaign_contact_id?: string | null
@@ -498,6 +562,8 @@ export type Database = {
           was_transferred?: boolean
         }
         Update: {
+          ab_test_id?: string | null
+          ab_test_version?: string | null
           agent_id?: string | null
           answered_at?: string | null
           campaign_contact_id?: string | null
@@ -555,6 +621,13 @@ export type Database = {
           was_transferred?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "calls_ab_test_id_fkey"
+            columns: ["ab_test_id"]
+            isOneToOne: false
+            referencedRelation: "ab_tests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calls_agent_id_fkey"
             columns: ["agent_id"]

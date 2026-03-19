@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Zap, BarChart3, Lightbulb } from "lucide-react";
+import { Download, Zap, BarChart3, FlaskConical, Lightbulb } from "lucide-react";
 import { useSmartSchedule, DAY_NAMES, formatSlotTime } from "@/hooks/use-smart-schedule";
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { AnalyticsSkeleton } from "@/components/ui/page-skeletons";
@@ -14,8 +15,45 @@ import { ErrorState } from "@/components/ui/error-state";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { useNavigate } from "react-router-dom";
+import { useAgents } from "@/hooks/use-agents";
 
 const ScriptInsights = lazy(() => import("@/components/analytics/ScriptInsights"));
+const AbTestResults = lazy(() => import("@/components/agents/AbTestResults"));
+
+function AbTestsAnalyticsTab() {
+  const { data: agents, isLoading } = useAgents();
+  const [selectedAgent, setSelectedAgent] = useState<string>("");
+
+  const activeAgents = (agents || []).filter(a => a.status === "active" || a.status === "draft");
+
+  if (isLoading) return <div className="py-8 text-center text-muted-foreground text-sm">Loading agents...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Label className="text-sm shrink-0">Select Agent:</Label>
+        <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+          <SelectTrigger className="w-64"><SelectValue placeholder="Choose an agent..." /></SelectTrigger>
+          <SelectContent>
+            {activeAgents.map(a => (
+              <SelectItem key={a.id} value={a.id}>{a.agent_name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {selectedAgent ? (
+        <AbTestResults agentId={selectedAgent} />
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <FlaskConical className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Select an agent to view A/B test results.</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "0:00";
@@ -139,6 +177,9 @@ export default function Analytics() {
         <TabsList>
           <TabsTrigger value="overview" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="ab-tests" className="flex items-center gap-1.5">
+            <FlaskConical className="h-4 w-4" /> A/B Tests
           </TabsTrigger>
           <TabsTrigger value="script-insights" className="flex items-center gap-1.5">
             <Lightbulb className="h-4 w-4" /> Script Insights
@@ -306,6 +347,12 @@ export default function Analytics() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ab-tests" className="mt-4">
+          <Suspense fallback={<div className="py-12 text-center text-muted-foreground text-sm">Loading...</div>}>
+            <AbTestsAnalyticsTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="script-insights" className="mt-4">
