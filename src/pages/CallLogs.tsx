@@ -151,18 +151,48 @@ export default function CallLogs() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paged.map((call: any, i: number) => (
-                    <tr key={call.id} className={`border-t hover:bg-secondary/20 cursor-pointer transition-colors ${i % 2 ? "bg-secondary/10" : ""}`} onClick={() => setSelectedCall(call)}>
+                  {paged.map((call: any, i: number) => {
+                    const isLive = call.outcome === "in_progress";
+                    return (
+                    <tr key={call.id} className={`border-t hover:bg-secondary/20 cursor-pointer transition-colors ${isLive ? "bg-red-50/50 dark:bg-red-950/20" : i % 2 ? "bg-secondary/10" : ""}`} onClick={() => setSelectedCall(call)}>
                       <td className="px-4 py-3">
-                        {call.direction === "inbound"
+                        {isLive ? (
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                          </span>
+                        ) : call.direction === "inbound"
                           ? <ArrowDownLeft className="h-4 w-4 text-primary" />
                           : <ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
                       </td>
-                      <td className="px-4 py-3 text-sm text-foreground">{formatDate(call.started_at)}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">
+                        {isLive && <span className="text-[10px] font-bold text-red-500 mr-1.5">LIVE</span>}
+                        {formatDate(call.started_at)}
+                      </td>
                       <td className="px-4 py-3"><p className="text-sm font-medium text-foreground">{call.contact_name || "Unknown"}</p><p className="text-xs text-muted-foreground">{call.to_number}</p></td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{call.agents?.agent_name || "—"}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatDuration(call.duration_seconds)}</td>
-                      <td className="px-4 py-3"><Badge variant="secondary" className={`${outcomeColors[call.outcome] || "bg-secondary"} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge></td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{isLive ? <span className="text-red-500 text-xs font-medium">In Progress</span> : formatDuration(call.duration_seconds)}</td>
+                      <td className="px-4 py-3"><Badge variant="secondary" className={`${outcomeColors[call.outcome] || "bg-secondary"} border-0 text-[10px]`}>{isLive ? "🔴 Live" : call.outcome.replace("_", " ")}</Badge></td>
+                      <td className="px-4 py-3">
+                        {isLive ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600">
+                            <Flame className="h-3 w-3" /> Scoring…
+                          </span>
+                        ) : call.quality_score != null ? (
+                          <span className={`text-sm font-semibold ${call.quality_score >= 80 ? "text-success" : call.quality_score >= 60 ? "text-warning" : "text-destructive"}`}>
+                            {call.quality_score}/100
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="secondary" className={`${reviewStatusColors[call.review_status || "not_reviewed"] || "bg-secondary"} border-0 text-[10px]`}>
+                          {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary" aria-label="Play recording"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
+                    </tr>
+                    );
+                  })}
                       <td className="px-4 py-3">
                         {call.quality_score != null ? (
                           <span className={`text-sm font-semibold ${call.quality_score >= 80 ? "text-success" : call.quality_score >= 60 ? "text-warning" : "text-destructive"}`}>

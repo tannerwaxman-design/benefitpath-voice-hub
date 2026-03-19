@@ -313,6 +313,36 @@ export function compileSystemPrompt(
 
   sections.push(compliance);
 
+  // === REAL-TIME LEAD ASSESSMENT ===
+  let leadAssessment = "## REAL-TIME LEAD ASSESSMENT\n";
+  leadAssessment += "As the conversation progresses, continuously assess the lead's interest level and adjust your approach:\n\n";
+  leadAssessment += "HIGH INTEREST SIGNALS (adjust to be more direct, push for appointment):\n";
+  leadAssessment += "- Asks specific questions about plans, pricing, or coverage\n";
+  leadAssessment += "- Mentions upcoming enrollment or life changes\n";
+  leadAssessment += '- Says things like "tell me more," "how does that work," "what are my options"\n';
+  leadAssessment += "- Asks about their specific medications or doctors being covered\n\n";
+  leadAssessment += "MEDIUM INTEREST SIGNALS (stay warm, focus on value):\n";
+  leadAssessment += "- Gives short but not dismissive answers\n";
+  leadAssessment += '- Says "maybe" or "I\'ll think about it"\n';
+  leadAssessment += "- Asks how long the call will take\n";
+  leadAssessment += '- Mentions they\'re "kind of busy but go ahead"\n\n';
+  leadAssessment += "LOW INTEREST SIGNALS (pivot to softer CTA, offer email/callback):\n";
+  leadAssessment += '- Very short answers ("yeah," "uh huh," "okay")\n';
+  leadAssessment += "- Sounds distracted or disengaged\n";
+  leadAssessment += '- Says "I\'m not really looking right now"\n';
+  leadAssessment += "- Long pauses before answering\n\n";
+  leadAssessment += "DEAD SIGNALS (wrap up gracefully, respect their wishes):\n";
+  leadAssessment += '- "I\'m not interested"\n';
+  leadAssessment += '- "Stop calling me"\n';
+  leadAssessment += '- "I already told someone no"\n';
+  leadAssessment += "- Hangs up\n\n";
+  leadAssessment += "Adjust your approach based on these signals:\n";
+  leadAssessment += "- High interest → Be more specific, ask qualifying questions, push for appointment\n";
+  leadAssessment += "- Medium interest → Focus on the one most compelling benefit, ask one easy question\n";
+  leadAssessment += "- Low interest → Offer to send an email instead, suggest a specific callback time\n";
+  leadAssessment += "- Dead → Thank them, end the call politely\n";
+  sections.push(leadAssessment);
+
   // === CLOSING ===
   if (agent.closing_script) {
     let closing = "## WRAPPING UP THE CALL\n";
