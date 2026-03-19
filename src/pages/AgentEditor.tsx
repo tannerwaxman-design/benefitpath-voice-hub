@@ -460,6 +460,20 @@ export default function AgentEditor() {
                   <Switch checked={voicemailEnabled} onCheckedChange={setVoicemailEnabled} />
                   <Label>Leave voicemail on no answer</Label>
                 </div>
+                {voicemailEnabled && (
+                  <div className="mt-4">
+                    <VoicemailDropSection
+                      voicemailMethod={voicemailMethod}
+                      onMethodChange={setVoicemailMethod}
+                      voicemailScript={voicemailScript}
+                      onScriptChange={setVoicemailScript}
+                      voicemailAudioUrl={voicemailAudioUrl}
+                      onAudioUrlChange={setVoicemailAudioUrl}
+                      voiceId={voiceSource === "cloned" && clonedVoiceId ? clonedVoiceId : selectedVoice}
+                      voiceProvider="eleven_labs"
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
