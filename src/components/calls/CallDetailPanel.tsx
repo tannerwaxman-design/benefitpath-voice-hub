@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { MessageSquare, Send, Star, Bot, User, RefreshCw } from "lucide-react";
+import AiCommentaryPlayer from "./AiCommentaryPlayer";
 import { Progress } from "@/components/ui/progress";
 import type { Json } from "@/integrations/supabase/types";
 import { useCoachingNotes, useAddCoachingNote, useTranscriptComments, useAddTranscriptComment, useUpdateReviewStatus } from "@/hooks/use-coaching";
@@ -226,11 +227,9 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
         )}
       </div>
 
-      {/* Recording Player */}
+      {/* Recording Player with AI Commentary */}
       {call.recording_url && (
-        <div className="bg-secondary/30 rounded-lg p-4">
-          <audio controls className="w-full" src={call.recording_url} />
-        </div>
+        <AiCommentaryPlayer callId={call.id} recordingUrl={call.recording_url} />
       )}
 
       {/* Summary */}

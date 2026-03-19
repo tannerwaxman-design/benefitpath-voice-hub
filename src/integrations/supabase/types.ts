@@ -447,6 +447,7 @@ export type Database = {
           ab_test_id: string | null
           ab_test_version: string | null
           agent_id: string | null
+          ai_commentary: Json | null
           answered_at: string | null
           campaign_contact_id: string | null
           campaign_id: string | null
@@ -506,6 +507,7 @@ export type Database = {
           ab_test_id?: string | null
           ab_test_version?: string | null
           agent_id?: string | null
+          ai_commentary?: Json | null
           answered_at?: string | null
           campaign_contact_id?: string | null
           campaign_id?: string | null
@@ -565,6 +567,7 @@ export type Database = {
           ab_test_id?: string | null
           ab_test_version?: string | null
           agent_id?: string | null
+          ai_commentary?: Json | null
           answered_at?: string | null
           campaign_contact_id?: string | null
           campaign_id?: string | null
