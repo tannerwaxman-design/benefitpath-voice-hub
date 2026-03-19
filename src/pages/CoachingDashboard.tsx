@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import CallDetailPanel, { type CallWithRelations } from "@/components/calls/CallDetailPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   useCallsForCoaching,
@@ -71,8 +72,8 @@ function formatDuration(seconds: number | null) {
 }
 
 export default function CoachingDashboard() {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const [selectedCall, setSelectedCall] = useState<CallWithRelations | null>(null);
   const { data: stats, isLoading: statsLoading } = useCoachingStats();
   const { data: needsReviewCalls, isLoading: nrLoading } = useCallsForCoaching("needs_review");
   const { data: excellentCalls, isLoading: exLoading } = useCallsForCoaching("excellent");
@@ -204,11 +205,11 @@ export default function CoachingDashboard() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {call.recording_url && (
-                          <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedCall(call)}>
                             <Play className="h-3 w-3 mr-1" />Listen
                           </Button>
                         )}
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate("/call-logs")}>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedCall(call)}>
                           Review
                         </Button>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleMarkReviewed(call.id)}>
@@ -281,11 +282,11 @@ export default function CoachingDashboard() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {call.recording_url && (
-                          <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedCall(call)}>
                             <Play className="h-3 w-3 mr-1" />Listen
                           </Button>
                         )}
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate("/call-logs")}>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedCall(call)}>
                           View
                         </Button>
                       </div>
@@ -333,7 +334,7 @@ export default function CoachingDashboard() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate("/call-logs")}>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelectedCall(call)}>
                           Review
                         </Button>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleResolveFlag(call.id)}>
@@ -405,6 +406,13 @@ export default function CoachingDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Call Detail Sheet */}
+      <Sheet open={!!selectedCall} onOpenChange={() => setSelectedCall(null)}>
+        <SheetContent className="w-[500px] sm:w-[600px] overflow-auto">
+          {selectedCall && <CallDetailPanel call={selectedCall} onClose={() => setSelectedCall(null)} />}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
