@@ -1,3 +1,4 @@
+import { EnrollmentBanner } from "@/components/overview/EnrollmentBanner";
 import { PhoneOutgoing, PhoneCall, Clock, CalendarCheck, ArrowUp, RefreshCw, CheckCircle2, Circle, ExternalLink, BarChart3, Bot } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
