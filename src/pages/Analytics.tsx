@@ -312,6 +312,12 @@ export default function Analytics() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="ab-tests" className="mt-4">
+          <Suspense fallback={<div className="py-12 text-center text-muted-foreground text-sm">Loading...</div>}>
+            <AbTestsAnalyticsTab />
+          </Suspense>
+        </TabsContent>
+
         <TabsContent value="script-insights" className="mt-4">
           <Suspense fallback={<div className="py-12 text-center text-muted-foreground text-sm">Loading...</div>}>
             <ScriptInsights />
