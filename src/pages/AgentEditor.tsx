@@ -429,8 +429,7 @@ export default function AgentEditor() {
             <CardHeader><CardTitle className="section-title">Conversation Flow</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <Label>Greeting Script</Label>
-                <Textarea value={greeting} onChange={e => setGreeting(e.target.value)} rows={3} className="mt-1" />
+                <AbTestField agentId={id} field="greeting" label="Greeting Script" currentValue={greeting} onValueChange={setGreeting} />
                 <p className="text-xs text-muted-foreground mt-1">Use [First Name], [Company] as placeholders</p>
               </div>
               <div>
