@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import type { TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
+import { logAudit } from "@/lib/audit";
 
 export interface Tool {
   id: string;
@@ -156,7 +157,16 @@ export function useCreateTool() {
 
       return savedTool;
     },
-    onSuccess: () => {
+    onSuccess: (savedTool) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.created",
+        entity_type: "tool",
+        entity_id: savedTool.id,
+        entity_name: savedTool.name,
+        metadata: { service: savedTool.service, template: savedTool.template },
+      });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "Tool created", description: "Your new tool is ready to assign to agents." });
     },
@@ -193,6 +203,7 @@ export function useUpdateTool() {
 
 export function useDeleteTool() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -218,7 +229,14 @@ export function useDeleteTool() {
       const { error } = await supabase.from("tools").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, toolId) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.deleted",
+        entity_type: "tool",
+        entity_id: toolId,
+      });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "Tool deleted" });
     },
@@ -246,7 +264,16 @@ export function useConnectApiKey() {
       if (error) throw error;
       return data as unknown as ToolApiKey;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (data, vars) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.api_key_connected",
+        entity_type: "tool",
+        entity_id: data?.id ?? null,
+        entity_name: vars.display_name ?? vars.service,
+        metadata: { service: vars.service },
+      });
       queryClient.invalidateQueries({ queryKey: ["tool_api_keys"] });
       toast({ title: `${vars.display_name || vars.service} connected`, description: "API key verified and saved." });
     },
@@ -276,7 +303,15 @@ export function useDisconnectApiKey() {
       const { error } = await supabase.from("tool_api_keys").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.api_key_disconnected",
+        entity_type: "tool",
+        entity_name: vars.service,
+        metadata: { service: vars.service },
+      });
       queryClient.invalidateQueries({ queryKey: ["tool_api_keys"] });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "API key disconnected" });
@@ -289,6 +324,7 @@ export function useDisconnectApiKey() {
 
 export function useAssignToolToAgents() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -334,7 +370,15 @@ export function useAssignToolToAgents() {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.agents_assigned",
+        entity_type: "tool",
+        entity_id: vars.toolId,
+        metadata: { agent_ids: vars.agentIds },
+      });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "Tools assigned to agents" });
     },
