@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,74 @@ const plans = [
   { id: "voice_ai_enterprise", name: "Agency", price: 199, icon: Building2, tagline: "Built for agencies that want every advantage" },
   { id: "voice_ai_custom", name: "Enterprise", price: -1, icon: Crown, tagline: "For large operations with custom needs" },
 ];
+
+function PurchaseHistorySection({ tenantId }: { tenantId?: string }) {
+  const { data: transactions, isLoading } = useQuery({
+    queryKey: ["credit-transactions", tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("credit_transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId,
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Purchase History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : !transactions || transactions.length === 0 ? (
+          <div className="text-center py-8">
+            <CreditCard className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No transactions yet. Purchase history will appear here after your first credit purchase.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Balance After</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.map((t: any) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={t.type === "purchase" || t.type === "refund" ? "default" : "secondary"} className="text-[10px]">
+                      {t.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{t.description || t.type}</TableCell>
+                  <TableCell className={`text-right text-sm font-medium ${Number(t.amount) >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                    {Number(t.amount) >= 0 ? "+" : ""}${Math.abs(Number(t.amount)).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    ${Number(t.balance_after ?? 0).toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function BillingUsage() {
   const { user, refreshProfile } = useAuth();
@@ -470,24 +539,22 @@ export default function BillingUsage() {
         </p>
       </div>
 
-      {/* Section 6: Purchase History (placeholder until transactions exist) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Purchase History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">Credit purchase history will appear here after your first purchase.</p>
-        </CardContent>
-      </Card>
+      {/* Section 6: Purchase History */}
+      <PurchaseHistorySection tenantId={user?.tenant_id} />
 
       {/* Section 7: Subscription Invoices */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Subscription Invoices</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Subscription Invoices</CardTitle>
+            <Button variant="outline" size="sm" onClick={handleManagePayment} disabled={portalLoading}>
+              {portalLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Loading...</> : <><Download className="h-4 w-4 mr-1" /> View All in Stripe</>}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
-            Subscription invoices will appear here after your first billing cycle. Use "Manage Payment Method" to access full invoice history.
+            To view and download invoices, click "View All in Stripe" to open the Stripe customer portal.
           </p>
         </CardContent>
       </Card>

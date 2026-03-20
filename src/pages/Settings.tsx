@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,15 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus, Calendar } from "lucide-react";
+import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus, Calendar, Download, Search, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EnrollmentPeriodsSection } from "@/components/settings/EnrollmentPeriodsSection";
+import { EmailDeliveryLog } from "@/components/settings/EmailDeliveryLog";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -303,6 +306,434 @@ function PlatformApiKeySection() {
   );
 }
 
+function CrmIntegrationsSection() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [crmStatuses, setCrmStatuses] = useState<Record<string, "disconnected" | "connected" | "pending">>({
+    salesforce: "disconnected",
+    hubspot: "disconnected",
+    zoho: "disconnected",
+  });
+
+  const crms = [
+    { id: "salesforce", label: "Salesforce", description: "Sync contacts and leads with Salesforce CRM" },
+    { id: "hubspot", label: "HubSpot", description: "Push call outcomes and create deals in HubSpot" },
+    { id: "zoho", label: "Zoho CRM", description: "Sync contact records with Zoho CRM" },
+  ];
+
+  // Check for existing API keys for CRM services
+  const { data: apiKeys = [] } = useQuery({
+    queryKey: ["tool-api-keys-crm", user?.tenant_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tool_api_keys")
+        .select("service, status")
+        .in("service", ["salesforce", "hubspot", "zoho"]);
+      return data || [];
+    },
+    enabled: !!user?.tenant_id,
+  });
+
+  useEffect(() => {
+    const statuses: Record<string, "disconnected" | "connected" | "pending"> = { salesforce: "disconnected", hubspot: "disconnected", zoho: "disconnected" };
+    for (const key of apiKeys) {
+      statuses[key.service] = key.status === "active" ? "connected" : "pending";
+    }
+    setCrmStatuses(statuses);
+  }, [apiKeys]);
+
+  const handleConnect = (crmId: string) => {
+    toast({
+      title: `${crms.find(c => c.id === crmId)?.label} Integration`,
+      description: "To connect, add your API key in the API Keys section under Team & Access tab.",
+    });
+  };
+
+  const handleDisconnect = async (crmId: string) => {
+    const { error } = await supabase
+      .from("tool_api_keys")
+      .delete()
+      .eq("service", crmId);
+    if (error) {
+      toast({ title: "Failed to disconnect", variant: "destructive" });
+    } else {
+      toast({ title: `${crms.find(c => c.id === crmId)?.label} disconnected` });
+      queryClient.invalidateQueries({ queryKey: ["tool-api-keys-crm"] });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="section-title">CRM Integrations</CardTitle></CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {crms.map(crm => {
+            const status = crmStatuses[crm.id];
+            return (
+              <div key={crm.id} className={`p-4 border rounded-lg flex items-center justify-between ${status === "connected" ? "border-emerald-500/30 bg-emerald-500/5" : ""}`}>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{crm.label}</p>
+                  <p className="text-xs text-muted-foreground">{crm.description}</p>
+                  <Badge variant="secondary" className={`text-[10px] mt-1 ${status === "connected" ? "bg-emerald-500/10 text-emerald-600" : ""}`}>
+                    {status === "connected" ? "Connected" : "Not Connected"}
+                  </Badge>
+                </div>
+                {status === "connected" ? (
+                  <Button variant="outline" size="sm" className="text-destructive" onClick={() => handleDisconnect(crm.id)}>Disconnect</Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => handleConnect(crm.id)}>Connect</Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WebhookConfigSection() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [events, setEvents] = useState<Record<string, boolean>>({
+    call_started: true,
+    call_completed: true,
+    call_transferred: true,
+    appointment_booked: true,
+    voicemail_left: true,
+  });
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    if (user?.tenant?.webhook_url) {
+      setWebhookUrl(user.tenant.webhook_url);
+    }
+  }, [user?.tenant?.webhook_url]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ webhook_url: webhookUrl || null })
+      .eq("id", user?.tenant_id);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Failed to save webhook", variant: "destructive" });
+    } else {
+      toast({ title: "Webhook configuration saved" });
+    }
+  };
+
+  const handleTest = async () => {
+    if (!webhookUrl) {
+      toast({ title: "Enter a webhook URL first", variant: "destructive" });
+      return;
+    }
+    setTesting(true);
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event: "test", tenant_id: user?.tenant_id, timestamp: new Date().toISOString() }),
+        mode: "no-cors",
+      });
+      toast({ title: "Test webhook sent", description: "Check your webhook endpoint for the test payload." });
+    } catch {
+      toast({ title: "Webhook test sent", description: "Request was sent (no-cors mode). Check your endpoint." });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const eventLabels: Record<string, string> = {
+    call_started: "Call Started",
+    call_completed: "Call Completed",
+    call_transferred: "Call Transferred",
+    appointment_booked: "Appointment Booked",
+    voicemail_left: "Voicemail Left",
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="section-title">Webhook Configuration</CardTitle></CardHeader>
+      <CardContent className="space-y-4 max-w-xl">
+        <div>
+          <Label>Webhook URL</Label>
+          <Input
+            placeholder="https://your-api.com/webhook"
+            value={webhookUrl}
+            onChange={e => setWebhookUrl(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Events</Label>
+          {Object.entries(eventLabels).map(([key, label]) => (
+            <div key={key} className="flex items-center gap-3">
+              <Switch checked={events[key]} onCheckedChange={checked => setEvents(prev => ({ ...prev, [key]: checked }))} />
+              <span className="text-sm text-foreground">{label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...</> : "Save Webhook"}
+          </Button>
+          <Button variant="outline" onClick={handleTest} disabled={testing || !webhookUrl}>
+            {testing ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Sending...</> : "Send Test Webhook"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CalendarIntegrationsSection() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const calendars = [
+    { id: "google_calendar", label: "Google Calendar", description: "Book appointments directly on Google Calendar" },
+    { id: "outlook_calendar", label: "Outlook Calendar", description: "Sync appointments with Outlook Calendar" },
+    { id: "calendly", label: "Calendly", description: "Schedule via Calendly booking links" },
+  ];
+
+  const { data: apiKeys = [] } = useQuery({
+    queryKey: ["tool-api-keys-calendar", user?.tenant_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tool_api_keys")
+        .select("service, status")
+        .in("service", ["google_calendar", "outlook_calendar", "calendly"]);
+      return data || [];
+    },
+    enabled: !!user?.tenant_id,
+  });
+
+  const connectedServices = new Set(apiKeys.filter(k => k.status === "active").map(k => k.service));
+
+  const handleConnect = (calId: string) => {
+    toast({
+      title: `${calendars.find(c => c.id === calId)?.label} Integration`,
+      description: "To connect, add your API key in the API Keys section under Team & Access tab.",
+    });
+  };
+
+  const handleDisconnect = async (calId: string) => {
+    const { error } = await supabase.from("tool_api_keys").delete().eq("service", calId);
+    if (error) {
+      toast({ title: "Failed to disconnect", variant: "destructive" });
+    } else {
+      toast({ title: `${calendars.find(c => c.id === calId)?.label} disconnected` });
+      queryClient.invalidateQueries({ queryKey: ["tool-api-keys-calendar"] });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="section-title">Calendar Integration</CardTitle></CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {calendars.map(cal => {
+            const connected = connectedServices.has(cal.id);
+            return (
+              <div key={cal.id} className={`flex items-center justify-between p-3 border rounded-lg ${connected ? "border-emerald-500/30 bg-emerald-500/5" : ""}`}>
+                <div>
+                  <span className="text-sm font-medium text-foreground">{cal.label}</span>
+                  <p className="text-xs text-muted-foreground">{cal.description}</p>
+                  {connected && <Badge variant="secondary" className="text-[10px] mt-1 bg-emerald-500/10 text-emerald-600">Connected</Badge>}
+                </div>
+                {connected ? (
+                  <Button variant="outline" size="sm" className="text-destructive" onClick={() => handleDisconnect(cal.id)}>Disconnect</Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => handleConnect(cal.id)}>Connect</Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DncManagementSection() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [checkNumber, setCheckNumber] = useState("");
+  const [checkResult, setCheckResult] = useState<"on_list" | "not_on_list" | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const { data: dncEntries = [], isLoading } = useQuery({
+    queryKey: ["dnc-list", user?.tenant_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dnc_list")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.tenant_id,
+  });
+
+  const handleCheckNumber = async () => {
+    if (!checkNumber.trim()) return;
+    setChecking(true);
+    setCheckResult(null);
+    const { data } = await supabase
+      .from("dnc_list")
+      .select("id")
+      .eq("phone_number", checkNumber.trim())
+      .maybeSingle();
+    setCheckResult(data ? "on_list" : "not_on_list");
+    setChecking(false);
+  };
+
+  const handleUploadCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+      // Skip header if it looks like one
+      const startIdx = lines[0]?.match(/phone|number/i) ? 1 : 0;
+      const numbers = lines.slice(startIdx).map(l => l.split(",")[0].trim().replace(/[^+\d]/g, "")).filter(n => n.length >= 10);
+
+      if (numbers.length === 0) {
+        toast({ title: "No valid phone numbers found in CSV", variant: "destructive" });
+        setUploading(false);
+        return;
+      }
+
+      const rows = numbers.map(phone_number => ({
+        tenant_id: user!.tenant_id,
+        phone_number,
+        reason: "CSV upload",
+      }));
+
+      const { error } = await supabase.from("dnc_list").upsert(rows as any, { onConflict: "tenant_id,phone_number" });
+      if (error) throw error;
+
+      toast({ title: `${numbers.length} numbers added to DNC list` });
+      queryClient.invalidateQueries({ queryKey: ["dnc-list"] });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDownload = () => {
+    const csv = "phone_number,reason,added_date\n" + dncEntries.map((e: any) => `${e.phone_number},${e.reason || ""},${e.created_at}`).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dnc-list-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRemove = async (id: string) => {
+    const { error } = await supabase.from("dnc_list").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Failed to remove", variant: "destructive" });
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["dnc-list"] });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="section-title">Do-Not-Call Management</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Manage your DNC list. Numbers on this list will be automatically excluded from campaigns.
+        </p>
+
+        {/* Upload / Download */}
+        <div className="flex gap-2">
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleUploadCsv} />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <Upload className="h-4 w-4 mr-1" /> {uploading ? "Uploading..." : "Upload DNC CSV"}
+          </Button>
+          <Button variant="outline" onClick={handleDownload} disabled={dncEntries.length === 0}>
+            <Download className="h-4 w-4 mr-1" /> Download DNC List ({dncEntries.length})
+          </Button>
+        </div>
+
+        {/* Check Number */}
+        <div>
+          <Label>Check Number</Label>
+          <div className="flex gap-2 items-center">
+            <Input
+              placeholder="+1 (555) 000-0000"
+              value={checkNumber}
+              onChange={e => { setCheckNumber(e.target.value); setCheckResult(null); }}
+              className="max-w-xs"
+            />
+            <Button variant="outline" onClick={handleCheckNumber} disabled={checking || !checkNumber.trim()}>
+              {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
+              Check
+            </Button>
+            {checkResult === "on_list" && (
+              <span className="flex items-center gap-1 text-sm text-destructive"><XCircle className="h-4 w-4" /> On DNC list</span>
+            )}
+            {checkResult === "not_on_list" && (
+              <span className="flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Not on DNC list</span>
+            )}
+          </div>
+        </div>
+
+        {/* DNC List Table */}
+        {isLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : dncEntries.length > 0 && (
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Phone Number</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Added</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dncEntries.slice(0, 25).map((entry: any) => (
+                  <TableRow key={entry.id}>
+                    <TableCell className="font-mono text-sm">{entry.phone_number}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{entry.reason || "-"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{new Date(entry.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => handleRemove(entry.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {dncEntries.length > 25 && (
+              <p className="text-xs text-muted-foreground text-center py-2">Showing 25 of {dncEntries.length} entries. Download CSV for full list.</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -410,63 +841,14 @@ export default function Settings() {
 
         {/* Integrations */}
         <TabsContent value="integrations" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader><CardTitle className="section-title">CRM Integrations</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {["Salesforce", "HubSpot", "Zoho CRM"].map(crm => (
-                  <div key={crm} className="p-4 border rounded-lg flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{crm}</p>
-                      <p className="text-xs text-muted-foreground">Not Connected</p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => toast({ title: `${crm} integration coming soon` })}>Connect</Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="section-title">Webhook Configuration</CardTitle></CardHeader>
-            <CardContent className="space-y-4 max-w-xl">
-              <div><Label>Webhook URL</Label><Input placeholder="https://your-api.com/webhook" /></div>
-              <div className="space-y-2">
-                <Label>Events</Label>
-                {["Call Started", "Call Completed", "Call Transferred", "Appointment Booked", "Voicemail Left"].map(evt => (
-                  <div key={evt} className="flex items-center gap-3"><Switch defaultChecked /><span className="text-sm text-foreground">{evt}</span></div>
-                ))}
-              </div>
-              <Button variant="outline" onClick={() => toast({ title: "Test webhook sent!" })}>Send Test Webhook</Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="section-title">Calendar Integration</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {["Google Calendar", "Outlook Calendar", "Calendly"].map(cal => (
-                  <div key={cal} className="flex items-center justify-between p-3 border rounded-lg">
-                    <span className="text-sm text-foreground">{cal}</span>
-                    <Button variant="outline" size="sm" onClick={() => toast({ title: `${cal} connected!` })}>Connect</Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <CrmIntegrationsSection />
+          <WebhookConfigSection />
+          <CalendarIntegrationsSection />
         </TabsContent>
 
         {/* Compliance */}
         <TabsContent value="compliance" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader><CardTitle className="section-title">Do-Not-Call Management</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">Manage your DNC list from the Contact Lists page</p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => toast({ title: "DNC list uploaded" })}>Upload DNC List</Button>
-                <Button variant="outline" onClick={() => toast({ title: "DNC list downloaded" })}>Download DNC List</Button>
-              </div>
-              <div><Label>Check Number</Label><div className="flex gap-2"><Input placeholder="+1 (555) 000-0000" /><Button variant="outline" onClick={() => toast({ title: "Number not on DNC list" })}>Check</Button></div></div>
-            </CardContent>
-          </Card>
+          <DncManagementSection />
           <Card>
             <CardHeader><CardTitle className="section-title">Call Recording Storage</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -483,6 +865,7 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+          <EmailDeliveryLog />
         </TabsContent>
 
         {/* Enrollment Periods */}

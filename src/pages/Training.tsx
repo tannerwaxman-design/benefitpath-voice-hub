@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useAgents } from "@/hooks/use-agents";
 import { useTrainingSessions, useRunSimulation } from "@/hooks/use-training";
-import { GraduationCap, Target, Bot, ClipboardList, Play, ArrowLeft, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { GraduationCap, Target, Bot, ClipboardList, Play, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, Phone } from "lucide-react";
 
 const SCENARIOS = [
   { value: "medicare_aep_reluctant", label: "Medicare AEP — Reluctant Lead", desc: '"I\'m not interested, I already have coverage"' },
@@ -24,7 +25,7 @@ const DIFFICULTIES = [
   { value: "hard", label: "Hard", desc: "Very resistant, multiple strong objections" },
 ];
 
-type View = "home" | "setup_test" | "running" | "result" | "history";
+type View = "home" | "setup_test" | "setup_practice" | "running" | "running_practice" | "result" | "history";
 
 export default function Training() {
   const { data: agents } = useAgents();
@@ -36,6 +37,7 @@ export default function Training() {
   const [scenario, setScenario] = useState("medicare_aep_reluctant");
   const [difficulty, setDifficulty] = useState("medium");
   const [result, setResult] = useState<any>(null);
+  const [practicePhone, setPracticePhone] = useState("");
 
   const activeAgents = agents?.filter(a => a.status === "active" || a.status === "draft") || [];
 
@@ -93,7 +95,7 @@ export default function Training() {
             </CardContent>
           </Card>
 
-          <Card className="hover:border-primary/40 transition-colors cursor-pointer opacity-60">
+          <Card className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => setView("setup_practice")}>
             <CardContent className="p-6 text-center space-y-3">
               <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
                 <Target className="h-6 w-6 text-primary" />
@@ -102,7 +104,7 @@ export default function Training() {
               <p className="text-sm text-muted-foreground">
                 YOU handle the call. The AI acts as a difficult lead and scores your responses.
               </p>
-              <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+              <Button variant="outline" className="w-full">Start Practice</Button>
             </CardContent>
           </Card>
 
@@ -362,6 +364,117 @@ export default function Training() {
             </CardContent>
           </Card>
         )}
+      </div>
+    );
+  }
+
+  // SETUP PRACTICE
+  if (view === "setup_practice") {
+    const handleStartPractice = async () => {
+      if (!selectedAgent) return;
+      setView("running_practice");
+      setResult(null);
+      try {
+        const data = await runSimulation.mutateAsync({
+          agent_id: selectedAgent,
+          scenario,
+          difficulty,
+          mode: "practice",
+          phone_number: practicePhone || undefined,
+        });
+        setResult(data);
+        setView("result");
+      } catch {
+        setView("setup_practice");
+      }
+    };
+
+    return (
+      <div className="space-y-6 max-w-xl">
+        <button onClick={() => setView("home")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to Training Center
+        </button>
+        <h2 className="text-xl font-bold text-foreground">Practice Mode Setup</h2>
+        <p className="text-sm text-muted-foreground">
+          The AI will play the role of a difficult lead based on the scenario you choose. Your agent's script and personality will be used as the scoring rubric.
+        </p>
+        <Card>
+          <CardContent className="p-6 space-y-5">
+            <div>
+              <Label>Reference Agent (for scoring rubric) *</Label>
+              <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                <SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger>
+                <SelectContent>
+                  {activeAgents.map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.agent_name}{a.agent_title ? ` — ${a.agent_title}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">The AI will score you based on this agent's script and objectives.</p>
+            </div>
+
+            <div>
+              <Label>Scenario</Label>
+              <Select value={scenario} onValueChange={setScenario}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SCENARIOS.map(s => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Difficulty</Label>
+              <Select value={difficulty} onValueChange={setDifficulty}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DIFFICULTIES.map(d => (
+                    <SelectItem key={d.value} value={d.value}>{d.label} — {d.desc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Your Phone Number (optional)</Label>
+              <Input
+                value={practicePhone}
+                onChange={e => setPracticePhone(e.target.value)}
+                placeholder="+15551234567"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                If provided, the AI will call you and you'll practice live. Otherwise, a text-based simulation runs.
+              </p>
+            </div>
+
+            <Button onClick={handleStartPractice} disabled={!selectedAgent} className="w-full">
+              <Phone className="h-4 w-4 mr-2" /> Start Practice Session
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // RUNNING PRACTICE
+  if (view === "running_practice") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+            <h3 className="text-lg font-semibold text-foreground">Practice Session Running...</h3>
+            <p className="text-sm text-muted-foreground">
+              {practicePhone
+                ? "You should receive a call shortly. Answer and handle the lead!"
+                : "The AI is simulating the conversation. Results coming soon..."}
+            </p>
+            <Progress value={45} className="w-full" />
+            <p className="text-xs text-muted-foreground">This usually takes 30-90 seconds.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
