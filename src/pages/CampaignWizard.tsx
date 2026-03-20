@@ -134,6 +134,11 @@ export default function CampaignWizard() {
       navigate("/campaigns");
     } catch (err) {
       console.error("Campaign creation failed:", err);
+      toast({
+        title: "Failed to create campaign",
+        description: err instanceof Error ? err.message : "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

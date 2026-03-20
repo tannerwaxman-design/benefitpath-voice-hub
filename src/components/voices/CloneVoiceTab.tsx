@@ -179,22 +179,11 @@ export function CloneVoiceTab() {
       streamRef.current = stream;
 
       const audioTracks = stream.getAudioTracks();
-      console.log("Microphone access granted, tracks:", audioTracks.map((track) => ({
-        label: track.label,
-        enabled: track.enabled,
-        muted: track.muted,
-        readyState: track.readyState,
-      })));
 
       if (audioTracks.length === 0) {
         throw new Error("No audio tracks found in the microphone stream.");
       }
 
-      audioTracks.forEach((track) => {
-        track.onmute = () => console.warn("Microphone track muted", track.label);
-        track.onunmute = () => console.log("Microphone track unmuted", track.label);
-        track.onended = () => console.warn("Microphone track ended", track.label);
-      });
 
       // AudioContext only for waveform visualization
       const audioCtx = new AudioContext({ sampleRate: 44100 });
@@ -214,15 +203,13 @@ export function CloneVoiceTab() {
       ];
       const mimeType = candidateMimeTypes.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
       mimeTypeRef.current = mimeType || "audio/webm";
-      console.log("Using MIME type:", mimeTypeRef.current);
-
       const mediaRecorder = mimeType
         ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 })
         : new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.onstart = () => {
-        console.log("MediaRecorder started, state:", mediaRecorder.state);
+        // Recording started
       };
 
       mediaRecorder.onerror = (event) => {
@@ -230,15 +217,12 @@ export function CloneVoiceTab() {
       };
 
       mediaRecorder.ondataavailable = (e) => {
-        console.log("Audio chunk received, size:", e.data.size, "bytes");
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = async () => {
         try {
           const totalSize = chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
-          console.log("MediaRecorder stopped, total chunks:", chunksRef.current.length);
-          console.log("Total audio data size:", totalSize, "bytes");
 
           if (totalSize === 0) {
             chunksRef.current = [];
@@ -249,7 +233,6 @@ export function CloneVoiceTab() {
 
           const recordedBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || mimeTypeRef.current || "audio/webm" });
           chunksRef.current = [];
-          console.log("Final audio blob size:", recordedBlob.size, "bytes, type:", recordedBlob.type);
 
           if (recordedBlob.size < MIN_RECORDING_SIZE_BYTES) {
             setStatus("idle");
@@ -266,7 +249,6 @@ export function CloneVoiceTab() {
             return url;
           });
           setStatus("recorded");
-          console.log("Audio is playable, duration:", detectedDuration, "seconds");
         } catch (error) {
           console.error("Recorded audio validation failed", error);
           setStatus("idle");
@@ -286,7 +268,6 @@ export function CloneVoiceTab() {
       };
 
       mediaRecorder.start(1000);
-      console.log("Recording started successfully");
       setStatus("recording");
       setDuration(0);
       timerRef.current = setInterval(() => {
@@ -346,7 +327,6 @@ export function CloneVoiceTab() {
     try {
       const formData = new FormData();
       const fileExtension = audioBlob.type.includes("wav") ? "wav" : audioBlob.type.includes("mp4") ? "m4a" : audioBlob.type.includes("ogg") ? "ogg" : "webm";
-      console.log("Submitting audio for cloning, blob size:", audioBlob.size, "type:", audioBlob.type);
       formData.append("audio", audioBlob, `voice-sample.${fileExtension}`);
       formData.append("voice_name", companyName ? `${companyName} Voice` : "My Voice Clone");
 
@@ -373,7 +353,6 @@ export function CloneVoiceTab() {
       }
 
       const data = await response.json();
-      console.log("Clone response:", data);
       setProcessingProgress(100);
 
       const { data: voiceRow, error: insertError } = await supabase

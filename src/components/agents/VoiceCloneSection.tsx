@@ -177,7 +177,15 @@ export function VoiceCloneSection({
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
     audio.onended = () => setIsPlaying(false);
-    audio.play();
+    audio.play().catch((err) => {
+      console.error("Audio playback failed", err);
+      setIsPlaying(false);
+      toast({
+        title: "Playback blocked",
+        description: "Your browser blocked audio autoplay. Click Play to listen.",
+        variant: "destructive",
+      });
+    });
     setIsPlaying(true);
   };
 

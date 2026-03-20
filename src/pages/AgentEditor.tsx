@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useBlocker } from "react-router-dom";
 import { useAgent, useCreateAgent, useUpdateAgent, useDeleteAgent, useTestCall } from "@/hooks/use-agents";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, FlaskConical, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
@@ -69,7 +70,7 @@ export default function AgentEditor() {
   const [companyName, setCompanyName] = useState("");
   const [description, setDescription] = useState("");
   const [agentActive, setAgentActive] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState("EXAVITQu4vr4xnSDxMaL");
+  const [selectedVoice, setSelectedVoice] = useState("");
   const [speed, setSpeed] = useState([1.0]);
   const [tone, setTone] = useState("professional");
   const [enthusiasm, setEnthusiasm] = useState([6]);
@@ -139,49 +140,77 @@ export default function AgentEditor() {
 
   // Populate form with existing agent data
   if (existingAgent && !initialized) {
-    setName(existingAgent.agent_name);
-    setTitle(existingAgent.agent_title || "");
-    setIndustry(existingAgent.industry || "Insurance");
-    setCompanyName(existingAgent.company_name_override || "");
-    setDescription(existingAgent.description || "");
-    setAgentActive(existingAgent.status === "active");
-    setSelectedVoice(existingAgent.voice_id);
-    setSpeed([existingAgent.speaking_speed || 1.0]);
-    setTone(existingAgent.tone);
-    setEnthusiasm([existingAgent.enthusiasm_level]);
-    setFillerWords(existingAgent.filler_words_enabled);
-    setGreeting(existingAgent.greeting_script);
-    setCallObjective(existingAgent.call_objective);
-    setKnowledgeBase(existingAgent.knowledge_base_text || "");
-    setVoicemailScript(existingAgent.voicemail_script || "");
-    setVoicemailEnabled(existingAgent.voicemail_enabled);
-    setVoicemailMethod((existingAgent as any).voicemail_method || "live");
-    setVoicemailAudioUrl((existingAgent as any).voicemail_audio_url || null);
-    setRecordCalls(existingAgent.record_calls);
-    setDisclosure(existingAgent.play_disclosure);
-    setTransferPhone(existingAgent.transfer_phone_number || "");
-    setBackupTransfer(existingAgent.backup_transfer_number || "");
-    setTransferAnnouncement(existingAgent.transfer_announcement || "");
-    setCallDirection((existingAgent as any).call_direction || "outbound");
-    setInboundGreeting((existingAgent as any).inbound_greeting || "Thank you for calling. How can I help you today?");
-    setAnswerAfterRings((existingAgent as any).answer_after_rings ?? 2);
-    setAfterHoursBehavior((existingAgent as any).after_hours_behavior || "voicemail");
-    setVoiceSource((existingAgent as any).voice_source || "preset");
-    setClonedVoiceId((existingAgent as any).cloned_voice_id || null);
-    setVoiceCloneStatus((existingAgent as any).voice_clone_status || null);
-    setAfterHoursVoicemailMessage((existingAgent as any).after_hours_voicemail_message || "");
-    const flowData = (existingAgent as any).conversation_flow;
+    type AgentWithExtras = typeof existingAgent & {
+      voicemail_method?: "live" | "drop";
+      voicemail_audio_url?: string | null;
+      call_direction?: string;
+      inbound_greeting?: string | null;
+      answer_after_rings?: number;
+      after_hours_behavior?: string;
+      after_hours_voicemail_message?: string | null;
+      voice_source?: "preset" | "cloned";
+      cloned_voice_id?: string | null;
+      voice_clone_status?: string | null;
+      conversation_flow?: FlowData | null;
+      soa_enabled?: boolean;
+      soa_script?: string;
+      soa_plan_types?: string[];
+      soa_timing?: string;
+      post_call_email_enabled?: boolean;
+      post_call_email_subject?: string;
+      post_call_email_body?: string;
+      post_call_email_trigger?: string;
+      post_call_sms_enabled?: boolean;
+      post_call_sms_body?: string;
+      post_call_notification_enabled?: boolean;
+      post_call_notification_email?: string;
+      post_call_notification_triggers?: string[];
+      post_call_notification_includes?: string[];
+      post_call_task_enabled?: boolean;
+    };
+    const ea = existingAgent as AgentWithExtras;
+    setName(ea.agent_name);
+    setTitle(ea.agent_title || "");
+    setIndustry(ea.industry || "Insurance");
+    setCompanyName(ea.company_name_override || "");
+    setDescription(ea.description || "");
+    setAgentActive(ea.status === "active");
+    setSelectedVoice(ea.voice_id);
+    setSpeed([ea.speaking_speed || 1.0]);
+    setTone(ea.tone);
+    setEnthusiasm([ea.enthusiasm_level]);
+    setFillerWords(ea.filler_words_enabled);
+    setGreeting(ea.greeting_script);
+    setCallObjective(ea.call_objective);
+    setKnowledgeBase(ea.knowledge_base_text || "");
+    setVoicemailScript(ea.voicemail_script || "");
+    setVoicemailEnabled(ea.voicemail_enabled);
+    setVoicemailMethod(ea.voicemail_method || "live");
+    setVoicemailAudioUrl(ea.voicemail_audio_url || null);
+    setRecordCalls(ea.record_calls);
+    setDisclosure(ea.play_disclosure);
+    setTransferPhone(ea.transfer_phone_number || "");
+    setBackupTransfer(ea.backup_transfer_number || "");
+    setTransferAnnouncement(ea.transfer_announcement || "");
+    setCallDirection(ea.call_direction || "outbound");
+    setInboundGreeting(ea.inbound_greeting || "Thank you for calling. How can I help you today?");
+    setAnswerAfterRings(ea.answer_after_rings ?? 2);
+    setAfterHoursBehavior(ea.after_hours_behavior || "voicemail");
+    setVoiceSource(ea.voice_source || "preset");
+    setClonedVoiceId(ea.cloned_voice_id || null);
+    setVoiceCloneStatus(ea.voice_clone_status || null);
+    setAfterHoursVoicemailMessage(ea.after_hours_voicemail_message || "");
+    const flowData = ea.conversation_flow;
     if (flowData) {
       setConversationFlow(flowData);
       setEditorMode("flow");
     }
     setSoaConfig({
-      soa_enabled: (existingAgent as any).soa_enabled ?? false,
-      soa_script: (existingAgent as any).soa_script || soaConfig.soa_script,
-      soa_plan_types: (existingAgent as any).soa_plan_types || soaConfig.soa_plan_types,
-      soa_timing: (existingAgent as any).soa_timing || "after_greeting",
+      soa_enabled: ea.soa_enabled ?? false,
+      soa_script: ea.soa_script || soaConfig.soa_script,
+      soa_plan_types: ea.soa_plan_types || soaConfig.soa_plan_types,
+      soa_timing: ea.soa_timing || "after_greeting",
     });
-    const ea = existingAgent as any;
     setPostCallActions({
       post_call_email_enabled: ea.post_call_email_enabled ?? false,
       post_call_email_subject: ea.post_call_email_subject || "Thanks for chatting with us!",
@@ -197,6 +226,14 @@ export default function AgentEditor() {
     });
     setInitialized(true);
   }
+
+  // Auto-select first available voice for new agents
+  useEffect(() => {
+    if (isNew && !selectedVoice && availableVoices && availableVoices.length > 0) {
+      const defaultVoice = availableVoices.find(v => (v as any).is_default) || availableVoices[0];
+      if (defaultVoice) setSelectedVoice(defaultVoice.provider_voice_id);
+    }
+  }, [isNew, selectedVoice, availableVoices]);
 
   // Scroll spy for sidebar nav
   useEffect(() => {
@@ -328,9 +365,25 @@ export default function AgentEditor() {
   };
 
   const isSaving = createAgent.isPending || updateAgent.isPending;
+  const hasUnsaved = initialized && !isSaving;
+  const blocker = useBlocker(hasUnsaved);
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={blocker.state === "blocked"} onOpenChange={() => blocker.reset?.()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.reset?.()}>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction onClick={() => blocker.proceed?.()}>Discard Changes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex items-center gap-4">
         <button onClick={() => navigate("/agents")} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="page-title">{isNew ? "Create New Agent" : `Edit: ${existingAgent?.agent_name}`}</h1>

@@ -38,6 +38,7 @@ export default function Campaigns() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [confirmAction, setConfirmAction] = useState<{ id: string; action: string } | null>(null);
+  const [operationLoading, setOperationLoading] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let result = campaigns || [];
@@ -47,47 +48,67 @@ export default function Campaigns() {
   }, [campaigns, search, statusFilter]);
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("campaigns").delete().eq("id", id);
-    if (error) { toast.error("Failed to delete campaign"); return; }
-    toast.success("Campaign deleted");
-    queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    setOperationLoading(id);
+    try {
+      const { error } = await supabase.from("campaigns").delete().eq("id", id);
+      if (error) { toast.error("Failed to delete campaign"); return; }
+      toast.success("Campaign deleted");
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    } finally {
+      setOperationLoading(null);
+    }
   };
 
   const handleCancel = async (id: string) => {
-    const { error } = await supabase.from("campaigns").update({ status: "cancelled" }).eq("id", id);
-    if (error) { toast.error("Failed to cancel campaign"); return; }
-    toast.success("Campaign cancelled");
-    queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    setOperationLoading(id);
+    try {
+      const { error } = await supabase.from("campaigns").update({ status: "cancelled" }).eq("id", id);
+      if (error) { toast.error("Failed to cancel campaign"); return; }
+      toast.success("Campaign cancelled");
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    } finally {
+      setOperationLoading(null);
+    }
   };
 
   const handleDuplicate = async (id: string) => {
     const original = campaigns?.find(c => c.id === id);
     if (!original) return;
-    const { id: _id, created_at, updated_at, actual_start, actual_end, status, contacts_called, contacts_connected, contacts_no_answer, contacts_voicemail, contacts_failed, contacts_callback, contacts_transferred, appointments_set, conversion_rate, total_minutes_used, avg_call_duration_seconds, ...rest } = original as any;
-    const { error } = await supabase.from("campaigns").insert({ ...rest, name: `${original.name} (Copy)`, status: "draft" });
-    if (error) { toast.error("Failed to duplicate"); return; }
-    toast.success("Campaign duplicated as draft");
-    queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    setOperationLoading(id);
+    try {
+      const { id: _id, created_at, updated_at, actual_start, actual_end, status, contacts_called, contacts_connected, contacts_no_answer, contacts_voicemail, contacts_failed, contacts_callback, contacts_transferred, appointments_set, conversion_rate, total_minutes_used, avg_call_duration_seconds, ...rest } = original as any;
+      const { error } = await supabase.from("campaigns").insert({ ...rest, name: `${original.name} (Copy)`, status: "draft" });
+      if (error) { toast.error("Failed to duplicate"); return; }
+      toast.success("Campaign duplicated as draft");
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    } finally {
+      setOperationLoading(null);
+    }
   };
 
   const handleExport = async (id: string) => {
-    const { data } = await supabase
-      .from("campaign_contacts")
-      .select("*, contacts(first_name, last_name, phone, email, company)")
-      .eq("campaign_id", id);
-    if (!data?.length) { toast.info("No contacts to export"); return; }
-    const headers = ["First Name", "Last Name", "Phone", "Email", "Company", "Status", "Attempts", "Last Outcome", "Sentiment"];
-    const rows = data.map((cc: any) => [
-      cc.contacts?.first_name, cc.contacts?.last_name, cc.contacts?.phone,
-      cc.contacts?.email, cc.contacts?.company, cc.status, cc.total_attempts,
-      cc.last_outcome, cc.sentiment
-    ]);
-    const csv = [headers, ...rows].map(r => r.map((v: any) => `"${v || ""}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `campaign-results-${id}.csv`; a.click();
-    URL.revokeObjectURL(url);
-    toast.success("CSV exported");
+    setOperationLoading(id);
+    try {
+      const { data } = await supabase
+        .from("campaign_contacts")
+        .select("*, contacts(first_name, last_name, phone, email, company)")
+        .eq("campaign_id", id);
+      if (!data?.length) { toast.info("No contacts to export"); return; }
+      const headers = ["First Name", "Last Name", "Phone", "Email", "Company", "Status", "Attempts", "Last Outcome", "Sentiment"];
+      const rows = data.map((cc: any) => [
+        cc.contacts?.first_name, cc.contacts?.last_name, cc.contacts?.phone,
+        cc.contacts?.email, cc.contacts?.company, cc.status, cc.total_attempts,
+        cc.last_outcome, cc.sentiment
+      ]);
+      const csv = [headers, ...rows].map(r => r.map((v: any) => `"${v || ""}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `campaign-results-${id}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("CSV exported");
+    } finally {
+      setOperationLoading(null);
+    }
   };
 
   const onConfirm = () => {
@@ -173,6 +194,11 @@ export default function Campaigns() {
                         </span>
                       </td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        {operationLoading === c.id ? (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </Button>
+                        ) : (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -240,6 +266,7 @@ export default function Campaigns() {
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        )}
                       </td>
                     </tr>
                   ))}
