@@ -333,13 +333,8 @@ export default function Overview() {
         </Card>
       )}
 
-                  <div className="bg-primary h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.min(100, (user.tenant.minutes_used_this_cycle / user.tenant.monthly_minute_limit) * 100)}%` }} />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
+
     </div>
   );
 }
