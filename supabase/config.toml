@@ -49,3 +49,13 @@ project_id = "kpsilbmmedonhxjofixm"
     verify_jwt = false
   [functions.generate-commentary]
     verify_jwt = false
+  [functions.scrape-website]
+    verify_jwt = false
+  [functions.get-billing-history]
+    verify_jwt = false
+  [functions.practice-yourself-turn]
+    verify_jwt = false
+  [functions.crm-oauth-init]
+    verify_jwt = false
+  [functions.crm-oauth-callback]
+    verify_jwt = false

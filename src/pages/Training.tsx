@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useAgents } from "@/hooks/use-agents";
 import { useTrainingSessions, useRunSimulation } from "@/hooks/use-training";
-import { GraduationCap, Target, Bot, ClipboardList, Play, ArrowLeft, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { usePracticeStart, usePracticeTurn, usePracticeFinish, type ConversationTurn } from "@/hooks/use-practice-turn";
+import { GraduationCap, Target, Bot, ClipboardList, Play, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, Send, PhoneOff } from "lucide-react";
 
 const SCENARIOS = [
   { value: "medicare_aep_reluctant", label: "Medicare AEP — Reluctant Lead", desc: '"I\'m not interested, I already have coverage"' },
@@ -24,18 +26,79 @@ const DIFFICULTIES = [
   { value: "hard", label: "Hard", desc: "Very resistant, multiple strong objections" },
 ];
 
-type View = "home" | "setup_test" | "running" | "result" | "history";
+type View = "home" | "setup_test" | "running" | "result" | "history" | "setup_practice" | "practicing";
 
 export default function Training() {
   const { data: agents } = useAgents();
   const { data: sessions, isLoading: sessionsLoading } = useTrainingSessions();
   const runSimulation = useRunSimulation();
 
+  // Practice Yourself state
+  const practiceStart = usePracticeStart();
+  const practiceTurn = usePracticeTurn();
+  const practiceFinish = usePracticeFinish();
+  const [practiceSessionId, setPracticeSessionId] = useState<string | null>(null);
+  const [practiceMessages, setPracticeMessages] = useState<ConversationTurn[]>([]);
+  const [practiceInput, setPracticeInput] = useState("");
+  const [practiceEnded, setPracticeEnded] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   const [view, setView] = useState<View>("home");
   const [selectedAgent, setSelectedAgent] = useState("");
   const [scenario, setScenario] = useState("medicare_aep_reluctant");
   const [difficulty, setDifficulty] = useState("medium");
   const [result, setResult] = useState<any>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [practiceMessages]);
+
+  const handleStartPractice = async () => {
+    setPracticeMessages([]);
+    setPracticeEnded(false);
+    setPracticeInput("");
+    const data = await practiceStart.mutateAsync({ scenario, difficulty });
+    setPracticeSessionId(data.session_id);
+    setPracticeMessages([{ speaker: "Lead", content: data.lead_message }]);
+    setView("practicing");
+  };
+
+  const handleSendPracticeMessage = async () => {
+    if (!practiceInput.trim() || !practiceSessionId || practiceEnded) return;
+    const userMsg = practiceInput.trim();
+    setPracticeInput("");
+    const newMessages: ConversationTurn[] = [...practiceMessages, { speaker: "You", content: userMsg }];
+    setPracticeMessages(newMessages);
+
+    const history = newMessages.map((m) => ({
+      role: m.speaker === "You" ? "user" : "assistant",
+      content: m.content,
+    }));
+
+    const data = await practiceTurn.mutateAsync({
+      session_id: practiceSessionId,
+      user_message: userMsg,
+      conversation_history: history,
+      scenario,
+      difficulty,
+    });
+
+    const withLead: ConversationTurn[] = [...newMessages, { speaker: "Lead", content: data.lead_message }];
+    setPracticeMessages(withLead);
+    if (data.is_call_ended) setPracticeEnded(true);
+  };
+
+  const handleEndPractice = async () => {
+    if (!practiceSessionId) return;
+    setPracticeEnded(true);
+    const data = await practiceFinish.mutateAsync({
+      session_id: practiceSessionId,
+      transcript: practiceMessages,
+      scenario,
+    });
+    setResult({ ...data, scenario, difficulty, mode: "practice_yourself" });
+    setView("result");
+  };
 
   const activeAgents = agents?.filter(a => a.status === "active" || a.status === "draft") || [];
 
@@ -93,7 +156,7 @@ export default function Training() {
             </CardContent>
           </Card>
 
-          <Card className="hover:border-primary/40 transition-colors cursor-pointer opacity-60">
+          <Card className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => setView("setup_practice")}>
             <CardContent className="p-6 text-center space-y-3">
               <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
                 <Target className="h-6 w-6 text-primary" />
@@ -102,7 +165,7 @@ export default function Training() {
               <p className="text-sm text-muted-foreground">
                 YOU handle the call. The AI acts as a difficult lead and scores your responses.
               </p>
-              <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+              <Button variant="outline" className="w-full">Start Practice</Button>
             </CardContent>
           </Card>
 
@@ -362,6 +425,150 @@ export default function Training() {
             </CardContent>
           </Card>
         )}
+      </div>
+    );
+  }
+
+  // SETUP PRACTICE YOURSELF
+  if (view === "setup_practice") {
+    return (
+      <div className="space-y-6 max-w-xl">
+        <button onClick={() => setView("home")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to Training Center
+        </button>
+        <h2 className="text-xl font-bold text-foreground">Practice Yourself</h2>
+        <p className="text-sm text-muted-foreground">
+          You play the sales agent. Type your responses and the AI will act as a realistic lead. At the end, you'll receive a full score and feedback.
+        </p>
+        <Card>
+          <CardContent className="p-6 space-y-5">
+            <div>
+              <Label>Lead Scenario</Label>
+              <Select value={scenario} onValueChange={setScenario}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SCENARIOS.map(s => (
+                    <SelectItem key={s.value} value={s.value}>
+                      <div>
+                        <span>{s.label}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{s.desc}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Difficulty</Label>
+              <Select value={difficulty} onValueChange={setDifficulty}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DIFFICULTIES.map(d => (
+                    <SelectItem key={d.value} value={d.value}>
+                      <div>
+                        <span>{d.label}</span>
+                        <span className="text-xs text-muted-foreground ml-2">— {d.desc}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={handleStartPractice}
+              disabled={practiceStart.isPending}
+              className="w-full"
+            >
+              {practiceStart.isPending
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Starting Call…</>
+                : <><Play className="h-4 w-4 mr-2" />Start Practice Call</>}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // PRACTICING — interactive chat
+  if (view === "practicing") {
+    const scenarioLabel = SCENARIOS.find(s => s.value === scenario)?.label ?? scenario;
+    const isLoading = practiceTurn.isPending || practiceFinish.isPending;
+
+    return (
+      <div className="space-y-4 max-w-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Live Practice Call</h2>
+            <p className="text-sm text-muted-foreground">{scenarioLabel} · {difficulty}</p>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleEndPractice}
+            disabled={isLoading || practiceMessages.length < 2}
+          >
+            {practiceFinish.isPending
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Scoring…</>
+              : <><PhoneOff className="h-4 w-4 mr-1" />End Call & Score</>}
+          </Button>
+        </div>
+
+        {practiceEnded && !practiceFinish.isPending && (
+          <div className="flex items-center gap-2 text-sm bg-muted text-muted-foreground p-3 rounded-lg">
+            <AlertTriangle className="h-4 w-4" />
+            The call has ended. Click "End Call &amp; Score" to see your results.
+          </div>
+        )}
+
+        <Card className="flex flex-col" style={{ height: "55vh" }}>
+          <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
+            {practiceMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.speaker === "You" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[75%] rounded-lg px-4 py-2 ${
+                  msg.speaker === "You"
+                    ? "bg-primary/10 text-foreground"
+                    : "bg-secondary text-foreground"
+                }`}>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{msg.speaker}</p>
+                  <p className="text-sm">{msg.content}</p>
+                </div>
+              </div>
+            ))}
+            {(practiceTurn.isPending) && (
+              <div className="flex justify-start">
+                <div className="bg-secondary rounded-lg px-4 py-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Lead</p>
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-2">
+          <Input
+            placeholder="Type your response as the sales agent…"
+            value={practiceInput}
+            onChange={(e) => setPracticeInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendPracticeMessage();
+              }
+            }}
+            disabled={isLoading || practiceEnded}
+          />
+          <Button
+            onClick={handleSendPracticeMessage}
+            disabled={isLoading || !practiceInput.trim() || practiceEnded}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground text-center">
+          Press Enter or click Send to respond. Click "End Call &amp; Score" when you're done.
+        </p>
       </div>
     );
   }

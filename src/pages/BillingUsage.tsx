@@ -12,9 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useBillingHistory } from "@/hooks/use-billing-history";
 import { STRIPE_PLANS, CREDIT_PACKAGES, getPlanByProductId } from "@/lib/stripe-config";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown, Loader2, Coins, RefreshCw, AlertTriangle, XCircle } from "lucide-react";
+import { CreditCard, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown, Loader2, Coins, RefreshCw, AlertTriangle, XCircle, ExternalLink } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 const planFeatures: Record<string, string[]> = {
@@ -63,6 +64,7 @@ export default function BillingUsage() {
   const updateSettings = useUpdateBillingSettings();
   const { toast } = useToast();
   const subscription = useSubscription();
+  const { data: billingHistory, isLoading: historyLoading } = useBillingHistory();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [creditLoading, setCreditLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -470,13 +472,46 @@ export default function BillingUsage() {
         </p>
       </div>
 
-      {/* Section 6: Purchase History (placeholder until transactions exist) */}
+      {/* Section 6: Purchase History */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Purchase History</CardTitle>
+          <CardTitle className="text-lg">Credit Purchase History</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">Credit purchase history will appear here after your first purchase.</p>
+        <CardContent className="p-0">
+          {historyLoading ? (
+            <div className="p-6"><Skeleton className="h-20 w-full" /></div>
+          ) : !billingHistory?.purchases?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Credit purchase history will appear here after your first purchase.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {billingHistory.purchases.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(p.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-sm">{p.description}</TableCell>
+                    <TableCell className="text-sm font-medium">
+                      ${p.amount.toFixed(2)} {p.currency}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize bg-success/10 text-success border-0">
+                        {p.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -485,10 +520,71 @@ export default function BillingUsage() {
         <CardHeader>
           <CardTitle className="text-lg">Subscription Invoices</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Subscription invoices will appear here after your first billing cycle. Use "Manage Payment Method" to access full invoice history.
-          </p>
+        <CardContent className="p-0">
+          {historyLoading ? (
+            <div className="p-6"><Skeleton className="h-20 w-full" /></div>
+          ) : !billingHistory?.invoices?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Subscription invoices will appear here after your first billing cycle. Use "Manage Payment Method" to access full invoice history.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {billingHistory.invoices.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="text-sm font-mono text-muted-foreground">{inv.number ?? inv.id.slice(0, 12)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {inv.period_start && inv.period_end
+                        ? `${new Date(inv.period_start).toLocaleDateString()} – ${new Date(inv.period_end).toLocaleDateString()}`
+                        : inv.date ? new Date(inv.date).toLocaleDateString() : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">
+                      ${inv.amount.toFixed(2)} {inv.currency}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className={`capitalize border-0 ${inv.status === "paid" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}
+                      >
+                        {inv.status ?? "—"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {inv.invoice_pdf && (
+                        <a
+                          href={inv.invoice_pdf}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <Download className="h-3 w-3" /> PDF
+                        </a>
+                      )}
+                      {!inv.invoice_pdf && inv.hosted_invoice_url && (
+                        <a
+                          href={inv.hosted_invoice_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" /> View
+                        </a>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
