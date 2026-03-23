@@ -41,9 +41,14 @@ serve(async (req) => {
       const toolCall = toolCallList[i];
       const vapiToolRef = toolWithToolCallList[i];
       const functionName = toolCall.function?.name || toolCall.name;
-      const args = typeof toolCall.function?.arguments === "string"
-        ? JSON.parse(toolCall.function.arguments)
-        : (toolCall.function?.arguments || toolCall.arguments || {});
+      let args: Record<string, unknown> = {};
+      try {
+        args = typeof toolCall.function?.arguments === "string"
+          ? JSON.parse(toolCall.function.arguments)
+          : (toolCall.function?.arguments || toolCall.arguments || {});
+      } catch {
+        args = {};
+      }
       const toolCallId = toolCall.id;
 
       try {
@@ -157,6 +162,18 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("tool-webhook-handler fatal error:", err);
+    // Best-effort: log to DB so operators can see fatal handler failures
+    try {
+      const adminClient = createAdminClient();
+      await adminClient.from("tool_activity_log").insert({
+        tenant_id: null,
+        tool_id: null,
+        call_id: null,
+        status: "failed",
+        summary: "Fatal handler error — request could not be processed",
+        error_message: err instanceof Error ? err.message : String(err),
+      });
+    } catch { /* ignore secondary failure */ }
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 200, // Return 200 to prevent VAPI retries
       headers: { ...corsHeaders, "Content-Type": "application/json" },

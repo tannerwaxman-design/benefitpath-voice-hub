@@ -141,6 +141,7 @@ export default function Forge() {
           await forgeAgent(config);
         } catch (e) {
           console.error("Failed to parse agent config:", e);
+          toast.error("The AI returned an unreadable configuration. Please try again.");
         }
       }
     } catch (err) {
