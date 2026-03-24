@@ -238,6 +238,16 @@ export default function AgentEditor() {
     return <AgentTemplatePicker onSelect={applyTemplate} />;
   }
 
+  const isSaving = createAgent.isPending || updateAgent.isPending;
+  const hasUnsaved = initialized && !isSaving;
+
+  useEffect(() => {
+    if (!hasUnsaved) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsaved]);
+
   if (isLoading && !isNew) {
     return (
       <div className="space-y-6">
