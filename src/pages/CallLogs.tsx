@@ -175,10 +175,10 @@ export default function CallLogs() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-secondary/50">
-                    {["", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Score", "Review", ""].map((h, i) => (
-                      <th key={i} className="px-4 py-3 text-left section-label">{h}</th>
-                    ))}
+                   <tr className="bg-secondary/50">
+                     {["", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Score", "Review", ...(showSoaColumn ? ["SOA"] : []), ""].map((h, i) => (
+                       <th key={i} className="px-4 py-3 text-left section-label">{h}</th>
+                     ))}
                   </tr>
                 </thead>
                 <tbody>
