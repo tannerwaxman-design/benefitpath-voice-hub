@@ -58,12 +58,26 @@ export default function CallLogs() {
   const { data: calls, isLoading, isError, refetch } = useCalls({ outcome: outcomeFilter, direction: directionFilter, search, limit: 200 });
   const showSkeleton = useDelayedLoading(isLoading);
 
-  const paged = useMemo(() => {
-    const list = calls || [];
-    return list.slice(page * perPage, (page + 1) * perPage);
-  }, [calls, page]);
+  const filteredCalls = useMemo(() => {
+    let list = calls || [];
+    if (soaFilter !== "all") {
+      list = list.filter((c: any) => {
+        const isNonContact = ["voicemail", "no_answer", "busy", "failed"].includes(c.outcome);
+        const agentSoaEnabled = c.agents?.soa_enabled;
+        if (soaFilter === "confirmed") return c.soa_collected && c.soa_consent_given === true;
+        if (soaFilter === "declined") return c.soa_collected && c.soa_consent_given === false;
+        if (soaFilter === "not_collected") return agentSoaEnabled && !c.soa_collected && !isNonContact;
+        return true;
+      });
+    }
+    return list;
+  }, [calls, soaFilter]);
 
-  const totalPages = Math.ceil((calls?.length || 0) / perPage);
+  const paged = useMemo(() => {
+    return filteredCalls.slice(page * perPage, (page + 1) * perPage);
+  }, [filteredCalls, page]);
+
+  const totalPages = Math.ceil(filteredCalls.length / perPage);
 
   function formatDuration(s: number | null) {
     if (!s) return "0:00";
