@@ -91,9 +91,9 @@ export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelPr
       const VapiModule = await import("@vapi-ai/web");
       const Vapi = VapiModule.default;
 
-      // Fetch public key from env (set via edge function response or env var)
-      const vapiPublicKey = import.meta.env.VITE_VAPI_PUBLIC_KEY;
-      if (!vapiPublicKey) throw new Error("VAPI public key not configured");
+      // Use the public key returned by the edge function
+      const vapiPublicKey = data.vapi_public_key;
+      if (!vapiPublicKey) throw new Error("VAPI public key not returned by server");
 
       const vapi = new Vapi(vapiPublicKey);
       vapiRef.current = vapi;
