@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, FlaskConical, GripVertical, Loader2, MessageSquare, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AgentTestPanel } from "@/components/agents/AgentTestPanel";
+import { VoiceTestPanel } from "@/components/agents/VoiceTestPanel";
 import { AbTestField } from "@/components/agents/AbTestField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense } from "react";
