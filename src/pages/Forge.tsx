@@ -172,7 +172,7 @@ export default function Forge() {
       ]);
     }
     setIsThinking(false);
-  }, [forgeAgentRef]);
+  }, [forgeAgent]);
 
   const sendMessage = (text: string) => {
     if (!text.trim() || isThinking) return;
