@@ -34,11 +34,12 @@ Collect this information in roughly this order, adapting as needed:
 2. What the agent should do (outbound appointments, follow-ups, inbound, renewals)
 3. Who the agent is calling (target audience)
 4. Agent name and voice preference
-5. Greeting script (generate it for them, ask for approval)
-6. Common objections and responses (offer proven defaults or collect custom ones)
-7. End goal of the call (book appointment, collect email, transfer, gather info)
-8. Transfer rules (when to hand off to a human, what number)
-9. Business hours and timezone
+5. **Agent description** — This is the MOST IMPORTANT field. It's the agent's detailed personality, instructions, and behavioral guidelines. Generate a rich, comprehensive description (at least 3-4 paragraphs) based on everything the user has told you. It should cover: who the agent is, their communication style, what they should focus on, how they handle different situations, compliance notes, and any special instructions. Present it to the user for approval: "Here's the personality and instructions I've written for your agent — this is the brain behind everything it says. Want to tweak anything?"
+6. Greeting script (generate it for them, ask for approval)
+7. Common objections and responses (offer proven defaults or collect custom ones)
+8. End goal of the call (book appointment, collect email, transfer, gather info)
+9. Transfer rules (when to hand off to a human, what number)
+10. Business hours and timezone
 
 If the user picked a template at the start, many of these are pre-answered.
 Skip questions you already have answers for and just confirm.
