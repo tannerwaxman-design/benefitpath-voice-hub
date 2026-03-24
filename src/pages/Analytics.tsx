@@ -170,7 +170,21 @@ export default function Analytics() {
               <SelectItem value="90">Last 90 Days</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => toast({ title: "Report exported!" })}><Download className="h-4 w-4 mr-2" /> Export</Button>
+          <Button variant="outline" onClick={() => {
+            const rows = [["Date", "Total Calls", "Connected", "Connect Rate %"]];
+            for (const d of volumeData) {
+              rows.push([d.date, String(d.calls), String(d.connected), String(d.connectRate)]);
+            }
+            const csv = rows.map(r => r.join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `analytics-${dateRange}d-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast({ title: "Report exported!" });
+          }}><Download className="h-4 w-4 mr-2" /> Export</Button>
         </div>
       </div>
 

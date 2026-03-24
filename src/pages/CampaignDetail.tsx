@@ -1,8 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useCampaignDetail, useCampaignContacts, useCampaignCalls, useCampaignDailyStats } from "@/hooks/use-campaign-detail";
-
-type CampaignDetail = NonNullable<ReturnType<typeof useCampaignDetail>["data"]>;
+import { useCampaignDetail, useCampaignContacts, useCampaignCalls, useCampaignDailyStats, useCampaignRealtime } from "@/hooks/use-campaign-detail";
 import { useLaunchCampaign } from "@/hooks/use-campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -95,7 +93,7 @@ function CallActivityTab({ campaignId }: { campaignId: string }) {
               </tr>
             </thead>
             <tbody>
-              {calls.map((call, i: number) => (
+              {calls.map((call: any, i: number) => (
                 <tr
                   key={call.id}
                   className={`border-t hover:bg-secondary/20 cursor-pointer ${i % 2 ? "bg-secondary/10" : ""}`}
@@ -190,7 +188,7 @@ function ContactsTab({ campaignId }: { campaignId: string }) {
                 </tr>
               </thead>
               <tbody>
-                {contacts.map((cc, i: number) => {
+                {contacts.map((cc: any, i: number) => {
                   const contact = cc.contacts;
                   const name = contact ? `${contact.first_name} ${contact.last_name}` : "Unknown";
                   const phone = contact?.phone || "—";
@@ -234,7 +232,7 @@ function ContactsTab({ campaignId }: { campaignId: string }) {
 }
 
 // ── PERFORMANCE TAB ──
-function PerformanceTab({ campaignId, campaign }: { campaignId: string; campaign: CampaignDetail }) {
+function PerformanceTab({ campaignId, campaign }: { campaignId: string; campaign: any }) {
   const { data: stats, isLoading } = useCampaignDailyStats(campaignId);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
@@ -356,7 +354,7 @@ function PerformanceTab({ campaignId, campaign }: { campaignId: string; campaign
 }
 
 // ── SETTINGS TAB ──
-function SettingsTab({ campaign }: { campaign: CampaignDetail }) {
+function SettingsTab({ campaign }: { campaign: any }) {
   const navigate = useNavigate();
 
   const callingDays = Array.isArray(campaign.calling_days)
@@ -438,6 +436,7 @@ export default function CampaignDetail() {
   const navigate = useNavigate();
   const { data: campaign, isLoading } = useCampaignDetail(id);
   const launchCampaign = useLaunchCampaign();
+  useCampaignRealtime(id);
 
   if (isLoading) {
     return (
@@ -495,7 +494,7 @@ export default function CampaignDetail() {
             <p className="text-sm text-muted-foreground mb-2">{campaign.description}</p>
           )}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>Agent: <span className="text-foreground font-medium">{campaign.agents?.agent_name || "—"}</span></span>
+            <span>Agent: <span className="text-foreground font-medium">{(campaign as any).agents?.agent_name || "—"}</span></span>
             <span>Contacts: <span className="text-foreground font-medium">{campaign.total_contacts}</span></span>
             {campaign.actual_start && (
               <span>Started: <span className="text-foreground font-medium">{formatDate(campaign.actual_start)}</span></span>
