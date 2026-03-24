@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
     const promptInput = {
       agent_name: body.agent_name,
       agent_title: body.agent_title || null,
-      company_name_override: body.company_name_override || null,
+      company_name_override: body.company_name_override || body.company_name || null,
       tone: body.tone || "professional",
       enthusiasm_level: body.enthusiasm_level || 6,
       filler_words_enabled: body.filler_words_enabled ?? true,
@@ -228,7 +228,7 @@ Deno.serve(async (req: Request) => {
 
         agent_name: body.agent_name,
         agent_title: body.agent_title || null,
-        company_name_override: body.company_name_override || null,
+        company_name_override: body.company_name_override || body.company_name || null,
         industry: body.industry || tenant.industry,
         description: body.description || null,
         status: body.status || "draft",
@@ -272,7 +272,7 @@ Deno.serve(async (req: Request) => {
         amd_enabled: body.amd_enabled ?? true,
         amd_action: body.amd_action || "leave_voicemail",
 
-        business_hours: body.business_hours || {},
+        business_hours: body.business_hours || body.calling_hours || {},
         timezone: body.timezone || tenant.default_timezone,
         call_direction: body.call_direction || "outbound",
         inbound_greeting: body.inbound_greeting || null,

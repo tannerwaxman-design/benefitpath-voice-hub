@@ -42,6 +42,7 @@ export default function Forge() {
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isForging, setIsForging] = useState(false);
+  const [forgedAgentId, setForgedAgentId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const plan = user?.tenant?.plan || "voice_ai_starter";
@@ -143,6 +144,9 @@ export default function Forge() {
           console.error("Failed to parse agent config:", e);
           toast.error("The AI returned an unreadable configuration. Please try again.");
         }
+      } else if (assistantContent.includes("```json")) {
+        // Stream likely cut off mid-JSON
+        toast.error("The response was incomplete. Please try confirming again.");
       }
     } catch (err) {
       console.error(err);
@@ -152,21 +156,23 @@ export default function Forge() {
       ]);
     }
     setIsThinking(false);
-  }, []);
+  }, [forgeAgent]);
 
-  const forgeAgent = async (config: Record<string, unknown>) => {
+  const forgeAgent = useCallback(async (config: Record<string, unknown>) => {
     setIsForging(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-agent", {
         body: config,
       });
       if (error) throw error;
+      const agentId = data?.agent?.id;
+      if (agentId) setForgedAgentId(agentId);
       toast.success(`${config.agent_name} has been forged!`);
     } catch (err: unknown) {
       toast.error("Failed to forge agent: " + (err instanceof Error ? err.message : "Unknown error"));
     }
     setIsForging(false);
-  };
+  }, []);
 
   const sendMessage = (text: string) => {
     if (!text.trim() || isThinking) return;
@@ -197,7 +203,11 @@ export default function Forge() {
       return;
     }
     if (label.includes("Fine-tune in editor") || label.includes("Fine-tune")) {
-      navigate("/agents");
+      navigate(forgedAgentId ? `/agents/${forgedAgentId}/edit` : "/agents");
+      return;
+    }
+    if (label.includes("Test call")) {
+      navigate(forgedAgentId ? `/agents/${forgedAgentId}/edit` : "/agents");
       return;
     }
     sendMessage(label);
