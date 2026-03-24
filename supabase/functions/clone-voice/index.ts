@@ -85,7 +85,18 @@ Deno.serve(async (req: Request) => {
           .eq("tenant_id", auth.tenantId);
       }
 
-      return errorResponse(`Voice cloning failed: ${errBody}`, 500);
+      // Return a user-friendly message — do not expose raw API response details
+      let userMessage: string;
+      if (elResponse.status === 422) {
+        userMessage = "Voice cloning failed: audio quality too low. Please record at least 15 seconds of clear speech with minimal background noise.";
+      } else if (elResponse.status === 401 || elResponse.status === 403) {
+        userMessage = "Voice cloning failed: the voice service API key is invalid or expired. Please contact support.";
+      } else if (elResponse.status === 429) {
+        userMessage = "Voice cloning is temporarily unavailable due to high demand. Please try again in a few minutes.";
+      } else {
+        userMessage = "Voice cloning failed. Please try again or contact support if the issue persists.";
+      }
+      return errorResponse(userMessage, 500);
     }
 
     const result = await elResponse.json();

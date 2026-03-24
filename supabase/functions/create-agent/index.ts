@@ -147,7 +147,7 @@ Deno.serve(async (req: Request) => {
 
       metadata: {
         benefitpath_tenant_id: auth.tenantId,
-        benefitpath_agent_id: "PLACEHOLDER",
+        benefitpath_agent_id: "" as string, // filled in after DB insert below
         environment: "production",
       },
 
@@ -214,28 +214,17 @@ Deno.serve(async (req: Request) => {
       ];
     }
 
-    // 8. Create the VAPI assistant
-    const vapiResult = await vapiRequest<{ id: string }>({
-      method: "POST",
-      endpoint: "/assistant",
-      body: vapiPayload,
-    });
-
-    if (!vapiResult.ok) {
-      console.error("Failed to create VAPI assistant:", vapiResult.error);
-    }
-
-    const vapiAssistantId = vapiResult.data?.id ?? null;
-
-    // 9. Save the agent to our database
+    // 8. Save the agent to our database FIRST so we have a real agent ID.
+    // This lets us embed the actual agent ID into VAPI metadata from the start,
+    // avoiding a race window where webhook events arrive with "PLACEHOLDER".
     const { data: agent, error: insertError } = await supabase
       .from("agents")
       .insert({
         tenant_id: auth.tenantId,
-        vapi_assistant_id: vapiAssistantId,
-        vapi_sync_status: vapiResult.ok ? "synced" : "error",
-        vapi_last_synced_at: vapiResult.ok ? new Date().toISOString() : null,
-        vapi_sync_error: vapiResult.ok ? null : vapiResult.error,
+        vapi_assistant_id: null,
+        vapi_sync_status: "pending",
+        vapi_last_synced_at: null,
+        vapi_sync_error: null,
 
         agent_name: body.agent_name,
         agent_title: body.agent_title || null,
@@ -314,30 +303,35 @@ Deno.serve(async (req: Request) => {
 
     if (insertError) {
       console.error("Failed to insert agent:", insertError);
-      // If DB insert fails but VAPI succeeded, clean up VAPI
-      if (vapiAssistantId) {
-        await vapiRequest({
-          method: "DELETE",
-          endpoint: `/assistant/${vapiAssistantId}`,
-        });
-      }
       return errorResponse("Failed to save agent: " + insertError.message, 500);
     }
 
-    // 10. Update VAPI assistant metadata with the real agent_id
-    if (vapiAssistantId && agent) {
-      await vapiRequest({
-        method: "PATCH",
-        endpoint: `/assistant/${vapiAssistantId}`,
-        body: {
-          metadata: {
-            benefitpath_tenant_id: auth.tenantId,
-            benefitpath_agent_id: agent.id,
-            environment: "production",
-          },
-        },
-      });
+    // 9. Now create the VAPI assistant using the real agent ID in metadata.
+    // No PLACEHOLDER — webhook events will always resolve to the correct agent.
+    (vapiPayload.metadata as Record<string, string>).benefitpath_agent_id = agent.id;
+
+    const vapiResult = await vapiRequest<{ id: string }>({
+      method: "POST",
+      endpoint: "/assistant",
+      body: vapiPayload,
+    });
+
+    if (!vapiResult.ok) {
+      console.error("Failed to create VAPI assistant:", vapiResult.error);
     }
+
+    const vapiAssistantId = vapiResult.data?.id ?? null;
+
+    // 10. Update the DB record with VAPI sync result
+    await supabase
+      .from("agents")
+      .update({
+        vapi_assistant_id: vapiAssistantId,
+        vapi_sync_status: vapiResult.ok ? "synced" : "error",
+        vapi_last_synced_at: vapiResult.ok ? new Date().toISOString() : null,
+        vapi_sync_error: vapiResult.ok ? null : vapiResult.error,
+      })
+      .eq("id", agent.id);
 
     // 11. Send notification about sync result
     const adminClient = createAdminClient();
