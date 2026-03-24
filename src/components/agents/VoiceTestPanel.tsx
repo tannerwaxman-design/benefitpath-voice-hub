@@ -22,6 +22,15 @@ interface VoiceTestPanelProps {
 
 type CallStatus = "idle" | "connecting" | "active" | "ended";
 
+interface StartWebTestCallResponse {
+  vapi_assistant_id?: string;
+  vapi_public_key?: string;
+  greeting?: string;
+  metadata?: Record<string, unknown>;
+  webCallUrl?: string;
+  web_call_url?: string;
+}
+
 export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelProps) {
   const { toast } = useToast();
   const [status, setStatus] = useState<CallStatus>("idle");
@@ -77,23 +86,31 @@ export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelPr
     setStatus("connecting");
     setTranscript([]);
     setDuration(0);
+    setMuted(false);
+    setAgentSpeaking(false);
 
     try {
-      // Get web call URL from our edge function
+      // Get voice test session details from the backend
       const { data, error } = await supabase.functions.invoke("start-web-test-call", {
         body: { agent_id: agentId, contact_name: contactName },
       });
 
       if (error) throw error;
-      if (!data?.vapi_assistant_id || !data?.vapi_public_key) {
-        throw new Error("Missing assistant ID or public key from server");
-      }
+      const response = (data ?? {}) as StartWebTestCallResponse;
+      const legacyWebCallUrl = response.webCallUrl || response.web_call_url;
 
       // Dynamically import VAPI Web SDK
       const VapiModule = await import("@vapi-ai/web");
       const Vapi = VapiModule.default;
 
-      const vapi = new Vapi(data.vapi_public_key);
+      const publicKey = response.vapi_public_key;
+      const assistantId = response.vapi_assistant_id;
+
+      if (!publicKey && !legacyWebCallUrl) {
+        throw new Error("Voice test is missing the public key from the backend.");
+      }
+
+      const vapi = new Vapi(publicKey);
       vapiRef.current = vapi;
 
       // Set up event listeners
@@ -128,10 +145,17 @@ export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelPr
 
       // Start the call — VAPI Web SDK creates and joins the web call client-side
       const callStartTime = Date.now();
-      await vapi.start(data.vapi_assistant_id, {
-        firstMessage: data.greeting,
-        metadata: data.metadata,
-      });
+
+      if (assistantId) {
+        await vapi.start(assistantId, {
+          firstMessage: response.greeting,
+          metadata: response.metadata,
+        });
+      } else if (legacyWebCallUrl) {
+        await vapi.start(legacyWebCallUrl);
+      } else {
+        throw new Error("Voice test configuration is incomplete.");
+      }
 
       setStatus("active");
 
@@ -159,6 +183,7 @@ export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelPr
     if (timerRef.current) clearInterval(timerRef.current);
     setStatus("ended");
     setAgentSpeaking(false);
+    setMuted(false);
   }, []);
 
   const toggleMute = useCallback(() => {
