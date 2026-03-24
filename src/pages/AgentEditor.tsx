@@ -705,6 +705,32 @@ export default function AgentEditor() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Test Button */}
+      {!isNew && id && (
+        <Button
+          className="fixed bottom-6 right-6 z-40 rounded-full h-12 px-5 shadow-lg"
+          onClick={() => { setTestAutoMessage(undefined); setShowTestPanel(true); }}
+        >
+          <FlaskConical className="h-4 w-4 mr-2" />
+          Test Agent
+        </Button>
+      )}
+
+      {/* Test Panel Sheet */}
+      <Sheet open={showTestPanel} onOpenChange={setShowTestPanel}>
+        <SheetContent side="right" className="w-[400px] sm:max-w-[400px] p-0 flex flex-col">
+          {id && id !== "new" && showTestPanel && (
+            <AgentTestPanel
+              agentId={id}
+              agentName={name || existingAgent?.agent_name || "Agent"}
+              greetingScript={greeting}
+              onClose={() => setShowTestPanel(false)}
+              autoSendMessage={testAutoMessage}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
