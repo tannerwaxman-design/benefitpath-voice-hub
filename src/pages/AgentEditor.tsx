@@ -715,7 +715,7 @@ export default function AgentEditor() {
         <DialogContent>
           <DialogHeader><DialogTitle>Test Call</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Enter your phone number and we'll call you with this agent. This is a free test call.</p>
+            <p className="text-sm text-muted-foreground">Enter your phone number and we'll call you with this agent. This uses your balance like a regular call.</p>
             <div>
               <Label>Your Phone Number</Label>
               <Input value={testPhoneNumber} onChange={e => setTestPhoneNumber(e.target.value)} placeholder="+15551234567" className="mt-1" />
