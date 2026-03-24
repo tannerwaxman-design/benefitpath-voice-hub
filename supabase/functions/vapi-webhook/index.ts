@@ -290,7 +290,7 @@ Deno.serve(async (req: Request) => {
           }
 
           // Track minutes (cost/credit deduction moved to end-of-call-report)
-          if (tenantId && !isTestCall) {
+          if (tenantId) {
             await supabase.rpc("increment_tenant_minutes", {
               p_tenant_id: tenantId,
               p_minutes: durationMinutes,
