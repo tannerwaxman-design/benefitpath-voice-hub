@@ -344,24 +344,16 @@ export default function AgentEditor() {
 
   const isSaving = createAgent.isPending || updateAgent.isPending;
   const hasUnsaved = initialized && !isSaving;
-  const blocker = useBlocker(hasUnsaved);
+
+  useEffect(() => {
+    if (!hasUnsaved) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsaved]);
 
   return (
     <div className="space-y-6">
-      <AlertDialog open={blocker.state === "blocked"} onOpenChange={() => blocker.reset?.()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => blocker.reset?.()}>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction onClick={() => blocker.proceed?.()}>Discard Changes</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       <div className="flex items-center gap-4">
         <button onClick={() => navigate("/agents")} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="page-title">{isNew ? "Create New Agent" : `Edit: ${existingAgent?.agent_name}`}</h1>
