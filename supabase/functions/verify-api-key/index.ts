@@ -113,7 +113,7 @@ serve(async (req) => {
   }
 });
 
-async function validateGHL(apiKey: string, locationId?: string): Promise<{ valid: boolean; error?: string; account_name?: string }> {
+async function validateGHL(apiKey: string, locationId?: string): Promise<{ valid: boolean; error?: string; account_name?: string; calendars?: { id: string; name: string }[] }> {
   if (!locationId) {
     return { valid: false, error: "Location ID is required for GoHighLevel. Find it in Settings → Business Info in your GHL sub-account." };
   }
@@ -130,7 +130,34 @@ async function validateGHL(apiKey: string, locationId?: string): Promise<{ valid
     );
 
     if (res.status === 200) {
-      return { valid: true, account_name: `GHL Location ${locationId.substring(0, 8)}...` };
+      // Fetch available calendars for this location
+      let calendars: { id: string; name: string }[] = [];
+      try {
+        const calRes = await fetch(
+          `https://services.leadconnectorhq.com/calendars/?locationId=${encodeURIComponent(locationId)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              Version: "2021-04-15",
+            },
+          }
+        );
+        if (calRes.ok) {
+          const calData = await calRes.json();
+          calendars = (calData.calendars || []).map((c: { id?: string; name?: string }) => ({
+            id: c.id || "",
+            name: c.name || "Unnamed Calendar",
+          }));
+        }
+      } catch {
+        // Calendar fetch is best-effort — don't fail validation
+      }
+
+      return {
+        valid: true,
+        account_name: `GHL Location ${locationId.substring(0, 8)}...`,
+        calendars,
+      };
     }
     if (res.status === 401) {
       return { valid: false, error: "Invalid API key. Double check your key in GHL Settings → API Keys." };

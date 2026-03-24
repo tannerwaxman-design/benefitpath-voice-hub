@@ -33,7 +33,8 @@ export const TOOL_TEMPLATES: ToolTemplate[] = [
       message_complete: "Great, you're all set! I've booked that appointment for you.",
       message_failed: "I wasn't able to book that right now, but I'll make sure someone follows up with you.",
       parameters: [
-        { name: "preferred_date", label: "Preferred date and time", ai_prompt: "What day works best for you?", type: "string", required: true, enabled: true },
+        { name: "preferred_date", label: "Preferred date", ai_prompt: "What day works best for you?", type: "string", required: true, enabled: true },
+        { name: "preferred_time", label: "Preferred time", ai_prompt: "What time works best for you?", type: "string", required: true, enabled: true },
         { name: "contact_name", label: "Contact name", ai_prompt: "May I have your full name?", type: "string", required: true, enabled: true },
         { name: "contact_phone", label: "Contact phone number", ai_prompt: "", type: "string", required: false, enabled: true },
         { name: "contact_email", label: "Contact email", ai_prompt: "What's the best email to send a confirmation to?", type: "string", required: false, enabled: true },

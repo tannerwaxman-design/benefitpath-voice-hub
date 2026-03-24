@@ -96,12 +96,16 @@ export function ApiKeysBar() {
         return;
       }
 
-      // Step 2: Save the key
+      // Step 2: Save the key (include calendars if returned)
       setVerifyStep("success");
+      const configToSave = { ...additionalConfig };
+      if (result.calendars && result.calendars.length > 0) {
+        configToSave.calendars = result.calendars;
+      }
       await connectMutation.mutateAsync({
         service: connectingService.id,
         api_key: apiKeyInput.trim(),
-        additional_config: additionalConfig,
+        additional_config: configToSave,
         display_name: result.account_name || connectingService.label,
       });
 

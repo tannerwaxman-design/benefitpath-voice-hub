@@ -236,19 +236,89 @@ async function logActivity(supabase: ReturnType<typeof createAdminClient>, tenan
 // SERVICE HANDLERS
 // ==========================================
 
+async function findOrCreateGHLContact(
+  apiKey: string,
+  locationId: unknown,
+  args: Record<string, unknown>,
+  serviceConfig: Record<string, unknown>,
+): Promise<string | null> {
+  // Search by phone first, then email
+  const searchQuery = args.contact_phone || args.phone || args.contact_email || args.email;
+  if (searchQuery) {
+    const searchRes = await fetchWithTimeout(
+      `https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&query=${encodeURIComponent(String(searchQuery))}&limit=1`,
+      { headers: { Authorization: `Bearer ${apiKey}`, Version: "2021-04-15" } }
+    );
+    if (searchRes.ok) {
+      const searchData = await searchRes.json();
+      const contact = searchData.contacts?.[0];
+      if (contact?.id) return contact.id;
+    }
+  }
+
+  // Not found — create a new contact
+  const contactName = String(args.contact_name || "");
+  const createRes = await fetchWithTimeout("https://services.leadconnectorhq.com/contacts/", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Version: "2021-04-15",
+    },
+    body: JSON.stringify({
+      locationId,
+      firstName: args.first_name || contactName.split(" ")[0] || "Lead",
+      lastName: args.last_name || contactName.split(" ").slice(1).join(" ") || "",
+      email: args.email || args.contact_email || undefined,
+      phone: args.phone || args.contact_phone || undefined,
+      tags: serviceConfig.tags
+        ? String(serviceConfig.tags).split(",").map((t: string) => t.trim())
+        : ["Voice AI Lead"],
+    }),
+  });
+
+  if (createRes.ok) {
+    const created = await createRes.json();
+    return created.contact?.id || null;
+  }
+  return null;
+}
+
 async function handleGHL(tool: Record<string, unknown>, apiKey: string, additionalConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const locationId = additionalConfig?.location_id;
   const template = tool.template;
-  const serviceConfig = tool.service_config || {};
+  const serviceConfig = (tool.service_config || {}) as Record<string, unknown>;
 
   if (template === "book_appointment" || template === "create_event") {
     const calendarId = serviceConfig.calendar_id;
     if (!calendarId) throw new Error("No calendar ID configured for this tool");
 
-    const startTime = args.preferred_date + "T" + (args.preferred_time || "10:00") + ":00";
+    // Find or create a GHL contact (required for appointment booking)
+    const contactId = await findOrCreateGHLContact(apiKey, locationId, args, serviceConfig);
+    if (!contactId) throw new Error("Could not find or create a contact in GHL for this appointment");
+
+    // Parse date and time — handle both split and combined formats
+    const dateStr = String(args.preferred_date || "");
+    const timeStr = String(args.preferred_time || "");
+    let startTimeISO: string;
+
+    if (timeStr) {
+      // Split format: separate date and time
+      startTimeISO = `${dateStr}T${timeStr.replace(/\s*(am|pm)/i, (_, p) => "")}:00`;
+    } else {
+      // Combined format or just date — default to 10:00
+      startTimeISO = dateStr.includes("T") ? dateStr : `${dateStr}T10:00:00`;
+    }
+
+    const timezone = String(serviceConfig.timezone || "America/New_York");
+    const durationMinutes = Number(serviceConfig.duration_minutes) || 30;
+
+    // Compute end time
+    const startDate = new Date(startTimeISO);
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
 
     const response = await fetchWithTimeout(
-      `https://services.leadconnectorhq.com/calendars/${calendarId}/appointments`,
+      "https://services.leadconnectorhq.com/calendars/events/appointments",
       {
         method: "POST",
         headers: {
@@ -259,7 +329,10 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
         body: JSON.stringify({
           calendarId,
           locationId,
-          startTime,
+          contactId,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+          selectedTimezone: timezone,
           title: `Appointment with ${args.contact_name || "Lead"}`,
           appointmentStatus: "confirmed",
         }),
@@ -267,13 +340,14 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
     );
 
     if (response.ok) {
-      return `Appointment booked successfully for ${args.preferred_date} at ${args.preferred_time || "10:00 AM"}. A confirmation will be sent.`;
+      return `Appointment booked successfully for ${args.preferred_date} at ${args.preferred_time || "10:00 AM"}. Duration: ${durationMinutes} minutes. A confirmation will be sent.`;
     }
     const error = await response.text();
     throw new Error(`GHL appointment booking failed: ${error}`);
   }
 
   if (template === "create_contact") {
+    const contactName = String(args.contact_name || "");
     const response = await fetchWithTimeout("https://services.leadconnectorhq.com/contacts/", {
       method: "POST",
       headers: {
@@ -283,11 +357,13 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
       },
       body: JSON.stringify({
         locationId,
-        firstName: args.first_name || args.contact_name?.split(" ")[0] || "",
-        lastName: args.last_name || args.contact_name?.split(" ").slice(1).join(" ") || "",
+        firstName: args.first_name || contactName.split(" ")[0] || "",
+        lastName: args.last_name || contactName.split(" ").slice(1).join(" ") || "",
         email: args.email || args.contact_email || undefined,
         phone: args.phone || args.contact_phone || undefined,
-        tags: serviceConfig.tags ? serviceConfig.tags.split(",").map((t: string) => t.trim()) : ["Voice AI Lead"],
+        tags: serviceConfig.tags
+          ? String(serviceConfig.tags).split(",").map((t: string) => t.trim())
+          : ["Voice AI Lead"],
       }),
     });
 
@@ -300,7 +376,7 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
   if (template === "update_contact") {
     // Look up contact by phone
     const searchRes = await fetchWithTimeout(
-      `https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&query=${encodeURIComponent(args.contact_phone)}&limit=1`,
+      `https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&query=${encodeURIComponent(String(args.contact_phone))}&limit=1`,
       { headers: { Authorization: `Bearer ${apiKey}`, Version: "2021-04-15" } }
     );
 
@@ -311,7 +387,7 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
         const updateRes = await fetchWithTimeout(`https://services.leadconnectorhq.com/contacts/${contact.id}`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", Version: "2021-04-15" },
-          body: JSON.stringify({ [args.field_to_update]: args.new_value }),
+          body: JSON.stringify({ [String(args.field_to_update)]: args.new_value }),
         });
         if (updateRes.ok) return "Contact record updated successfully.";
       }
@@ -321,8 +397,26 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
 
   // Generic GHL - send via workflow if configured
   if (serviceConfig.workflow_id) {
-    // Trigger workflow
-    return "Action completed via GHL workflow.";
+    const contactId = await findOrCreateGHLContact(apiKey, locationId, args, serviceConfig);
+    if (!contactId) throw new Error("Could not find or create a contact to trigger the workflow");
+
+    const workflowRes = await fetchWithTimeout(
+      `https://services.leadconnectorhq.com/contacts/${contactId}/workflow/${serviceConfig.workflow_id}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Version: "2021-04-15",
+        },
+        body: JSON.stringify({ eventStartTime: new Date().toISOString() }),
+      }
+    );
+
+    if (workflowRes.ok) {
+      return "Workflow triggered successfully.";
+    }
+    throw new Error(`GHL workflow trigger failed: ${await workflowRes.text()}`);
   }
 
   return "Action completed.";
@@ -330,16 +424,17 @@ async function handleGHL(tool: Record<string, unknown>, apiKey: string, addition
 
 async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args: Record<string, unknown>): Promise<string> {
   const template = tool.template;
-  const serviceConfig = tool.service_config || {};
+  const serviceConfig = (tool.service_config || {}) as Record<string, unknown>;
 
   if (template === "create_contact") {
+    const contactName = String(args.contact_name || "");
     const properties: Record<string, string> = {
-      firstname: args.first_name || args.contact_name?.split(" ")[0] || "",
-      lastname: args.last_name || args.contact_name?.split(" ").slice(1).join(" ") || "",
+      firstname: String(args.first_name || contactName.split(" ")[0] || ""),
+      lastname: String(args.last_name || contactName.split(" ").slice(1).join(" ") || ""),
     };
-    if (args.email || args.contact_email) properties.email = args.email || args.contact_email;
-    if (args.phone || args.contact_phone) properties.phone = args.phone || args.contact_phone;
-    if (serviceConfig.lifecycle_stage) properties.lifecyclestage = serviceConfig.lifecycle_stage;
+    if (args.email || args.contact_email) properties.email = String(args.email || args.contact_email);
+    if (args.phone || args.contact_phone) properties.phone = String(args.phone || args.contact_phone);
+    if (serviceConfig.lifecycle_stage) properties.lifecyclestage = String(serviceConfig.lifecycle_stage);
 
     const response = await fetchWithTimeout("https://api.hubapi.com/crm/v3/objects/contacts", {
       method: "POST",
@@ -361,7 +456,7 @@ async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         filterGroups: [{
-          filters: [{ propertyName: "phone", operator: "EQ", value: args.contact_phone }],
+          filters: [{ propertyName: "phone", operator: "EQ", value: String(args.contact_phone) }],
         }],
         limit: 1,
       }),
@@ -374,7 +469,7 @@ async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args
         const updateRes = await fetchWithTimeout(`https://api.hubapi.com/crm/v3/objects/contacts/${contactId}`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ properties: { [args.field_to_update]: args.new_value } }),
+          body: JSON.stringify({ properties: { [String(args.field_to_update)]: args.new_value } }),
         });
         if (updateRes.ok) return "Contact record updated in HubSpot.";
       }
@@ -387,9 +482,12 @@ async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args
 
 async function handleGoogleCalendar(tool: Record<string, unknown>, apiKey: string, serviceConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const calendarId = serviceConfig.calendar_id || "primary";
-  const duration = serviceConfig.duration_minutes || 30;
+  const duration = Number(serviceConfig.duration_minutes) || 30;
 
-  const startTime = new Date(`${args.preferred_date}T${args.preferred_time || "10:00"}:00`);
+  const dateStr = String(args.preferred_date || "");
+  const timeStr = String(args.preferred_time || "10:00");
+  const startTimeISO = dateStr.includes("T") ? dateStr : `${dateStr}T${timeStr}:00`;
+  const startTime = new Date(startTimeISO);
   const endTime = new Date(startTime.getTime() + duration * 60000);
 
   const eventBody: Record<string, unknown> = {
@@ -430,23 +528,25 @@ async function handleGoogleCalendar(tool: Record<string, unknown>, apiKey: strin
 }
 
 async function handleSalesforce(tool: Record<string, unknown>, apiKey: string, additionalConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
-  const instanceUrl = additionalConfig?.instance_url || "https://login.salesforce.com";
+  const instanceUrl = String(additionalConfig?.instance_url || "https://login.salesforce.com");
   const template = tool.template;
 
   if (template === "create_contact") {
+    const contactName = String(args.contact_name || "");
     const response = await fetchWithTimeout(`${instanceUrl}/services/data/v58.0/sobjects/Contact/`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        FirstName: args.first_name || args.contact_name?.split(" ")[0] || "",
-        LastName: args.last_name || args.contact_name?.split(" ").slice(1).join(" ") || "Unknown",
+        FirstName: String(args.first_name || contactName.split(" ")[0] || ""),
+        LastName: String(args.last_name || contactName.split(" ").slice(1).join(" ") || "Unknown"),
         Email: args.email || args.contact_email || undefined,
         Phone: args.phone || args.contact_phone || undefined,
       }),
     });
 
     if (response.ok) return `Contact created in Salesforce: ${args.contact_name || args.first_name || "New contact"}.`;
-    throw new Error("Salesforce contact creation failed");
+    const errText = await response.text();
+    throw new Error(`Salesforce contact creation failed: ${errText}`);
   }
 
   return "Action completed.";
