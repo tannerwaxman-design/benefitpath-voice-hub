@@ -28,9 +28,10 @@ const SERVICE_BADGES: Record<string, string> = {
 
 interface ToolListProps {
   onCreateNew: () => void;
+  onEdit?: (tool: Tool) => void;
 }
 
-export function ToolList({ onCreateNew }: ToolListProps) {
+export function ToolList({ onCreateNew, onEdit }: ToolListProps) {
   const { data: tools = [], isLoading } = useTools();
   const { data: agents = [] } = useAgents();
   const deleteTool = useDeleteTool();
@@ -91,6 +92,11 @@ export function ToolList({ onCreateNew }: ToolListProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {onEdit && (
+                      <DropdownMenuItem onClick={() => onEdit(tool)}>
+                        Edit
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => updateTool.mutate({ id: tool.id, status: tool.status === "active" ? "inactive" : "active" })}>
                       {tool.status === "active" ? "Deactivate" : "Activate"}
                     </DropdownMenuItem>

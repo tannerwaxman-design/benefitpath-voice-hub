@@ -1,19 +1,26 @@
 import { useState } from "react";
 import { ApiKeysBar } from "@/components/tools/ApiKeysBar";
 import { ToolList } from "@/components/tools/ToolList";
-import { ToolTemplatePicker, type ToolTemplate } from "@/components/tools/ToolTemplates";
+import { ToolTemplatePicker, type ToolTemplate, TOOL_TEMPLATES, BLANK_TEMPLATE } from "@/components/tools/ToolTemplates";
 import { ToolBuilder } from "@/components/tools/ToolBuilder";
 import { ToolActivityLog } from "@/components/tools/ToolActivityLog";
+import type { Tool } from "@/hooks/use-tools";
 
-type View = "list" | "templates" | "builder";
+type View = "list" | "templates" | "builder" | "edit";
 
 export default function Tools() {
   const [view, setView] = useState<View>("list");
   const [selectedTemplate, setSelectedTemplate] = useState<ToolTemplate | null>(null);
+  const [editingTool, setEditingTool] = useState<Tool | null>(null);
 
   const handleSelectTemplate = (template: ToolTemplate) => {
     setSelectedTemplate(template);
     setView("builder");
+  };
+
+  const handleEditTool = (tool: Tool) => {
+    setEditingTool(tool);
+    setView("edit");
   };
 
   return (
@@ -32,7 +39,7 @@ export default function Tools() {
       {/* Views */}
       {view === "list" && (
         <>
-          <ToolList onCreateNew={() => setView("templates")} />
+          <ToolList onCreateNew={() => setView("templates")} onEdit={handleEditTool} />
           <ToolActivityLog />
         </>
       )}
@@ -46,6 +53,15 @@ export default function Tools() {
           template={selectedTemplate}
           onBack={() => { setView("templates"); setSelectedTemplate(null); }}
           onSaved={() => { setView("list"); setSelectedTemplate(null); }}
+        />
+      )}
+
+      {view === "edit" && editingTool && (
+        <ToolBuilder
+          template={TOOL_TEMPLATES.find((t) => t.id === editingTool.template) || BLANK_TEMPLATE}
+          existingTool={editingTool}
+          onBack={() => { setView("list"); setEditingTool(null); }}
+          onSaved={() => { setView("list"); setEditingTool(null); }}
         />
       )}
     </div>

@@ -15,7 +15,7 @@ export function ToolActivityLog() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tool_activity_log")
-        .select("*")
+        .select("*, tools(name)")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -57,7 +57,6 @@ export function ToolActivityLog() {
                   <TableHead>Tool</TableHead>
                   <TableHead>Call ID</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Duration</TableHead>
                   <TableHead>Details</TableHead>
                 </TableRow>
               </TableHeader>
@@ -68,7 +67,7 @@ export function ToolActivityLog() {
                       {new Date(log.created_at).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-sm font-medium text-foreground">
-                      {log.tool_name || "Unknown"}
+                      {log.tools?.name || "Unknown"}
                     </TableCell>
                     <TableCell className="text-xs font-mono text-muted-foreground">
                       {log.call_id ? log.call_id.slice(0, 8) + "..." : "-"}
@@ -78,9 +77,9 @@ export function ToolActivityLog() {
                         <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-0 gap-1">
                           <CheckCircle2 className="h-3 w-3" /> Success
                         </Badge>
-                      ) : log.status === "error" ? (
+                      ) : log.status === "failed" ? (
                         <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border-0 gap-1">
-                          <XCircle className="h-3 w-3" /> Error
+                          <XCircle className="h-3 w-3" /> Failed
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="text-[10px] gap-1">
@@ -88,11 +87,8 @@ export function ToolActivityLog() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {log.duration_ms ? `${log.duration_ms}ms` : "-"}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                      {log.error_message || (log.response_preview ? log.response_preview.slice(0, 100) : "-")}
+                    <TableCell className="text-xs text-muted-foreground max-w-[250px] truncate">
+                      {log.status === "failed" ? (log.error_message || log.summary || "-") : (log.summary || "-")}
                     </TableCell>
                   </TableRow>
                 ))}

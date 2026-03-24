@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToolPreview } from "./ToolPreview";
 import type { ToolTemplate } from "./ToolTemplates";
 import type { ToolParameter } from "@/hooks/use-tools";
-import { useToolApiKeys, useCreateTool, useAssignToolToAgents } from "@/hooks/use-tools";
+import { useToolApiKeys, useCreateTool, useUpdateTool, useAssignToolToAgents, type Tool } from "@/hooks/use-tools";
 import { useAgents } from "@/hooks/use-agents";
+import { supabase } from "@/integrations/supabase/client";
 
 const SERVICE_OPTIONS = [
   { value: "ghl", label: "GoHighLevel" },
@@ -23,27 +24,30 @@ const SERVICE_OPTIONS = [
 
 interface ToolBuilderProps {
   template: ToolTemplate;
+  existingTool?: Tool;
   onBack: () => void;
   onSaved: () => void;
 }
 
-export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
+export function ToolBuilder({ template, existingTool, onBack, onSaved }: ToolBuilderProps) {
+  const isEditing = !!existingTool;
   const { data: apiKeys = [] } = useToolApiKeys();
   const { data: agents = [] } = useAgents();
   const createTool = useCreateTool();
+  const updateTool = useUpdateTool();
   const assignTool = useAssignToolToAgents();
 
   const connectedServices = new Set(apiKeys.map((k) => k.service));
 
-  const [name, setName] = useState(template.name);
-  const [description, setDescription] = useState(template.defaults.description);
-  const [messageStart, setMessageStart] = useState(template.defaults.message_start);
-  const [messageComplete, setMessageComplete] = useState(template.defaults.message_complete);
-  const [messageFailed, setMessageFailed] = useState(template.defaults.message_failed);
-  const [service, setService] = useState(template.defaultService);
-  const [parameters, setParameters] = useState<ToolParameter[]>(template.defaults.parameters);
-  const [serviceConfig, setServiceConfig] = useState<Record<string, unknown>>({});
-  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [name, setName] = useState(existingTool?.name || template.name);
+  const [description, setDescription] = useState(existingTool?.description || template.defaults.description);
+  const [messageStart, setMessageStart] = useState(existingTool?.message_start || template.defaults.message_start);
+  const [messageComplete, setMessageComplete] = useState(existingTool?.message_complete || template.defaults.message_complete);
+  const [messageFailed, setMessageFailed] = useState(existingTool?.message_failed || template.defaults.message_failed);
+  const [service, setService] = useState(existingTool?.service || template.defaultService);
+  const [parameters, setParameters] = useState<ToolParameter[]>(existingTool?.parameters || template.defaults.parameters);
+  const [serviceConfig, setServiceConfig] = useState<Record<string, unknown>>(existingTool?.service_config || {});
+  const [selectedAgents, setSelectedAgents] = useState<string[]>(existingTool?.assigned_agent_ids || []);
   const [showAssign, setShowAssign] = useState(false);
 
   // Custom field
@@ -85,8 +89,10 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
 
   const [lastCreatedToolId, setLastCreatedToolId] = useState<string | null>(null);
 
+  const isSaving = createTool.isPending || updateTool.isPending;
+
   const handleSave = async (andAssign = false) => {
-    const savedTool = await createTool.mutateAsync({
+    const toolData = {
       name,
       description,
       template: template.id,
@@ -96,10 +102,37 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
       message_complete: messageComplete,
       message_failed: messageFailed,
       service_config: serviceConfig,
-      assigned_agent_ids: [],
-      status: "active",
-    });
-    setLastCreatedToolId(savedTool.id);
+    };
+
+    if (isEditing && existingTool) {
+      // Update existing tool in DB
+      const updated = await updateTool.mutateAsync({ id: existingTool.id, ...toolData });
+
+      // Sync to VAPI (delete old + create new)
+      try {
+        await supabase.functions.invoke("manage-tool", {
+          body: {
+            action: "update",
+            tool: { ...existingTool, ...toolData },
+            tool_id: existingTool.id,
+            vapi_tool_id: existingTool.vapi_tool_id,
+          },
+        });
+      } catch (e) {
+        console.error("VAPI tool update failed:", e);
+      }
+
+      setLastCreatedToolId(existingTool.id);
+    } else {
+      // Create new tool
+      const savedTool = await createTool.mutateAsync({
+        ...toolData,
+        assigned_agent_ids: [],
+        status: "active",
+      });
+      setLastCreatedToolId(savedTool.id);
+    }
+
     if (andAssign) {
       setShowAssign(true);
     } else {
@@ -157,7 +190,7 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
   return (
     <div className="space-y-8 max-w-3xl">
       <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to templates
+        <ArrowLeft className="h-4 w-4" /> {isEditing ? "Back to tools" : "Back to templates"}
       </button>
 
       {/* Section A: Basics */}
@@ -298,8 +331,66 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
         {service === "ghl" && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Calendar (optional)</Label>
-              <Input value={(serviceConfig.calendar_id as string) || ""} onChange={(e) => updateServiceConfig("calendar_id", e.target.value)} placeholder="Enter calendar ID" />
+              <Label>Calendar</Label>
+              {(() => {
+                const ghlKey = apiKeys.find((k) => k.service === "ghl");
+                const ghlCalendars = (ghlKey?.additional_config?.calendars || []) as { id: string; name: string }[];
+                if (ghlCalendars.length > 0) {
+                  return (
+                    <>
+                      <Select value={(serviceConfig.calendar_id as string) || ""} onValueChange={(v) => updateServiceConfig("calendar_id", v)}>
+                        <SelectTrigger><SelectValue placeholder="Select a calendar" /></SelectTrigger>
+                        <SelectContent>
+                          {ghlCalendars.map((cal) => (
+                            <SelectItem key={cal.id} value={cal.id}>{cal.name}</SelectItem>
+                          ))}
+                          <SelectItem value="__manual__">Enter manually...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {serviceConfig.calendar_id === "__manual__" && (
+                        <Input
+                          value={(serviceConfig._manual_calendar_id as string) || ""}
+                          onChange={(e) => {
+                            updateServiceConfig("_manual_calendar_id", e.target.value);
+                            updateServiceConfig("calendar_id", e.target.value);
+                          }}
+                          placeholder="Paste calendar ID"
+                          className="mt-2"
+                        />
+                      )}
+                    </>
+                  );
+                }
+                return (
+                  <Input value={(serviceConfig.calendar_id as string) || ""} onChange={(e) => updateServiceConfig("calendar_id", e.target.value)} placeholder="Enter calendar ID" />
+                );
+              })()}
+            </div>
+            <div className="space-y-2">
+              <Label>Appointment duration</Label>
+              <Select value={String(serviceConfig.duration_minutes || 30)} onValueChange={(v) => updateServiceConfig("duration_minutes", Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 minutes</SelectItem>
+                  <SelectItem value="30">30 minutes</SelectItem>
+                  <SelectItem value="45">45 minutes</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Timezone</Label>
+              <Select value={(serviceConfig.timezone as string) || "America/New_York"} onValueChange={(v) => updateServiceConfig("timezone", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="America/New_York">Eastern</SelectItem>
+                  <SelectItem value="America/Chicago">Central</SelectItem>
+                  <SelectItem value="America/Denver">Mountain</SelectItem>
+                  <SelectItem value="America/Los_Angeles">Pacific</SelectItem>
+                  <SelectItem value="America/Anchorage">Alaska</SelectItem>
+                  <SelectItem value="Pacific/Honolulu">Hawaii</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Pipeline (optional)</Label>
@@ -375,11 +466,11 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
 
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t">
-        <Button onClick={() => handleSave(false)} disabled={!name.trim() || createTool.isPending}>
-          {createTool.isPending ? "Saving..." : "Save Tool"}
+        <Button onClick={() => handleSave(false)} disabled={!name.trim() || isSaving}>
+          {isSaving ? "Saving..." : isEditing ? "Update Tool" : "Save Tool"}
         </Button>
-        <Button variant="secondary" onClick={() => handleSave(true)} disabled={!name.trim() || createTool.isPending}>
-          Save & Assign to Agent
+        <Button variant="secondary" onClick={() => handleSave(true)} disabled={!name.trim() || isSaving}>
+          {isEditing ? "Update & Reassign" : "Save & Assign to Agent"}
         </Button>
         <Button variant="ghost" onClick={onBack}>Cancel</Button>
       </div>

@@ -78,6 +78,42 @@ serve(async (req) => {
       });
     }
 
+    if (action === "update") {
+      const { tool: updatedTool, tool_id: updateToolId, vapi_tool_id: oldVapiToolId } = body;
+
+      // Delete old VAPI tool if it exists
+      if (oldVapiToolId) {
+        try {
+          await vapiRequest({ method: "DELETE", endpoint: `/tool/${oldVapiToolId}` });
+        } catch (e) {
+          console.warn("Failed to delete old VAPI tool during update:", e);
+        }
+      }
+
+      // Create new VAPI tool
+      const vapiPayload = buildVapiTool(updatedTool);
+      const vapiRes = await vapiRequest({
+        method: "POST",
+        endpoint: "/tool",
+        body: vapiPayload,
+      });
+
+      const newVapiToolId = vapiRes.ok && vapiRes.data ? (vapiRes.data as { id?: string }).id : null;
+
+      // Update the vapi_tool_id in the DB
+      if (updateToolId) {
+        await adminClient
+          .from("tools")
+          .update({ vapi_tool_id: newVapiToolId })
+          .eq("id", updateToolId);
+      }
+
+      return new Response(JSON.stringify({ success: true, vapi_tool_id: newVapiToolId }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "assign") {
       // Update VAPI assistant to include tool IDs
       const { assistant_id, tool_ids } = body;
@@ -189,6 +225,9 @@ function buildVapiTool(tool: Record<string, unknown>) {
       ...(tool.message_complete ? [{ type: "request-complete", content: tool.message_complete }] : []),
       ...(tool.message_failed ? [{ type: "request-failed", content: tool.message_failed }] : []),
     ],
-    server: { url: webhookUrl },
+    server: {
+      url: webhookUrl,
+      ...(Deno.env.get("VAPI_WEBHOOK_SECRET") ? { secret: Deno.env.get("VAPI_WEBHOOK_SECRET") } : {}),
+    },
   };
 }
