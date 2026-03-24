@@ -53,8 +53,8 @@ Deno.serve(async (req: Request) => {
         minute: "2-digit",
         hourCycle: "h23",
       }).formatToParts(now);
-      const localHour = parseInt(timeParts.find((p) => p.type === "hour")!.value, 10);
-      const localMinute = parseInt(timeParts.find((p) => p.type === "minute")!.value, 10);
+      const localHour = parseInt(timeParts.find((p) => p.type === "hour")?.value ?? "0", 10);
+      const localMinute = parseInt(timeParts.find((p) => p.type === "minute")?.value ?? "0", 10);
       const localMinutes = localHour * 60 + localMinute;
 
       // Parse "HH:MM" or "HH:MM:SS" window values to minutes-since-midnight
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Check calling days — use tenant timezone so day matches localTimeStr
+      // Check calling days — use tenant timezone so day matches local time
       const localDayName = now
         .toLocaleDateString("en-US", { timeZone: tz, weekday: "long" })
         .toLowerCase();
@@ -96,9 +96,14 @@ Deno.serve(async (req: Request) => {
       const slotsAvailable = maxConcurrent - (activeCalls || 0);
       if (slotsAvailable <= 0) continue;
 
-      // Check daily call limit
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      // Check daily call limit — compute tenant-local midnight
+      const todayLocalStr = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(now); // "YYYY-MM-DD" in tenant tz
+      const todayStart = new Date(`${todayLocalStr}T00:00:00`);
 
       const { count: todayCalls } = await supabase
         .from("calls")
@@ -133,7 +138,7 @@ Deno.serve(async (req: Request) => {
       // Smart Schedule: reorder contacts by current time slot score
       let orderedContacts = contactsToCall || [];
       if (campaign.smart_schedule_enabled && contactsToCall?.length) {
-        const currentHour = parseInt(localTimeStr.split(":")[0]);
+        const currentHour = localHour;
         const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
         const currentDay = dayNames.indexOf(localDayName);
         
@@ -151,6 +156,21 @@ Deno.serve(async (req: Request) => {
           console.log(`Campaign ${campaign.name}: Smart Schedule says avoid hour ${currentHour}, skipping`);
           continue;
         }
+      }
+
+      // Fetch phone number once before the loop (same for all contacts in this campaign)
+      const { data: phoneNumber } = await supabase
+        .from("phone_numbers")
+        .select("*")
+        .eq("tenant_id", campaign.tenant_id)
+        .eq("status", "active")
+        .order("is_default", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!phoneNumber) {
+        console.log(`Campaign ${campaign.name}: no active phone number, skipping`);
+        continue;
       }
 
       if (!orderedContacts?.length) {
@@ -193,20 +213,9 @@ Deno.serve(async (req: Request) => {
         const contact = (cc as Record<string, unknown>).contacts as Record<
           string,
           string
-        >;
+        > | null;
+        if (!contact) continue;
         const contactName = `${contact.first_name} ${contact.last_name}`;
-
-        // Get a phone number
-        const { data: phoneNumber } = await supabase
-          .from("phone_numbers")
-          .select("*")
-          .eq("tenant_id", campaign.tenant_id)
-          .eq("status", "active")
-          .order("is_default", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (!phoneNumber) continue;
 
         const personalizedGreeting = (
           (campaign.agents as Record<string, string>)?.greeting_script || ""

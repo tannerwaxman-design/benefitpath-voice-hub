@@ -143,7 +143,7 @@ Return ONLY commentary for the most important 8-15 moments. Not every line needs
     const commentary = parsed.comments || [];
 
     // Sort by timestamp
-    commentary.sort((a: { timestamp?: number }, b: { timestamp?: number }) => a.timestamp - b.timestamp);
+    commentary.sort((a: { timestamp?: number }, b: { timestamp?: number }) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
 
     // Cache on the call record
     await supabaseAdmin

@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
         { role: "user", content: user_message },
       ];
 
-      const resp = await fetch("https://api.lovable.app/v1/chat/completions", {
+      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -171,7 +171,7 @@ Also provide:
 
 Return ONLY valid JSON with keys: total_score, breakdown (object with each category), strengths (array), improvements (array), suggested_script (string).`;
 
-      const scoreResp = await fetch("https://api.lovable.app/v1/chat/completions", {
+      const scoreResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,

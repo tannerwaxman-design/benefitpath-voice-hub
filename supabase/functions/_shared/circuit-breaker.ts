@@ -11,7 +11,9 @@
  * All DB mutations are fire-and-forget; they never block the call result.
  */
 
-// deno-lint-ignore-file no-explicit-any
+import { createAdminClient } from "./supabase-admin.ts";
+
+type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 
 const FAILURE_THRESHOLD = 5;
 const CIRCUIT_OPEN_MS   = 60_000;   // 60 seconds before half-open probe
@@ -71,7 +73,7 @@ export function circuitState(record: {
  * Call after a successful external service response.
  * Resets failure_count to 0 and clears circuit_opened_at (closes the circuit).
  */
-export function recordCircuitSuccess(supabase: any, keyId: string): void {
+export function recordCircuitSuccess(supabase: SupabaseAdmin, keyId: string): void {
   supabase
     .from("tool_api_keys")
     .update({ failure_count: 0, circuit_opened_at: null })
@@ -86,7 +88,7 @@ export function recordCircuitSuccess(supabase: any, keyId: string): void {
  * Increments failure_count; opens the circuit once the threshold is crossed.
  */
 export function recordCircuitFailure(
-  supabase: any,
+  supabase: SupabaseAdmin,
   keyId: string,
   currentFailureCount: number,
 ): void {

@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
           level: "low_balance",
           credit_balance: tenant.credit_balance,
         }),
-      }).catch(() => {});
+      }).catch((err) => console.warn("Low-balance webhook failed:", err));
     }
 
     // Fetch agent
@@ -186,7 +186,7 @@ Deno.serve(async (req: Request) => {
     if (activeAbTests && activeAbTests.length > 0) {
       for (const abTest of activeAbTests) {
         const roll = Math.random() * 100;
-        const version = roll < (100 - abTest.traffic_split) ? "a" : "b";
+        const version = roll < abTest.traffic_split ? "a" : "b";
         abTestId = abTest.id;
         abTestVersion = version;
 
@@ -267,6 +267,16 @@ Deno.serve(async (req: Request) => {
 
     if (callErr) {
       console.error("Failed to create call record:", callErr);
+      // VAPI call was launched but DB record failed — return partial success with warning
+      return successResponse(
+        {
+          call_id: null,
+          vapi_call_id: vapiResult.data.id,
+          credit_balance: tenant.credit_balance,
+          warning: "Call launched but database record creation failed",
+        },
+        201
+      );
     }
 
     // Update campaign_contact status if applicable
