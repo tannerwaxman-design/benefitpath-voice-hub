@@ -163,7 +163,7 @@ export default function AgentEditor() {
     setKnowledgeBase(ea.knowledge_base_text || "");
     setVoicemailScript(ea.voicemail_script || "");
     setVoicemailEnabled(ea.voicemail_enabled);
-    setVoicemailMethod(ea.voicemail_method || "live");
+    setVoicemailMethod((ea.voicemail_method || "live") as "drop" | "live");
     setVoicemailAudioUrl(ea.voicemail_audio_url || null);
     setRecordCalls(ea.record_calls);
     setDisclosure(ea.play_disclosure);
