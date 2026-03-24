@@ -1,4 +1,4 @@
-import { corsHeaders } from "../_shared/cors-headers.ts";
+import { getAuthContext } from "../_shared/auth-helpers.ts";
 import { getAuthContext } from "../_shared/auth-helpers.ts";
 import { vapiRequest } from "../_shared/vapi-client.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
