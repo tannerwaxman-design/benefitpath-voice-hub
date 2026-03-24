@@ -719,7 +719,7 @@ export default function AgentEditor() {
 
       {/* Test Panel Sheet */}
       <Sheet open={showTestPanel} onOpenChange={setShowTestPanel}>
-        <SheetContent side="right" className="w-[400px] sm:max-w-[400px] p-0 flex flex-col">
+        <SheetContent side="right" className="w-[400px] sm:max-w-[400px] p-0 flex flex-col [&>button:last-child]:hidden">
           {id && id !== "new" && showTestPanel && (
             <AgentTestPanel
               agentId={id}
