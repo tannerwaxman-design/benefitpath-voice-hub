@@ -408,16 +408,16 @@ function WebhookConfigSection() {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    if (user?.tenant?.webhook_url) {
-      setWebhookUrl(user.tenant.webhook_url);
+    if ((user?.tenant as any)?.webhook_url) {
+      setWebhookUrl((user!.tenant as any).webhook_url);
     }
-  }, [user?.tenant?.webhook_url]);
+  }, [(user?.tenant as any)?.webhook_url]);
 
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase
       .from("tenants")
-      .update({ webhook_url: webhookUrl || null })
+      .update({ webhook_url: webhookUrl || null } as any)
       .eq("id", user?.tenant_id);
     setSaving(false);
     if (error) {

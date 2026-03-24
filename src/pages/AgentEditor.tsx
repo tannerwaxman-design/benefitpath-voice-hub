@@ -163,7 +163,7 @@ export default function AgentEditor() {
     setKnowledgeBase(ea.knowledge_base_text || "");
     setVoicemailScript(ea.voicemail_script || "");
     setVoicemailEnabled(ea.voicemail_enabled);
-    setVoicemailMethod(ea.voicemail_method || "live");
+    setVoicemailMethod((ea.voicemail_method || "live") as "drop" | "live");
     setVoicemailAudioUrl(ea.voicemail_audio_url || null);
     setRecordCalls(ea.record_calls);
     setDisclosure(ea.play_disclosure);
@@ -174,19 +174,19 @@ export default function AgentEditor() {
     setInboundGreeting(ea.inbound_greeting || "Thank you for calling. How can I help you today?");
     setAnswerAfterRings(ea.answer_after_rings ?? 2);
     setAfterHoursBehavior(ea.after_hours_behavior || "voicemail");
-    setVoiceSource(ea.voice_source || "preset");
+    setVoiceSource((ea.voice_source || "preset") as "cloned" | "preset");
     setClonedVoiceId(ea.cloned_voice_id || null);
     setVoiceCloneStatus(ea.voice_clone_status || null);
     setAfterHoursVoicemailMessage(ea.after_hours_voicemail_message || "");
     const flowData = ea.conversation_flow;
     if (flowData) {
-      setConversationFlow(flowData);
+      setConversationFlow(flowData as unknown as FlowData);
       setEditorMode("flow");
     }
     setSoaConfig({
       soa_enabled: ea.soa_enabled ?? false,
       soa_script: ea.soa_script || soaConfig.soa_script,
-      soa_plan_types: ea.soa_plan_types || soaConfig.soa_plan_types,
+      soa_plan_types: (ea.soa_plan_types || soaConfig.soa_plan_types) as string[],
       soa_timing: ea.soa_timing || "after_greeting",
     });
     setPostCallActions({
@@ -198,8 +198,8 @@ export default function AgentEditor() {
       post_call_sms_body: ea.post_call_sms_body || "",
       post_call_notification_enabled: ea.post_call_notification_enabled ?? false,
       post_call_notification_email: ea.post_call_notification_email || "",
-      post_call_notification_triggers: ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"],
-      post_call_notification_includes: ea.post_call_notification_includes || ["call_summary", "contact_info"],
+      post_call_notification_triggers: (ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"]) as string[],
+      post_call_notification_includes: (ea.post_call_notification_includes || ["call_summary", "contact_info"]) as string[],
       post_call_task_enabled: ea.post_call_task_enabled ?? false,
     });
     setInitialized(true);

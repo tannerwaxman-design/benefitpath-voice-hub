@@ -139,7 +139,7 @@ export function useCreateTool() {
       // Step 1: Save to DB
       const { data, error } = await supabase
         .from("tools")
-        .insert({ ...tool, tenant_id: user!.tenant_id } as TablesInsert<"tools">)
+        .insert({ ...tool, tenant_id: user!.tenant_id } as unknown as TablesInsert<"tools">)
         .select()
         .single();
       if (error) throw error;
@@ -184,7 +184,7 @@ export function useUpdateTool() {
     mutationFn: async ({ id, ...updates }: Partial<Tool> & { id: string }) => {
       const { data, error } = await supabase
         .from("tools")
-        .update(updates as TablesUpdate<"tools">)
+        .update(updates as unknown as TablesUpdate<"tools">)
         .eq("id", id)
         .select()
         .single();

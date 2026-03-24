@@ -17,7 +17,7 @@ export interface AuditEntry {
 export function logAudit(entry: AuditEntry): void {
   supabase
     .from("audit_logs" as never)
-    .insert(entry)
+    .insert(entry as never)
     .then(({ error }) => {
       if (error) console.warn("[audit] insert failed:", error.message);
     });
