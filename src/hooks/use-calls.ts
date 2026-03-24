@@ -12,7 +12,7 @@ export function useCalls(filters?: { outcome?: string; direction?: string; searc
     queryFn: async () => {
       let query = supabase
         .from("calls")
-        .select("*, agents(agent_name), campaigns(name)")
+        .select("*, agents(agent_name, soa_enabled), campaigns(name)")
         .order("started_at", { ascending: false })
         .limit(filters?.limit || 100);
 
