@@ -109,7 +109,6 @@ export default function Campaigns() {
     } finally {
       setOperationLoading(null);
     }
->>>>>>> origin/claude/fix-feature-issues-SP5zW
   };
 
   const onConfirm = () => {
