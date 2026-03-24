@@ -8,7 +8,7 @@ import { useRecentCalls } from "@/hooks/use-calls";
 import { useAnalyticsSummary, useCallsPerDay } from "@/hooks/use-analytics";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePostCallTasks, useUpdateTaskStatus } from "@/hooks/use-post-call-tasks";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { subDays, format } from "date-fns";
 import { OverviewSkeleton } from "@/components/ui/page-skeletons";
@@ -45,11 +45,6 @@ export default function Overview() {
   const navigate = useNavigate();
   const [chartRange, setChartRange] = useState(30);
   const [queryNow, setQueryNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => setQueryNow(new Date()), 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const dateFrom = useMemo(() => subDays(queryNow, chartRange).toISOString(), [queryNow, chartRange]);
   const dateTo = useMemo(() => queryNow.toISOString(), [queryNow]);

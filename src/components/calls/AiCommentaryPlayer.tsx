@@ -26,9 +26,13 @@ function formatTs(s: number) {
 export default function AiCommentaryPlayer({
   callId,
   recordingUrl,
+  onTimeUpdate,
+  seekToSeconds,
 }: {
   callId: string;
   recordingUrl: string;
+  onTimeUpdate?: (t: number) => void;
+  seekToSeconds?: number;
 }) {
   const [commentary, setCommentary] = useState<CommentaryItem[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -73,22 +77,33 @@ export default function AiCommentaryPlayer({
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      onTimeUpdate?.(audio.currentTime);
+    };
     const onEnded = () => setIsPlaying(false);
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
 
-    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     return () => {
-      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
     };
   }, []);
+
+  // Seek when parent requests it
+  useEffect(() => {
+    if (seekToSeconds !== undefined && audioRef.current) {
+      audioRef.current.currentTime = seekToSeconds;
+      audioRef.current.play().catch(() => {/* user hasn't interacted yet */});
+    }
+  }, [seekToSeconds]);
 
   // Track active commentary index
   useEffect(() => {

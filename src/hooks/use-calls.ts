@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -36,8 +37,44 @@ export function useCalls(filters?: { outcome?: string; direction?: string; searc
 
 export function useRecentCalls(limit = 8) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const tenantId = user?.tenant_id;
+
+  // Realtime: invalidate calls + analytics queries whenever a call row changes
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const channel = supabase
+      .channel(`calls-realtime-${tenantId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "calls", filter: `tenant_id=eq.${tenantId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["calls", tenantId] });
+          queryClient.invalidateQueries({ queryKey: ["recent-calls", tenantId] });
+          queryClient.invalidateQueries({ queryKey: ["analytics-summary", tenantId] });
+          queryClient.invalidateQueries({ queryKey: ["calls-per-day", tenantId] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "calls", filter: `tenant_id=eq.${tenantId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["calls", tenantId] });
+          queryClient.invalidateQueries({ queryKey: ["recent-calls", tenantId] });
+          queryClient.invalidateQueries({ queryKey: ["analytics-summary", tenantId] });
+          queryClient.invalidateQueries({ queryKey: ["calls-per-day", tenantId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId, queryClient]);
+
   return useQuery({
-    queryKey: ["recent-calls", user?.tenant_id, limit],
+    queryKey: ["recent-calls", tenantId, limit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("calls")
@@ -47,7 +84,6 @@ export function useRecentCalls(limit = 8) {
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.tenant_id,
-    refetchInterval: 5 * 60 * 1000,
+    enabled: !!tenantId,
   });
 }

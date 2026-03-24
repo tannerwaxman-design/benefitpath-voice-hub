@@ -63,3 +63,73 @@ export function useRunSimulation() {
     },
   });
 }
+
+export type PracticeTranscriptEntry = {
+  role: "user" | "lead";
+  content: string;
+  speaker: string;
+};
+
+export function usePracticeYourself() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const start = useMutation({
+    mutationFn: async (params: { scenario: string; difficulty: string }) => {
+      const { data, error } = await supabase.functions.invoke("practice-yourself", {
+        body: { action: "start", ...params },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as { session_id: string; first_message: string; lead_name: string };
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to start session", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const respond = useMutation({
+    mutationFn: async (params: {
+      session_id: string;
+      scenario: string;
+      difficulty: string;
+      transcript: PracticeTranscriptEntry[];
+      user_message: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("practice-yourself", {
+        body: { action: "respond", ...params },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as { lead_reply: string; should_end: boolean };
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to get response", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const score = useMutation({
+    mutationFn: async (params: {
+      session_id: string;
+      scenario: string;
+      difficulty: string;
+      transcript: PracticeTranscriptEntry[];
+    }) => {
+      const { data, error } = await supabase.functions.invoke("practice-yourself", {
+        body: { action: "score", ...params },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-sessions"] });
+      toast({ title: "Session scored!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to score session", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return { start, respond, score };
+}
