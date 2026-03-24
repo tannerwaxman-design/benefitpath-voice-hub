@@ -44,17 +44,77 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!agent.vapi_assistant_id) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "Agent has not been synced yet. Please save the agent first, then try again.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsH, "Content-Type": "application/json" },
-        }
-      );
+    let vapiAssistantId = agent.vapi_assistant_id;
+
+    // If agent hasn't been synced yet, attempt to create the VAPI assistant now
+    if (!vapiAssistantId) {
+      // Resolve voice ID (friendly names → real ElevenLabs IDs)
+      const VOICE_MAP: Record<string, string> = {
+        aria: "EXAVITQu4vr4xnSDxMaL", marcus: "nPczCjzI2devNBz1zQrb",
+        elena: "Xb7hH8MSUJpSbSDYk0k2", devon: "N2lVS1w4EtoT3dr4eOWO",
+        nina: "cgSgspJ2msm6clMCkdW9", carter: "JBFqnCBsd6RMkjVDRZzb",
+      };
+      const vid = agent.voice_id || "EXAVITQu4vr4xnSDxMaL";
+      const resolvedVid = VOICE_MAP[vid.toLowerCase()] || vid;
+
+      const { data: tenantRow } = await supabaseAdmin
+        .from("tenants")
+        .select("company_name, recording_enabled")
+        .eq("id", tenant_id)
+        .single();
+
+      const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/vapi-webhook`;
+      const createResult = await vapiRequest<{ id: string }>({
+        method: "POST",
+        endpoint: "/assistant",
+        body: {
+          name: `${tenantRow?.company_name ?? "Agent"} — ${agent.agent_name}`.slice(0, 40),
+          model: {
+            provider: "openai", model: "gpt-4o",
+            messages: [{ role: "system", content: agent.compiled_system_prompt || `You are ${agent.agent_name}, a professional voice agent.` }],
+            temperature: 0.7, maxTokens: 1000,
+          },
+          voice: {
+            provider: agent.voice_provider === "eleven_labs" ? "11labs" : (agent.voice_provider || "11labs"),
+            voiceId: resolvedVid,
+            speed: agent.speaking_speed || 1.0,
+          },
+          firstMessage: agent.greeting_script,
+          silenceTimeoutSeconds: agent.silence_timeout_seconds || 15,
+          maxDurationSeconds: (agent.max_call_duration_minutes || 10) * 60,
+          recordingEnabled: agent.record_calls ?? tenantRow?.recording_enabled ?? true,
+          serverUrl: webhookUrl,
+          serverUrlSecret: Deno.env.get("VAPI_WEBHOOK_SECRET"),
+          metadata: {
+            benefitpath_tenant_id: tenant_id,
+            benefitpath_agent_id: agent_id,
+            environment: "production",
+          },
+        },
+      });
+
+      if (!createResult.ok || !createResult.data?.id) {
+        console.error("Auto-sync failed:", createResult.error);
+        return new Response(
+          JSON.stringify({
+            error: "Agent could not be synced with the voice engine. Please edit and re-save the agent, then try again.",
+          }),
+          { status: 400, headers: { ...corsH, "Content-Type": "application/json" } }
+        );
+      }
+
+      vapiAssistantId = createResult.data.id;
+
+      // Update the agent record with the new VAPI ID
+      await supabaseAdmin
+        .from("agents")
+        .update({
+          vapi_assistant_id: vapiAssistantId,
+          vapi_sync_status: "synced",
+          vapi_last_synced_at: new Date().toISOString(),
+          vapi_sync_error: null,
+        })
+        .eq("id", agent_id);
     }
 
     // Create a VAPI web call using the API
