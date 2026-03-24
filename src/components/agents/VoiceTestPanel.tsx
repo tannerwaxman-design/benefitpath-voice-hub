@@ -138,9 +138,16 @@ export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelPr
 
       vapi.on("error", (err: any) => {
         console.error("VAPI call error:", err);
-        toast({ title: "Call error", description: "The voice call encountered an issue.", variant: "destructive" });
-        setStatus("ended");
-        if (timerRef.current) clearInterval(timerRef.current);
+        const errMsg = err?.message || err?.error?.message || (typeof err === "string" ? err : "Unknown WebRTC error");
+        // Only end the call for fatal errors, not transient ones
+        const isFatal = /disconnect|failed|denied|not.allowed|ice/i.test(errMsg);
+        if (isFatal) {
+          toast({ title: "Call ended", description: errMsg, variant: "destructive" });
+          setStatus("ended");
+          if (timerRef.current) clearInterval(timerRef.current);
+        } else {
+          console.warn("Non-fatal VAPI error (call continues):", errMsg);
+        }
       });
 
       // Start the call — VAPI Web SDK creates and joins the web call client-side
