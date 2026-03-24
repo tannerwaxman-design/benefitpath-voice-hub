@@ -38,6 +38,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import CookiesPolicy from "./pages/CookiesPolicy";
 import ApiDocs from "./pages/ApiDocs";
+import WarRoom from "./pages/WarRoom";
 
 const queryClient = new QueryClient();
 
