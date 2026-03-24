@@ -186,7 +186,7 @@ export default function AgentEditor() {
     setSoaConfig({
       soa_enabled: ea.soa_enabled ?? false,
       soa_script: ea.soa_script || soaConfig.soa_script,
-      soa_plan_types: ea.soa_plan_types || soaConfig.soa_plan_types,
+      soa_plan_types: (ea.soa_plan_types || soaConfig.soa_plan_types) as string[],
       soa_timing: ea.soa_timing || "after_greeting",
     });
     setPostCallActions({
