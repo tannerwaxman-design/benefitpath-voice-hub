@@ -12,7 +12,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { tenant_id } = await getAuthContext(req);
+    const { tenantId: tenant_id } = await getAuthContext(req);
     const { agent_id, messages, simulate_as } = await req.json();
 
     if (!agent_id) return errorResponse("agent_id is required", 400);
