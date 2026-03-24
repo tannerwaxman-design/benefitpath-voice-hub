@@ -43,6 +43,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Credit balance check — voice tests cost real money
+    const { data: tenantRow } = await supabaseAdmin
+      .from("tenants")
+      .select("company_name, recording_enabled, credit_balance")
+      .eq("id", tenant_id)
+      .single();
+
+    if ((tenantRow?.credit_balance ?? 0) <= 0) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient credit balance. Please add credits to continue." }),
+        { status: 429, headers: { ...corsH, "Content-Type": "application/json" } }
+      );
+    }
+
     let vapiAssistantId = agent.vapi_assistant_id;
 
     // Auto-sync: create VAPI assistant if not yet synced
@@ -54,12 +68,6 @@ Deno.serve(async (req) => {
       };
       const vid = agent.voice_id || "EXAVITQu4vr4xnSDxMaL";
       const resolvedVid = VOICE_MAP[vid.toLowerCase()] || vid;
-
-      const { data: tenantRow } = await supabaseAdmin
-        .from("tenants")
-        .select("company_name, recording_enabled")
-        .eq("id", tenant_id)
-        .single();
 
       const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/vapi-webhook`;
       const createResult = await vapiRequest<{ id: string }>({
