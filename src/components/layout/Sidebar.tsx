@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/use-permission";
 import {
-  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, BookOpen, UsersRound, GraduationCap, Flame, Thermometer, FileCode, DollarSign
+  LayoutDashboard, Radio, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, BookOpen, UsersRound, GraduationCap, Flame, Thermometer, FileCode, DollarSign
 } from "lucide-react";
 import logo from "@/assets/benefit_path_icon.svg";
 
