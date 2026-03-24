@@ -101,6 +101,8 @@ export default function AgentEditor() {
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [voiceCloneStatus, setVoiceCloneStatus] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<"script" | "flow">("script");
+  const [showTestPanel, setShowTestPanel] = useState(false);
+  const [testAutoMessage, setTestAutoMessage] = useState<string | undefined>(undefined);
   const [conversationFlow, setConversationFlow] = useState<FlowData | null>(null);
   const [soaConfig, setSoaConfig] = useState<SoaConfig>({
     soa_enabled: false,
