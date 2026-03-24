@@ -220,8 +220,20 @@ export default function CallLogs() {
                           {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
                         </Badge>
                       </td>
+                      </td>
+                      {showSoaColumn && (
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const isNonContact = ["voicemail", "no_answer", "busy", "failed"].includes(call.outcome);
+                            const agentSoaEnabled = call.agents?.soa_enabled;
+                            if (!agentSoaEnabled || isNonContact) return <span className="text-xs text-muted-foreground">—</span>;
+                            if (call.soa_collected && call.soa_consent_given === true) return <Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px]">✅ Confirmed</Badge>;
+                            if (call.soa_collected && call.soa_consent_given === false) return <Badge variant="secondary" className="bg-destructive/10 text-destructive border-0 text-[10px]">❌ Declined</Badge>;
+                            return <Badge variant="secondary" className="bg-warning/10 text-warning border-0 text-[10px]">⚠️ Not Collected</Badge>;
+                          })()}
+                        </td>
+                      )}
                       <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary" aria-label="Play recording"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
-                    </tr>
                     );
                   })}
                 </tbody>
