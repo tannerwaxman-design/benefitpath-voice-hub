@@ -124,11 +124,16 @@ export function Sidebar() {
                       {!collapsed && (
                         <span className="flex items-center gap-2">
                           {item.label}
-                          {item.badge && (
+                          {item.badge === "LIVE" ? (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                            </span>
+                          ) : item.badge ? (
                             <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full leading-none">
                               {item.badge}
                             </span>
-                          )}
+                          ) : null}
                         </span>
                       )}
                     </Link>

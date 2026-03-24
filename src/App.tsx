@@ -64,6 +64,7 @@ const App = () => (
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/war-room" element={<ErrorBoundary><WarRoom /></ErrorBoundary>} />
                 <Route element={<DashboardLayout />}>
                   <Route path="/" element={<ErrorBoundary><Overview /></ErrorBoundary>} />
                   <Route path="/forge" element={<ErrorBoundary><Forge /></ErrorBoundary>} />
