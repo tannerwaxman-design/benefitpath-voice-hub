@@ -52,7 +52,7 @@ export function VoiceCloneSection({
   const animationRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const isEnterprise = plan === "enterprise" || plan === "voice_ai_pro" || plan === "voice_ai_enterprise";
+  const isEnterprise = plan === "voice_ai_enterprise";
 
   // Cleanup
   useEffect(() => {

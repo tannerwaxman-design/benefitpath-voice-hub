@@ -27,7 +27,7 @@ export function CloneVoiceTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const plan = user?.tenant?.plan || "voice_ai_starter";
-  const isEnterprise = plan === "enterprise" || plan === "voice_ai_pro" || plan === "voice_ai_enterprise";
+  const isEnterprise = plan === "voice_ai_enterprise";
 
   const agentName = user?.email?.split("@")[0]?.replace(/[._-]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Tanner";
   const companyName = user?.tenant?.company_name || "Benefits First Insurance Group";

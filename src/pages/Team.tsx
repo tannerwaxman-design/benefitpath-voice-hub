@@ -138,7 +138,7 @@ export default function Team() {
             <h3 className="text-lg font-semibold text-foreground mb-2">Team Management is available on the Professional plan</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">Upgrade to invite team members and manage roles. Each person gets their own login.</p>
             <div className="flex items-center justify-center gap-3">
-              <Button onClick={() => navigate("/billing")}>Upgrade to Professional — $149/mo</Button>
+              <Button onClick={() => navigate("/billing")}>Upgrade to Professional — $79/mo</Button>
               <Button variant="outline" onClick={() => navigate("/billing")}>Compare Plans</Button>
             </div>
           </CardContent>
