@@ -174,7 +174,7 @@ export default function AgentEditor() {
     setInboundGreeting(ea.inbound_greeting || "Thank you for calling. How can I help you today?");
     setAnswerAfterRings(ea.answer_after_rings ?? 2);
     setAfterHoursBehavior(ea.after_hours_behavior || "voicemail");
-    setVoiceSource(ea.voice_source || "preset");
+    setVoiceSource((ea.voice_source || "preset") as "cloned" | "preset");
     setClonedVoiceId(ea.cloned_voice_id || null);
     setVoiceCloneStatus(ea.voice_clone_status || null);
     setAfterHoursVoicemailMessage(ea.after_hours_voicemail_message || "");
