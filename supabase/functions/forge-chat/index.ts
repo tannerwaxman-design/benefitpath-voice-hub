@@ -59,6 +59,7 @@ After collecting all info, present a summary card in this exact format:
 Name: [agent_name] — [agent_title]
 Company: [company_name]
 Voice: [voice_name]
+Description: [first 100 chars of description]...
 Purpose: [purpose description]
 Audience: [audience description]
 Greeting: "[greeting_script first 80 chars]..."
