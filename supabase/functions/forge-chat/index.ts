@@ -83,6 +83,7 @@ Output format (include ALL fields):
 {
   "agent_name": "Sarah",
   "agent_title": "Benefits Specialist",
+  "description": "Sarah is a warm, knowledgeable benefits specialist at KAM Insurance who specializes in helping Medicare-eligible individuals understand their coverage options. She approaches every call with patience and empathy, understanding that insurance decisions can feel overwhelming...[generate a rich, detailed description of at least 3-4 paragraphs]",
   "company_name": "KAM Insurance",
   "industry": "insurance",
   "greeting_script": "Hi, this is Sarah from KAM Insurance...",
