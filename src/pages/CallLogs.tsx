@@ -47,9 +47,13 @@ export default function CallLogs() {
   const [search, setSearch] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [directionFilter, setDirectionFilter] = useState("all");
+  const [soaFilter, setSoaFilter] = useState("all");
   const [selectedCall, setSelectedCall] = useState<CallWithRelations | null>(null);
   const [page, setPage] = useState(0);
   const perPage = 10;
+
+  const { data: anySoaEnabled } = useAnySoaEnabled();
+  const showSoaColumn = !!anySoaEnabled;
 
   const { data: calls, isLoading, isError, refetch } = useCalls({ outcome: outcomeFilter, direction: directionFilter, search, limit: 200 });
   const showSkeleton = useDelayedLoading(isLoading);
