@@ -145,65 +145,67 @@ export default function AgentEditor() {
   };
 
   // Populate form with existing agent data
-  if (existingAgent && !initialized) {
-    const ea = existingAgent;
-    setName(ea.agent_name);
-    setTitle(ea.agent_title || "");
-    setIndustry(ea.industry || "Insurance");
-    setCompanyName(ea.company_name_override || "");
-    setDescription(ea.description || "");
-    setAgentActive(ea.status === "active");
-    setSelectedVoice(ea.voice_id);
-    setSpeed([ea.speaking_speed || 1.0]);
-    setTone(ea.tone);
-    setEnthusiasm([ea.enthusiasm_level]);
-    setFillerWords(ea.filler_words_enabled);
-    setGreeting(ea.greeting_script);
-    setCallObjective(ea.call_objective);
-    setKnowledgeBase(ea.knowledge_base_text || "");
-    setVoicemailScript(ea.voicemail_script || "");
-    setVoicemailEnabled(ea.voicemail_enabled);
-    setVoicemailMethod((ea.voicemail_method || "live") as "drop" | "live");
-    setVoicemailAudioUrl(ea.voicemail_audio_url || null);
-    setRecordCalls(ea.record_calls);
-    setDisclosure(ea.play_disclosure);
-    setTransferPhone(ea.transfer_phone_number || "");
-    setBackupTransfer(ea.backup_transfer_number || "");
-    setTransferAnnouncement(ea.transfer_announcement || "");
-    setCallDirection(ea.call_direction || "outbound");
-    setInboundGreeting(ea.inbound_greeting || "Thank you for calling. How can I help you today?");
-    setAnswerAfterRings(ea.answer_after_rings ?? 2);
-    setAfterHoursBehavior(ea.after_hours_behavior || "voicemail");
-    setVoiceSource((ea.voice_source || "preset") as "cloned" | "preset");
-    setClonedVoiceId(ea.cloned_voice_id || null);
-    setVoiceCloneStatus(ea.voice_clone_status || null);
-    setAfterHoursVoicemailMessage(ea.after_hours_voicemail_message || "");
-    const flowData = ea.conversation_flow;
-    if (flowData) {
-      setConversationFlow(flowData as unknown as FlowData);
-      setEditorMode("flow");
+  useEffect(() => {
+    if (existingAgent && !initialized) {
+      const ea = existingAgent;
+      setName(ea.agent_name);
+      setTitle(ea.agent_title || "");
+      setIndustry(ea.industry || "Insurance");
+      setCompanyName(ea.company_name_override || "");
+      setDescription(ea.description || "");
+      setAgentActive(ea.status === "active");
+      setSelectedVoice(ea.voice_id);
+      setSpeed([ea.speaking_speed || 1.0]);
+      setTone(ea.tone);
+      setEnthusiasm([ea.enthusiasm_level]);
+      setFillerWords(ea.filler_words_enabled);
+      setGreeting(ea.greeting_script);
+      setCallObjective(ea.call_objective);
+      setKnowledgeBase(ea.knowledge_base_text || "");
+      setVoicemailScript(ea.voicemail_script || "");
+      setVoicemailEnabled(ea.voicemail_enabled);
+      setVoicemailMethod((ea.voicemail_method || "live") as "drop" | "live");
+      setVoicemailAudioUrl(ea.voicemail_audio_url || null);
+      setRecordCalls(ea.record_calls);
+      setDisclosure(ea.play_disclosure);
+      setTransferPhone(ea.transfer_phone_number || "");
+      setBackupTransfer(ea.backup_transfer_number || "");
+      setTransferAnnouncement(ea.transfer_announcement || "");
+      setCallDirection(ea.call_direction || "outbound");
+      setInboundGreeting(ea.inbound_greeting || "Thank you for calling. How can I help you today?");
+      setAnswerAfterRings(ea.answer_after_rings ?? 2);
+      setAfterHoursBehavior(ea.after_hours_behavior || "voicemail");
+      setVoiceSource((ea.voice_source || "preset") as "cloned" | "preset");
+      setClonedVoiceId(ea.cloned_voice_id || null);
+      setVoiceCloneStatus(ea.voice_clone_status || null);
+      setAfterHoursVoicemailMessage(ea.after_hours_voicemail_message || "");
+      const flowData = ea.conversation_flow;
+      if (flowData) {
+        setConversationFlow(flowData as unknown as FlowData);
+        setEditorMode("flow");
+      }
+      setSoaConfig({
+        soa_enabled: ea.soa_enabled ?? false,
+        soa_script: ea.soa_script || 'Before we discuss any specific plan options, I need to let you know this is a conversation about Medicare insurance plans. Federal regulations require me to get your verbal permission before we go over specific options. Today I\'d like to discuss [SELECTED_PLAN_TYPES]. Do I have your permission to go over those with you?',
+        soa_plan_types: (ea.soa_plan_types || ["Medicare Advantage (MA) plans, including HMO, PPO, and PFFS", "Medicare Supplement (Medigap) plans", "Medicare Prescription Drug Plans (Part D / PDP)"]) as string[],
+        soa_timing: ea.soa_timing || "after_greeting",
+      });
+      setPostCallActions({
+        post_call_email_enabled: ea.post_call_email_enabled ?? false,
+        post_call_email_subject: ea.post_call_email_subject || "Thanks for chatting with us!",
+        post_call_email_body: ea.post_call_email_body || "",
+        post_call_email_trigger: ea.post_call_email_trigger || "connected_only",
+        post_call_sms_enabled: ea.post_call_sms_enabled ?? false,
+        post_call_sms_body: ea.post_call_sms_body || "",
+        post_call_notification_enabled: ea.post_call_notification_enabled ?? false,
+        post_call_notification_email: ea.post_call_notification_email || "",
+        post_call_notification_triggers: (ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"]) as string[],
+        post_call_notification_includes: (ea.post_call_notification_includes || ["call_summary", "contact_info"]) as string[],
+        post_call_task_enabled: ea.post_call_task_enabled ?? false,
+      });
+      setInitialized(true);
     }
-    setSoaConfig({
-      soa_enabled: ea.soa_enabled ?? false,
-      soa_script: ea.soa_script || soaConfig.soa_script,
-      soa_plan_types: (ea.soa_plan_types || soaConfig.soa_plan_types) as string[],
-      soa_timing: ea.soa_timing || "after_greeting",
-    });
-    setPostCallActions({
-      post_call_email_enabled: ea.post_call_email_enabled ?? false,
-      post_call_email_subject: ea.post_call_email_subject || "Thanks for chatting with us!",
-      post_call_email_body: ea.post_call_email_body || "",
-      post_call_email_trigger: ea.post_call_email_trigger || "connected_only",
-      post_call_sms_enabled: ea.post_call_sms_enabled ?? false,
-      post_call_sms_body: ea.post_call_sms_body || "",
-      post_call_notification_enabled: ea.post_call_notification_enabled ?? false,
-      post_call_notification_email: ea.post_call_notification_email || "",
-      post_call_notification_triggers: (ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"]) as string[],
-      post_call_notification_includes: (ea.post_call_notification_includes || ["call_summary", "contact_info"]) as string[],
-      post_call_task_enabled: ea.post_call_task_enabled ?? false,
-    });
-    setInitialized(true);
-  }
+  }, [existingAgent, initialized]);
 
   // Auto-select first available voice for new agents
   useEffect(() => {
