@@ -138,6 +138,17 @@ export default function CallLogs() {
             <SelectItem value="inbound">Inbound Only</SelectItem>
           </SelectContent>
         </Select>
+        {showSoaColumn && (
+          <Select value={soaFilter} onValueChange={v => { setSoaFilter(v); setPage(0); }}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">SOA: All</SelectItem>
+              <SelectItem value="confirmed">SOA: Confirmed</SelectItem>
+              <SelectItem value="declined">SOA: Declined</SelectItem>
+              <SelectItem value="not_collected">SOA: Not Collected</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {(!calls || calls.length === 0) ? (
