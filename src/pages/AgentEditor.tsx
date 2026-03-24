@@ -723,13 +723,54 @@ export default function AgentEditor() {
       <Sheet open={showTestPanel} onOpenChange={setShowTestPanel}>
         <SheetContent side="right" className="w-[400px] sm:max-w-[400px] p-0 flex flex-col [&>button:last-child]:hidden">
           {id && id !== "new" && showTestPanel && (
-            <AgentTestPanel
-              agentId={id}
-              agentName={name || existingAgent?.agent_name || "Agent"}
-              greetingScript={greeting}
-              onClose={() => setShowTestPanel(false)}
-              autoSendMessage={testAutoMessage}
-            />
+            <div className="flex flex-col h-full">
+              {/* Tab switcher */}
+              <div className="flex border-b">
+                <button
+                  onClick={() => setTestMode("chat")}
+                  className={`flex-1 py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                    testMode === "chat"
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Chat
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0">Free</Badge>
+                </button>
+                <button
+                  onClick={() => setTestMode("voice")}
+                  className={`flex-1 py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                    testMode === "voice"
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  Voice Call
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0">$0.18/m</Badge>
+                </button>
+              </div>
+
+              {/* Panel content */}
+              <div className="flex-1 min-h-0">
+                {testMode === "chat" ? (
+                  <AgentTestPanel
+                    agentId={id}
+                    agentName={name || existingAgent?.agent_name || "Agent"}
+                    greetingScript={greeting}
+                    onClose={() => setShowTestPanel(false)}
+                    autoSendMessage={testAutoMessage}
+                  />
+                ) : (
+                  <VoiceTestPanel
+                    agentId={id}
+                    agentName={name || existingAgent?.agent_name || "Agent"}
+                    onClose={() => setShowTestPanel(false)}
+                  />
+                )}
+              </div>
+            </div>
           )}
         </SheetContent>
       </Sheet>
