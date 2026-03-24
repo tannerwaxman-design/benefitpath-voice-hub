@@ -89,7 +89,7 @@ Output format (include ALL fields):
   "industry": "insurance",
   "greeting_script": "Hi, this is Sarah from KAM Insurance...",
   "call_objective": "appointment_setting",
-  "voice_id": "aria",
+  "voice_id": "EXAVITQu4vr4xnSDxMaL",
   "voice_name": "Aria — Warm & Professional",
   "tone": "professional",
   "enthusiasm_level": 6,
