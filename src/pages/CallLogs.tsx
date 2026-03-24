@@ -220,7 +220,6 @@ export default function CallLogs() {
                           {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
                         </Badge>
                       </td>
-                      </td>
                       {showSoaColumn && (
                         <td className="px-4 py-3">
                           {(() => {
@@ -234,6 +233,7 @@ export default function CallLogs() {
                         </td>
                       )}
                       <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary" aria-label="Play recording"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
+                    </tr>
                     );
                   })}
                 </tbody>
