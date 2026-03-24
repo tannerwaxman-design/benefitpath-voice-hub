@@ -87,11 +87,15 @@ export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelPr
       if (error) throw error;
       if (!data?.web_call_url) throw new Error("No web call URL returned");
 
-      // Dynamically import VAPI Web SDK
+      // Dynamically import VAPI Web SDK — constructor requires the VAPI public key
       const VapiModule = await import("@vapi-ai/web");
       const Vapi = VapiModule.default;
 
-      const vapi = new Vapi(data.web_call_url);
+      // Fetch public key from env (set via edge function response or env var)
+      const vapiPublicKey = import.meta.env.VITE_VAPI_PUBLIC_KEY;
+      if (!vapiPublicKey) throw new Error("VAPI public key not configured");
+
+      const vapi = new Vapi(vapiPublicKey);
       vapiRef.current = vapi;
 
       // Set up event listeners
@@ -124,7 +128,7 @@ export function VoiceTestPanel({ agentId, agentName, onClose }: VoiceTestPanelPr
         if (timerRef.current) clearInterval(timerRef.current);
       });
 
-      // Start the call
+      // Start the call using the web call URL returned by the server
       const callStartTime = Date.now();
       await vapi.start(data.web_call_url);
 
