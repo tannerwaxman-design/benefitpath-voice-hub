@@ -180,7 +180,7 @@ export default function AgentEditor() {
     setAfterHoursVoicemailMessage(ea.after_hours_voicemail_message || "");
     const flowData = ea.conversation_flow;
     if (flowData) {
-      setConversationFlow(flowData);
+      setConversationFlow(flowData as unknown as FlowData);
       setEditorMode("flow");
     }
     setSoaConfig({
