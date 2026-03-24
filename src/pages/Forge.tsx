@@ -156,23 +156,7 @@ export default function Forge() {
       ]);
     }
     setIsThinking(false);
-  }, [forgeAgent]);
-
-  const forgeAgent = useCallback(async (config: Record<string, unknown>) => {
-    setIsForging(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-agent", {
-        body: config,
-      });
-      if (error) throw error;
-      const agentId = data?.agent?.id;
-      if (agentId) setForgedAgentId(agentId);
-      toast.success(`${config.agent_name} has been forged!`);
-    } catch (err: unknown) {
-      toast.error("Failed to forge agent: " + (err instanceof Error ? err.message : "Unknown error"));
-    }
-    setIsForging(false);
-  }, []);
+  }, [forgeAgentRef]);
 
   const sendMessage = (text: string) => {
     if (!text.trim() || isThinking) return;
