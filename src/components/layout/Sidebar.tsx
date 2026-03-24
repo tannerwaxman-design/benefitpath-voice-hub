@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/use-permission";
 import {
-  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, CreditCard, BookOpen, UsersRound, GraduationCap, Flame, Thermometer, FileCode
+  LayoutDashboard, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, BookOpen, UsersRound, GraduationCap, Flame, Thermometer, FileCode, DollarSign
 } from "lucide-react";
 import logo from "@/assets/benefit_path_icon.svg";
 
@@ -16,25 +16,54 @@ interface NavItem {
   accentIcon?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { label: "Overview", icon: LayoutDashboard, path: "/" },
-  { label: "Forge", icon: Flame, path: "/forge", badge: "AI", accentIcon: true },
-  { label: "Agent Builder", icon: Bot, path: "/agents" },
-  { label: "Voices", icon: AudioLines, path: "/voices" },
-  { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"] },
-  { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"] },
-  { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
-  { label: "Contact Lists", icon: Users, path: "/contacts" },
-  { label: "Leads", icon: Thermometer, path: "/leads" },
-  { label: "Call Logs", icon: Phone, path: "/call-logs" },
-  { label: "Training", icon: GraduationCap, path: "/training", roles: ["owner", "admin", "manager"] },
-  { label: "Coaching", icon: BookOpen, path: "/coaching", roles: ["owner", "admin", "manager"] },
-  { label: "Analytics", icon: BarChart3, path: "/analytics" },
-  { label: "Phone Numbers", icon: Hash, path: "/phone-numbers", roles: ["owner", "admin"] },
-  { label: "Team", icon: UsersRound, path: "/team", roles: ["owner", "admin"] },
-  { label: "Billing & Usage", icon: CreditCard, path: "/billing", roles: ["owner"] },
-  { label: "Settings", icon: Settings, path: "/settings" },
-  { label: "API Docs", icon: FileCode, path: "/api-docs", roles: ["owner", "admin"] },
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
+  {
+    title: "OVERVIEW",
+    items: [
+      { label: "Overview", icon: LayoutDashboard, path: "/" },
+    ],
+  },
+  {
+    title: "CREATE",
+    items: [
+      { label: "Forge", icon: Flame, path: "/forge", badge: "AI", accentIcon: true },
+      { label: "Agent Builder", icon: Bot, path: "/agents" },
+      { label: "Voices", icon: AudioLines, path: "/voices" },
+      { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"] },
+      { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"] },
+    ],
+  },
+  {
+    title: "LAUNCH",
+    items: [
+      { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
+      { label: "Contact Lists", icon: Users, path: "/contacts" },
+      { label: "Phone Numbers", icon: Hash, path: "/phone-numbers", roles: ["owner", "admin"] },
+    ],
+  },
+  {
+    title: "OBSERVE",
+    items: [
+      { label: "Leads", icon: Thermometer, path: "/leads" },
+      { label: "Call Logs", icon: Phone, path: "/call-logs" },
+      { label: "Training", icon: GraduationCap, path: "/training", roles: ["owner", "admin", "manager"] },
+      { label: "Coaching", icon: BookOpen, path: "/coaching", roles: ["owner", "admin", "manager"] },
+      { label: "Analytics", icon: BarChart3, path: "/analytics" },
+    ],
+  },
+  {
+    title: "MANAGE",
+    items: [
+      { label: "Team", icon: UsersRound, path: "/team", roles: ["owner", "admin"] },
+      { label: "Settings", icon: Settings, path: "/settings" },
+      { label: "API Docs", icon: FileCode, path: "/api-docs", roles: ["owner", "admin"] },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -43,9 +72,6 @@ export function Sidebar() {
   const { user } = useAuth();
   const role = useRole();
   const [collapsed, setCollapsed] = useState(false);
-  const creditBalance = user?.tenant?.credit_balance ?? 0;
-
-  const visibleItems = navItems.filter(item => !item.roles || item.roles.includes(role));
 
   return (
     <aside className={`${collapsed ? "w-16" : "w-[260px]"} bg-slate-900 text-slate-400 flex flex-col min-h-screen transition-all duration-200 shrink-0`}>
@@ -66,51 +92,77 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 space-y-1 px-2">
-        {visibleItems.map(item => {
-          const active = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+      <nav className="flex-1 py-2 px-2 overflow-y-auto">
+        {navSections.map((section, si) => {
+          const visibleItems = section.items.filter(item => !item.roles || item.roles.includes(role));
+          if (visibleItems.length === 0) return null;
+
           return (
-            <Link key={item.path} to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                active ? "bg-slate-800 text-white border-l-2 border-primary" : "hover:bg-slate-800/50 hover:text-white"
-              }`}
-            >
-              <item.icon className={`h-5 w-5 shrink-0 ${item.accentIcon ? "text-amber-400" : ""}`} />
+            <div key={section.title} className={si > 0 ? "mt-4" : "mt-1"}>
               {!collapsed && (
-                <span className="flex items-center gap-2">
-                  {item.label}
-                  {item.badge && (
-                    <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full leading-none">
-                      {item.badge}
-                    </span>
-                  )}
-                </span>
+                <div className="px-3 mb-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                    {section.title}
+                  </span>
+                </div>
               )}
-            </Link>
+              {collapsed && si > 0 && (
+                <div className="mx-2 mb-2 border-t border-slate-800" />
+              )}
+              <div className="space-y-0.5">
+                {visibleItems.map(item => {
+                  const active = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+                  return (
+                    <Link key={item.path} to={item.path}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        active ? "bg-slate-800 text-white border-l-2 border-primary" : "hover:bg-slate-800/50 hover:text-white"
+                      }`}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <item.icon className={`h-5 w-5 shrink-0 ${item.accentIcon ? "text-amber-400" : ""}`} />
+                      {!collapsed && (
+                        <span className="flex items-center gap-2">
+                          {item.label}
+                          {item.badge && (
+                            <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full leading-none">
+                              {item.badge}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
 
-      {/* Credits */}
-      {!collapsed && user?.tenant && (
+      {/* Balance */}
+      {user?.tenant && (
         <div className="p-4 border-t border-slate-800">
+          {!collapsed && (
+            <div className="px-1 mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">BALANCE</span>
+            </div>
+          )}
           {(() => {
             const balance = user.tenant.credit_balance ?? 0;
-            const autoRefill = user.tenant.auto_refill_enabled;
             const isZero = balance === 0;
             const isLow = balance > 0 && balance < 200;
-            return (
+            return collapsed ? (
+              <button onClick={() => navigate("/billing")} className="flex items-center justify-center w-full" title={`$${balance.toLocaleString()} balance`}>
+                <DollarSign className={`h-5 w-5 ${isZero ? "text-red-400" : isLow ? "text-yellow-400" : "text-emerald-400"}`} />
+              </button>
+            ) : (
               <>
-                <p className="text-xs text-slate-500 mb-1">Credits</p>
                 <p className={`text-sm font-bold ${isZero ? "text-red-400" : isLow ? "text-yellow-400" : "text-emerald-400"}`}>
-                  {isZero ? "🔴" : isLow ? "⚠️" : "💰"} {balance.toLocaleString()} remaining
+                  💰 ${balance.toLocaleString()}
                 </p>
                 {isZero && <p className="text-[10px] text-red-400 mt-0.5">Calling paused</p>}
-                {autoRefill && !isZero && (
-                  <p className="text-[10px] text-slate-500 mt-0.5">🔄 Auto-refill ON</p>
-                )}
                 <button onClick={() => navigate("/billing")} className="text-xs mt-1.5 hover:underline" style={{ color: "#818CF8" }}>
-                  {isZero || isLow ? "Buy Credits Now" : "Buy Credits"}
+                  {isZero || isLow ? "Add Funds Now" : "Add Funds"}
                 </button>
               </>
             );
