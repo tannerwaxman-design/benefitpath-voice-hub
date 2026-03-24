@@ -408,10 +408,10 @@ function WebhookConfigSection() {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    if (user?.tenant?.webhook_url) {
-      setWebhookUrl(user.tenant.webhook_url);
+    if ((user?.tenant as any)?.webhook_url) {
+      setWebhookUrl((user!.tenant as any).webhook_url);
     }
-  }, [user?.tenant?.webhook_url]);
+  }, [(user?.tenant as any)?.webhook_url]);
 
   const handleSave = async () => {
     setSaving(true);

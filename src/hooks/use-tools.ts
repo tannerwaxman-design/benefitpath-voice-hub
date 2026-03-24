@@ -184,7 +184,7 @@ export function useUpdateTool() {
     mutationFn: async ({ id, ...updates }: Partial<Tool> & { id: string }) => {
       const { data, error } = await supabase
         .from("tools")
-        .update(updates as TablesUpdate<"tools">)
+        .update(updates as unknown as TablesUpdate<"tools">)
         .eq("id", id)
         .select()
         .single();

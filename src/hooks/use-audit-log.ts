@@ -38,7 +38,7 @@ export function useLogAction() {
 
   return useMutation({
     mutationFn: async (params: { action: string; resource_type: string; resource_id?: string; details?: string }) => {
-      const { error } = await supabase.from("usage_logs").insert({
+      const { error } = await supabase.from("usage_logs" as never).insert({
         tenant_id: user!.tenant_id,
         event_type: params.action,
         quantity: 0,
@@ -50,7 +50,7 @@ export function useLogAction() {
           details: params.details,
           user_email: user?.email,
         },
-      });
+      } as never);
       if (error) throw error;
     },
   });

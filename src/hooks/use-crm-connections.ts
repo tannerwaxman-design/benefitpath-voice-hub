@@ -121,9 +121,9 @@ export function useDisconnectCrm() {
   return useMutation({
     mutationFn: async (provider: CrmProvider) => {
       const { error } = await supabase
-        .from("crm_connections")
+        .from("crm_connections" as never)
         .delete()
-        .eq("provider", provider);
+        .eq("provider", provider as never);
       if (error) throw error;
     },
     onSuccess: (_, provider) => {

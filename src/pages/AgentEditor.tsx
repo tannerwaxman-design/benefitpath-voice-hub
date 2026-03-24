@@ -198,8 +198,8 @@ export default function AgentEditor() {
       post_call_sms_body: ea.post_call_sms_body || "",
       post_call_notification_enabled: ea.post_call_notification_enabled ?? false,
       post_call_notification_email: ea.post_call_notification_email || "",
-      post_call_notification_triggers: ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"],
-      post_call_notification_includes: ea.post_call_notification_includes || ["call_summary", "contact_info"],
+      post_call_notification_triggers: (ea.post_call_notification_triggers || ["appointment_booked", "lead_qualified", "callback_requested"]) as string[],
+      post_call_notification_includes: (ea.post_call_notification_includes || ["call_summary", "contact_info"]) as string[],
       post_call_task_enabled: ea.post_call_task_enabled ?? false,
     });
     setInitialized(true);

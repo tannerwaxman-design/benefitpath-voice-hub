@@ -166,7 +166,7 @@ export default function Leads() {
             if (!filtered.length) return;
             const rows = [["Name", "Phone", "Email", "Status", "Score", "Last Contact"]];
             for (const l of filtered) {
-              rows.push([`${l.first_name} ${l.last_name}`, l.phone, l.email || "", l.lead_status || "", String(l.lead_score ?? ""), l.last_contacted_at || ""]);
+              rows.push([`${l.first_name} ${l.last_name}`, l.phone, l.email || "", l.lead_status || "", String(l.lead_score ?? ""), l.last_called_at || ""]);
             }
             const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
             const blob = new Blob([csv], { type: "text/csv" });

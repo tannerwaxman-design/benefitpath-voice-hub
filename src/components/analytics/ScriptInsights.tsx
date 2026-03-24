@@ -90,7 +90,7 @@ export default function ScriptInsights() {
         updates.objection_handling = handlers;
       } else {
         // Add as new handler
-        handlers.push({ objection: suggestion.title, response: suggestion.suggested_text });
+        handlers.push({ response: suggestion.suggested_text } as any);
         updates.objection_handling = handlers;
       }
     }

@@ -294,7 +294,7 @@ export default function Onboarding() {
                       )}
                       <p className="font-semibold text-foreground">{plan.name}</p>
                       <p className="text-2xl font-bold text-foreground mt-1">{plan.price}</p>
-                      <p className="text-xs text-muted-foreground">{plan.minutes}</p>
+                      <p className="text-xs text-muted-foreground">{plan.price}</p>
                       <ul className="mt-3 space-y-1">
                         {plan.features.map((f) => (
                           <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">

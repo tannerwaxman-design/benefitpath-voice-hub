@@ -381,7 +381,7 @@ export default function Training() {
           difficulty,
           mode: "practice",
           phone_number: practicePhone || undefined,
-        });
+        } as any);
         setResult(data);
         setView("result");
       } catch {
