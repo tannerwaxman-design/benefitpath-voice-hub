@@ -24,7 +24,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch agent
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -46,9 +45,8 @@ Deno.serve(async (req) => {
 
     let vapiAssistantId = agent.vapi_assistant_id;
 
-    // If agent hasn't been synced yet, attempt to create the VAPI assistant now
+    // Auto-sync: create VAPI assistant if not yet synced
     if (!vapiAssistantId) {
-      // Resolve voice ID (friendly names → real ElevenLabs IDs)
       const VOICE_MAP: Record<string, string> = {
         aria: "EXAVITQu4vr4xnSDxMaL", marcus: "nPczCjzI2devNBz1zQrb",
         elena: "Xb7hH8MSUJpSbSDYk0k2", devon: "N2lVS1w4EtoT3dr4eOWO",
@@ -96,16 +94,12 @@ Deno.serve(async (req) => {
       if (!createResult.ok || !createResult.data?.id) {
         console.error("Auto-sync failed:", createResult.error);
         return new Response(
-          JSON.stringify({
-            error: "Agent could not be synced with the voice engine. Please edit and re-save the agent, then try again.",
-          }),
+          JSON.stringify({ error: "Agent could not be synced. Please edit and re-save the agent, then try again." }),
           { status: 400, headers: { ...corsH, "Content-Type": "application/json" } }
         );
       }
 
       vapiAssistantId = createResult.data.id;
-
-      // Update the agent record with the new VAPI ID
       await supabaseAdmin
         .from("agents")
         .update({
@@ -117,7 +111,8 @@ Deno.serve(async (req) => {
         .eq("id", agent_id);
     }
 
-    // Create a VAPI web call using the PUBLIC key (VAPI requires public-scoped auth for /call/web)
+    // Return the assistant ID and public key — the VAPI Web SDK on the client
+    // will create and join the web call directly using these.
     const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY");
     if (!vapiPublicKey) {
       return new Response(
@@ -126,66 +121,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Personalize greeting for the client to pass as override
     const personalizedGreeting = (agent.greeting_script || "Hello!")
       .replace(/\[Contact Name\]/gi, contact_name || "there")
       .replace(/\[Agent Name\]/gi, agent.agent_name || "")
       .replace(/\[Company\]/gi, agent.company_name_override || "");
 
-    const webCallResponse = await fetch("https://api.vapi.ai/call/web", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${vapiPublicKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        assistantId: vapiAssistantId,
-        assistantOverrides: {
-          firstMessage: personalizedGreeting,
-          metadata: {
-            benefitpath_tenant_id: tenant_id,
-            benefitpath_agent_id: agent_id,
-            benefitpath_is_test_call: true,
-            benefitpath_contact_name: contact_name || "Test Caller",
-          },
-        },
-      }),
-    });
-
-    const webCallText = await webCallResponse.text();
-    let result: { id?: string; webCallUrl?: string } | null = null;
-    try { result = JSON.parse(webCallText); } catch { /* not JSON */ }
-
-    if (!webCallResponse.ok || !result?.id) {
-      console.error("VAPI web call creation failed:", webCallText);
-      return new Response(
-        JSON.stringify({
-          error: "Failed to create voice test call. Please try again.",
-        }),
-        {
-          status: 500,
-          headers: { ...corsH, "Content-Type": "application/json" },
-        }
-      );
-    }
-
     return new Response(
       JSON.stringify({
-        call_id: result.id,
-        web_call_url: result.webCallUrl,
+        vapi_assistant_id: vapiAssistantId,
         vapi_public_key: vapiPublicKey,
+        greeting: personalizedGreeting,
+        metadata: {
+          benefitpath_tenant_id: tenant_id,
+          benefitpath_agent_id: agent_id,
+          benefitpath_is_test_call: true,
+          benefitpath_contact_name: contact_name || "Test Caller",
+        },
       }),
-      {
-        headers: { ...corsH, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsH, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("start-web-test-call error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsH, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsH, "Content-Type": "application/json" } }
     );
   }
 });
