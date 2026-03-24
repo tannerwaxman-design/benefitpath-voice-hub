@@ -333,7 +333,7 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
                     </ul>
                   </div>
                 )}
-                {(call.score_feedback as { could_improve?: string[] } | null)?.could_improve?.length ?? 0 > 0 && (
+                {((call.score_feedback as { could_improve?: string[] } | null)?.could_improve?.length ?? 0) > 0 && (
                   <div>
                     <p className="text-xs font-medium text-warning mb-1.5">⚡ Could improve</p>
                     <ul className="space-y-1">
