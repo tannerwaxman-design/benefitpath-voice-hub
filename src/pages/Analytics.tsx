@@ -150,7 +150,7 @@ export default function Analytics() {
     { name: "Appointment Set", value: funnel.appointments || 0, fill: "hsl(var(--success))" },
   ] : [];
 
-  const volumeData = callsPerDay.map((d: any) => ({
+  const volumeData = callsPerDay.map((d) => ({
     date: d.day,
     calls: Number(d.total_calls),
     connected: Number(d.connected),
@@ -242,7 +242,7 @@ export default function Analytics() {
                       </tr>
                     </thead>
                     <tbody>
-                      {agentPerf.map((a: any) => (
+                      {agentPerf.map((a) => (
                         <tr key={a.agent_id} className="border-t hover:bg-secondary/20 transition-colors">
                           <td className="px-4 py-3 text-sm font-medium text-foreground">{a.agent_name}</td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.total_calls).toLocaleString()}</td>

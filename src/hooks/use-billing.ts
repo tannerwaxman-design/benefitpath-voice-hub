@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { logAudit } from "@/lib/audit";
 
 export function useBillingUsage() {
   const { user } = useAuth();
@@ -98,7 +99,14 @@ export function useUpdateBillingSettings() {
         .eq("id", user?.tenant_id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "billing.settings_updated",
+        entity_type: "billing",
+        metadata: variables as Record<string, unknown>,
+      });
       queryClient.invalidateQueries({ queryKey: ["billing-usage"] });
       toast({ title: "Billing settings updated" });
     },

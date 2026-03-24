@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { logAudit } from "@/lib/audit";
 
 export function useCampaigns() {
   const { user } = useAuth();
@@ -35,7 +36,15 @@ export function useCreateCampaign() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "campaign.created",
+        entity_type: "campaign",
+        entity_id: (data as { id?: string } | null)?.id ?? null,
+        entity_name: (data as { name?: string } | null)?.name ?? null,
+      });
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       toast({ title: "Campaign created" });
     },
@@ -45,8 +54,16 @@ export function useCreateCampaign() {
   });
 }
 
+const CAMPAIGN_ACTION_EVENT: Record<string, string> = {
+  start: "campaign.launched",
+  resume: "campaign.launched",
+  pause: "campaign.paused",
+  cancel: "campaign.cancelled",
+};
+
 export function useLaunchCampaign() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -57,7 +74,16 @@ export function useLaunchCampaign() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      const eventType = CAMPAIGN_ACTION_EVENT[variables.action] ?? `campaign.${variables.action}`;
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: eventType,
+        entity_type: "campaign",
+        entity_id: variables.campaign_id,
+        metadata: { action: variables.action },
+      });
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       toast({ title: "Campaign updated", description: data?.message });
     },

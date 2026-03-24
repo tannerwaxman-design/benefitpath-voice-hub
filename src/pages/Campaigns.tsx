@@ -63,7 +63,7 @@ export default function Campaigns() {
   const handleDuplicate = async (id: string) => {
     const original = campaigns?.find(c => c.id === id);
     if (!original) return;
-    const { id: _id, created_at, updated_at, actual_start, actual_end, status, contacts_called, contacts_connected, contacts_no_answer, contacts_voicemail, contacts_failed, contacts_callback, contacts_transferred, appointments_set, conversion_rate, total_minutes_used, avg_call_duration_seconds, ...rest } = original as any;
+    const { id: _id, created_at, updated_at, actual_start, actual_end, status, contacts_called, contacts_connected, contacts_no_answer, contacts_voicemail, contacts_failed, contacts_callback, contacts_transferred, appointments_set, conversion_rate, total_minutes_used, avg_call_duration_seconds, ...rest } = original;
     const { error } = await supabase.from("campaigns").insert({ ...rest, name: `${original.name} (Copy)`, status: "draft" });
     if (error) { toast.error("Failed to duplicate"); return; }
     toast.success("Campaign duplicated as draft");
@@ -77,12 +77,12 @@ export default function Campaigns() {
       .eq("campaign_id", id);
     if (!data?.length) { toast.info("No contacts to export"); return; }
     const headers = ["First Name", "Last Name", "Phone", "Email", "Company", "Status", "Attempts", "Last Outcome", "Sentiment"];
-    const rows = data.map((cc: any) => [
+    const rows = data.map((cc) => [
       cc.contacts?.first_name, cc.contacts?.last_name, cc.contacts?.phone,
       cc.contacts?.email, cc.contacts?.company, cc.status, cc.total_attempts,
       cc.last_outcome, cc.sentiment
     ]);
-    const csv = [headers, ...rows].map(r => r.map((v: any) => `"${v || ""}"`).join(",")).join("\n");
+    const csv = [headers, ...rows].map(r => r.map((v) => `"${v || ""}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `campaign-results-${id}.csv`; a.click();
@@ -155,7 +155,7 @@ export default function Campaigns() {
                   {filtered.map((c, i) => (
                     <tr key={c.id} className={`border-t hover:bg-secondary/20 cursor-pointer ${i % 2 === 0 ? "" : "bg-secondary/10"}`} onClick={() => navigate(`/campaigns/${c.id}`)}>
                       <td className="px-4 py-3 text-sm font-medium text-foreground">{c.name}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{(c as any).agents?.agent_name || "—"}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{c.agents?.agent_name || "—"}</td>
                       <td className="px-4 py-3"><Badge variant="secondary" className={`${statusColors[c.status] || ""} border-0 text-[10px]`}>{c.status}</Badge></td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-foreground">{c.contacts_called} / {c.total_contacts}</span>

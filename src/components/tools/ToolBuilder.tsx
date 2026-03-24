@@ -91,12 +91,12 @@ export function ToolBuilder({ template, onBack, onSaved }: ToolBuilderProps) {
       description,
       template: template.id,
       service,
-      parameters: parameters.filter((p) => p.enabled) as any,
+      parameters: parameters.filter((p) => p.enabled),
       message_start: messageStart,
       message_complete: messageComplete,
       message_failed: messageFailed,
-      service_config: serviceConfig as any,
-      assigned_agent_ids: [] as any,
+      service_config: serviceConfig,
+      assigned_agent_ids: [],
       status: "active",
     });
     setLastCreatedToolId(savedTool.id);

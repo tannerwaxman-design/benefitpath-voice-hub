@@ -6,46 +6,46 @@ project_id = "kpsilbmmedonhxjofixm"
   [functions.billing-cycle-reset]
     verify_jwt = false
   [functions.buy-twilio-number]
-    verify_jwt = false
+    verify_jwt = true
   [functions.campaign-scheduler]
     verify_jwt = false
   [functions.create-agent]
-    verify_jwt = false
+    verify_jwt = true
   [functions.delete-agent]
-    verify_jwt = false
+    verify_jwt = true
   [functions.import-twilio-number]
-    verify_jwt = false
+    verify_jwt = true
   [functions.launch-call]
-    verify_jwt = false
+    verify_jwt = true
   [functions.launch-campaign]
-    verify_jwt = false
+    verify_jwt = true
   [functions.list-voices]
-    verify_jwt = false
+    verify_jwt = true
   [functions.process-email-queue]
     verify_jwt = true
   [functions.provision-phone-number]
-    verify_jwt = false
+    verify_jwt = true
   [functions.start-campaign]
-    verify_jwt = false
+    verify_jwt = true
   [functions.update-agent]
-    verify_jwt = false
+    verify_jwt = true
   [functions.upload-document]
-    verify_jwt = false
+    verify_jwt = true
   [functions.vapi-webhook]
     verify_jwt = false
   [functions.public-api]
     verify_jwt = false
   [functions.verify-twilio-credentials]
-    verify_jwt = false
+    verify_jwt = true
   [functions.forge-chat]
-    verify_jwt = false
+    verify_jwt = true
   [functions.verify-api-key]
-    verify_jwt = false
+    verify_jwt = true
   [functions.manage-tool]
-    verify_jwt = false
+    verify_jwt = true
   [functions.tool-webhook-handler]
     verify_jwt = false
   [functions.analyze-script]
-    verify_jwt = false
+    verify_jwt = true
   [functions.generate-commentary]
-    verify_jwt = false
+    verify_jwt = true

@@ -41,13 +41,13 @@ export default function SoaComplianceReport({ dateFrom, dateTo }: { dateFrom: st
       }
 
       // Filter to only SOA-enabled agent calls
-      const soaCalls = (data || []).filter((c: any) => c.agents?.soa_enabled);
+      const soaCalls = (data || []).filter((c) => c.agents?.soa_enabled);
       setCalls(soaCalls);
 
-      const collected = soaCalls.filter((c: any) => c.soa_collected);
-      const given = collected.filter((c: any) => c.soa_consent_given === true);
-      const declined = collected.filter((c: any) => c.soa_consent_given === false);
-      const notCollected = soaCalls.filter((c: any) => !c.soa_collected);
+      const collected = soaCalls.filter((c) => c.soa_collected);
+      const given = collected.filter((c) => c.soa_consent_given === true);
+      const declined = collected.filter((c) => c.soa_consent_given === false);
+      const notCollected = soaCalls.filter((c) => !c.soa_collected);
 
       setStats({
         total_connected: soaCalls.length,
@@ -64,7 +64,7 @@ export default function SoaComplianceReport({ dateFrom, dateTo }: { dateFrom: st
   const exportCsv = () => {
     if (!calls.length) return;
     const header = "Call Date,Contact Name,Phone Number,SOA Collected,Consent Given,Timestamp (s),Plan Types,Agent Name\n";
-    const rows = calls.map((c: any) => {
+    const rows = calls.map((c) => {
       const planTypes = c.soa_plan_types ? (c.soa_plan_types as string[]).join("; ") : "";
       return [
         new Date(c.started_at).toISOString(),
@@ -167,7 +167,7 @@ export default function SoaComplianceReport({ dateFrom, dateTo }: { dateFrom: st
                 </tr>
               </thead>
               <tbody>
-                {calls.slice(0, 20).map((c: any) => (
+                {calls.slice(0, 20).map((c) => (
                   <tr key={c.id} className="border-b border-border/50">
                     <td className="py-1.5 px-2">{new Date(c.started_at).toLocaleDateString()}</td>
                     <td className="py-1.5 px-2">{c.contact_name || c.to_number}</td>

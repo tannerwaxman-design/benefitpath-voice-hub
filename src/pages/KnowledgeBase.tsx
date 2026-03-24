@@ -154,8 +154,8 @@ export default function KnowledgeBasePage() {
         .order("created_at", { ascending: false });
       setDocs(data || []);
       toast({ title: "Documents uploaded" });
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Upload failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setUploading(false);
     }

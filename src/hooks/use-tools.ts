@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import type { TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
+import { logAudit } from "@/lib/audit";
 
 export interface Tool {
   id: string;
@@ -117,7 +119,7 @@ export function useVerifyApiKey() {
       additional_config?: Record<string, unknown>;
       reverify?: boolean;
       tenant_id?: string;
-    }): Promise<{ valid: boolean; error?: string; account_name?: string; calendars?: any[] }> => {
+    }): Promise<{ valid: boolean; error?: string; account_name?: string; calendars?: { id: string; name: string }[] }> => {
       const { data, error } = await supabase.functions.invoke("verify-api-key", {
         body: payload,
       });
@@ -137,7 +139,7 @@ export function useCreateTool() {
       // Step 1: Save to DB
       const { data, error } = await supabase
         .from("tools")
-        .insert({ ...tool, tenant_id: user!.tenant_id } as any)
+        .insert({ ...tool, tenant_id: user!.tenant_id } as TablesInsert<"tools">)
         .select()
         .single();
       if (error) throw error;
@@ -155,7 +157,16 @@ export function useCreateTool() {
 
       return savedTool;
     },
-    onSuccess: () => {
+    onSuccess: (savedTool) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.created",
+        entity_type: "tool",
+        entity_id: savedTool.id,
+        entity_name: savedTool.name,
+        metadata: { service: savedTool.service, template: savedTool.template },
+      });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "Tool created", description: "Your new tool is ready to assign to agents." });
     },
@@ -173,7 +184,7 @@ export function useUpdateTool() {
     mutationFn: async ({ id, ...updates }: Partial<Tool> & { id: string }) => {
       const { data, error } = await supabase
         .from("tools")
-        .update(updates as any)
+        .update(updates as TablesUpdate<"tools">)
         .eq("id", id)
         .select()
         .single();
@@ -192,6 +203,7 @@ export function useUpdateTool() {
 
 export function useDeleteTool() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -204,10 +216,10 @@ export function useDeleteTool() {
         .single();
 
       // Delete from VAPI first
-      if (tool && (tool as any).vapi_tool_id) {
+      if (tool && tool.vapi_tool_id) {
         try {
           await supabase.functions.invoke("manage-tool", {
-            body: { action: "delete", vapi_tool_id: (tool as any).vapi_tool_id },
+            body: { action: "delete", vapi_tool_id: tool.vapi_tool_id },
           });
         } catch (e) {
           console.error("VAPI tool deletion failed:", e);
@@ -217,7 +229,14 @@ export function useDeleteTool() {
       const { error } = await supabase.from("tools").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, toolId) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.deleted",
+        entity_type: "tool",
+        entity_id: toolId,
+      });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "Tool deleted" });
     },
@@ -237,7 +256,7 @@ export function useConnectApiKey() {
       const { data, error } = await supabase
         .from("tool_api_keys")
         .upsert(
-          { ...payload, tenant_id: user!.tenant_id, status: "active", connected_at: new Date().toISOString(), last_verified_at: new Date().toISOString() } as any,
+          { ...payload, tenant_id: user!.tenant_id, status: "active", connected_at: new Date().toISOString(), last_verified_at: new Date().toISOString() } as TablesInsert<"tool_api_keys">,
           { onConflict: "tenant_id,service" }
         )
         .select()
@@ -245,7 +264,16 @@ export function useConnectApiKey() {
       if (error) throw error;
       return data as unknown as ToolApiKey;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (data, vars) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.api_key_connected",
+        entity_type: "tool",
+        entity_id: data?.id ?? null,
+        entity_name: vars.display_name ?? vars.service,
+        metadata: { service: vars.service },
+      });
       queryClient.invalidateQueries({ queryKey: ["tool_api_keys"] });
       toast({ title: `${vars.display_name || vars.service} connected`, description: "API key verified and saved." });
     },
@@ -275,7 +303,15 @@ export function useDisconnectApiKey() {
       const { error } = await supabase.from("tool_api_keys").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.api_key_disconnected",
+        entity_type: "tool",
+        entity_name: vars.service,
+        metadata: { service: vars.service },
+      });
       queryClient.invalidateQueries({ queryKey: ["tool_api_keys"] });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "API key disconnected" });
@@ -288,6 +324,7 @@ export function useDisconnectApiKey() {
 
 export function useAssignToolToAgents() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -295,7 +332,7 @@ export function useAssignToolToAgents() {
       // Update tool's assigned_agent_ids
       const { error } = await supabase
         .from("tools")
-        .update({ assigned_agent_ids: agentIds as any })
+        .update({ assigned_agent_ids: agentIds as unknown as Json })
         .eq("id", toolId);
       if (error) throw error;
 
@@ -313,10 +350,10 @@ export function useAssignToolToAgents() {
             .from("tools")
             .select("vapi_tool_id")
             .eq("status", "active")
-            .contains("assigned_agent_ids", [agentId] as any);
+            .contains("assigned_agent_ids", [agentId] as unknown as string[]);
 
           const toolIds = (agentTools || [])
-            .map((t: any) => t.vapi_tool_id)
+            .map((t) => t.vapi_tool_id)
             .filter(Boolean);
 
           try {
@@ -333,7 +370,15 @@ export function useAssignToolToAgents() {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "tool.agents_assigned",
+        entity_type: "tool",
+        entity_id: vars.toolId,
+        metadata: { agent_ids: vars.agentIds },
+      });
       queryClient.invalidateQueries({ queryKey: ["tools"] });
       toast({ title: "Tools assigned to agents" });
     },

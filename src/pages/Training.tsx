@@ -349,7 +349,7 @@ export default function Training() {
           <Card>
             <CardHeader><CardTitle className="card-title">Simulation Transcript</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              {transcript.map((t: any, i: number) => (
+              {transcript.map((t, i: number) => (
                 <div key={i} className={`flex ${t.role === "agent" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-lg px-4 py-2 ${
                     t.role === "agent" ? "bg-primary/10 text-foreground" : "bg-secondary text-foreground"

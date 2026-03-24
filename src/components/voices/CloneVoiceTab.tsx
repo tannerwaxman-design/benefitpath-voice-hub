@@ -61,12 +61,12 @@ export function CloneVoiceTab() {
   useEffect(() => {
     const checkExisting = async () => {
       const { data } = await supabase
-        .from("voices" as any)
+        .from("voices")
         .select("*")
         .eq("type", "cloned")
         .limit(1);
       if (data && data.length > 0) {
-        const v = data[0] as any;
+        const v = data[0];
         setClonedVoice({ id: v.id, name: v.name, provider_voice_id: v.provider_voice_id, created_at: v.created_at });
         setStatus("ready");
       }
@@ -377,7 +377,7 @@ export function CloneVoiceTab() {
       setProcessingProgress(100);
 
       const { data: voiceRow, error: insertError } = await supabase
-        .from("voices" as any)
+        .from("voices")
         .insert({
           tenant_id: user!.tenant.id,
           name: companyName ? `${companyName} Voice` : "My Voice",
@@ -385,14 +385,13 @@ export function CloneVoiceTab() {
           provider: "eleven_labs",
           provider_voice_id: data.voice_id,
           clone_status: "ready",
-        } as any)
+        })
         .select()
         .single();
 
       if (insertError) throw insertError;
 
-      const v = voiceRow as any;
-      setClonedVoice({ id: v.id, name: v.name, provider_voice_id: v.provider_voice_id, created_at: v.created_at });
+      setClonedVoice({ id: voiceRow!.id, name: voiceRow!.name, provider_voice_id: voiceRow!.provider_voice_id, created_at: voiceRow!.created_at });
       setStatus("ready");
       queryClient.invalidateQueries({ queryKey: ["voices"] });
       toast({ title: "Voice clone created!", description: "Your AI agent will now sound like you." });
@@ -405,7 +404,7 @@ export function CloneVoiceTab() {
 
   const deleteClone = async () => {
     if (!clonedVoice) return;
-    await supabase.from("voices" as any).delete().eq("id", clonedVoice.id);
+    await supabase.from("voices").delete().eq("id", clonedVoice.id);
     setClonedVoice(null);
     setStatus("idle");
     queryClient.invalidateQueries({ queryKey: ["voices"] });

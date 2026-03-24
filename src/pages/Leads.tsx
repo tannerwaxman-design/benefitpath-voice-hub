@@ -99,7 +99,7 @@ function LeadDetailPanel({ lead, onClose }: { lead: LeadContact; onClose: () => 
           <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
         ) : calls && calls.length > 0 ? (
           <div className="space-y-2">
-            {calls.map((call: any) => (
+            {calls.map((call) => (
               <div key={call.id} className="rounded-lg border p-3 text-sm">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium text-foreground">{format(new Date(call.started_at), "MMM d, h:mm a")}</span>

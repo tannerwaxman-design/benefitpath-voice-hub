@@ -64,7 +64,7 @@ serve(async (req) => {
     }
 
     // Validate the key against the service
-    let result: { valid: boolean; error?: string; account_name?: string; calendars?: any[] };
+    let result: { valid: boolean; error?: string; account_name?: string; calendars?: { id: string; name: string }[] };
 
     switch (service) {
       case "ghl":
@@ -177,7 +177,7 @@ async function validateSalesforce(apiKey: string, instanceUrl?: string): Promise
   }
 }
 
-async function validateGoogleCalendar(apiKey: string): Promise<{ valid: boolean; error?: string; calendars?: any[] }> {
+async function validateGoogleCalendar(apiKey: string): Promise<{ valid: boolean; error?: string; calendars?: { id: string; name: string }[] }> {
   try {
     const res = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
       headers: { Authorization: `Bearer ${apiKey}` },
@@ -185,7 +185,7 @@ async function validateGoogleCalendar(apiKey: string): Promise<{ valid: boolean;
 
     if (res.status === 200) {
       const data = await res.json();
-      const calendars = (data.items || []).map((c: any) => ({
+      const calendars = (data.items || []).map((c: { id?: string; summary?: string }) => ({
         id: c.id,
         summary: c.summary,
         primary: c.primary || false,
