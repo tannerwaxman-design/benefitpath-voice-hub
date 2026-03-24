@@ -11,6 +11,12 @@ function errorResponse(message: string, status = 400) {
   });
 }
 
+function clampInt(val: string | null, defaultVal: number, max: number): number {
+  const n = Number(val);
+  if (!Number.isFinite(n) || n < 0) return defaultVal;
+  return Math.min(Math.floor(n), max);
+}
+
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -70,8 +76,8 @@ Deno.serve(async (req: Request) => {
 
     // --- CONTACTS ---
     if (path === "/contacts" && method === "GET") {
-      const limit = Math.min(Number(url.searchParams.get("limit") || 50), 200);
-      const offset = Number(url.searchParams.get("offset") || 0);
+      const limit = clampInt(url.searchParams.get("limit"), 50, 200);
+      const offset = clampInt(url.searchParams.get("offset"), 0, 100000);
       const { data, error, count } = await admin
         .from("contacts")
         .select("id, first_name, last_name, phone, email, company, tags, dnc_status, last_outcome, total_calls, created_at", { count: "exact" })
@@ -126,8 +132,8 @@ Deno.serve(async (req: Request) => {
 
     // --- CALLS ---
     if (path === "/calls" && method === "GET") {
-      const limit = Math.min(Number(url.searchParams.get("limit") || 50), 200);
-      const offset = Number(url.searchParams.get("offset") || 0);
+      const limit = clampInt(url.searchParams.get("limit"), 50, 200);
+      const offset = clampInt(url.searchParams.get("offset"), 0, 100000);
       const { data, error, count } = await admin
         .from("calls")
         .select("id, vapi_call_id, contact_name, from_number, to_number, direction, outcome, duration_seconds, summary, sentiment, detected_intent, started_at, ended_at, recording_url, cost_total", { count: "exact" })

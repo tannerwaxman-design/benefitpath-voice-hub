@@ -41,9 +41,15 @@ serve(async (req) => {
       const toolCall = toolCallList[i];
       const vapiToolRef = toolWithToolCallList[i];
       const functionName = toolCall.function?.name || toolCall.name;
-      const args = typeof toolCall.function?.arguments === "string"
-        ? JSON.parse(toolCall.function.arguments)
-        : (toolCall.function?.arguments || toolCall.arguments || {});
+      let args: Record<string, unknown> = {};
+      try {
+        args = typeof toolCall.function?.arguments === "string"
+          ? JSON.parse(toolCall.function.arguments)
+          : (toolCall.function?.arguments || toolCall.arguments || {});
+      } catch {
+        console.warn("[tool-webhook] Failed to parse arguments for tool call:", toolCallId);
+        args = {};
+      }
       const toolCallId = toolCall.id;
 
       try {
