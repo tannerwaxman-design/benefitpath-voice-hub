@@ -238,7 +238,7 @@ Deno.serve(async (req: Request) => {
               .rpc("increment_campaign_contact_attempts", {
                 cc_id: campaignContactId,
               })
-              .catch(() => {});
+              .catch((err) => console.warn("[webhook] increment attempts failed:", err));
           }
 
           // Update campaign stats
@@ -992,7 +992,7 @@ async function fireTenantWebhook(
 
 // --- CRM Note Push (fire-and-forget after end-of-call-report) ---
 
-async function pushCrmNote(supabase: any, params: {
+async function pushCrmNote(supabase: ReturnType<typeof createAdminClient>, params: {
   tenantId: string;
   contactId: string;
   outcome: string;
@@ -1028,7 +1028,7 @@ async function pushCrmNote(supabase: any, params: {
   }
 
   const apiKey = apiKeyRecord.api_key as string;
-  const additionalConfig = (apiKeyRecord.additional_config || {}) as Record<string, any>;
+  const additionalConfig = (apiKeyRecord.additional_config || {}) as Record<string, unknown>;
   const noteBody = `AI Call -- ${outcome} | ${duration}s\n\n${summary || "(no summary)"}\n\nSentiment: ${sentiment}`;
 
   switch (crmSource) {

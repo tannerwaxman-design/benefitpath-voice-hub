@@ -57,12 +57,11 @@ Deno.serve(async (req: Request) => {
 
     // === INVITE ===
     if (action === "invite") {
-      if (!["admin", "owner"].includes(auth.role) && auth.userId !== (await adminClient.from("tenants").select("owner_user_id").eq("id", auth.tenantId).single()).data?.owner_user_id) {
-        // Check if user is the tenant owner (whose role might be stored as 'admin')
-        const { data: tenantData } = await adminClient.from("tenants").select("owner_user_id").eq("id", auth.tenantId).single();
-        if (auth.userId !== tenantData?.owner_user_id && auth.role !== "admin") {
-          return errorResponse("Only admins can invite team members", 403);
-        }
+      // Check if user is admin or tenant owner
+      const { data: tenantData } = await adminClient.from("tenants").select("owner_user_id").eq("id", auth.tenantId).single();
+      const isOwnerOrAdmin = auth.role === "admin" || auth.role === "owner" || auth.userId === tenantData?.owner_user_id;
+      if (!isOwnerOrAdmin) {
+        return errorResponse("Only admins can invite team members", 403);
       }
 
       const { email, role } = body;

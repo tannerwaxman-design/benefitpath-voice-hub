@@ -135,6 +135,7 @@ Deno.serve(async (req: Request) => {
               .insert(batch);
             if (insertErr) {
               console.error("Batch insert error:", insertErr);
+              throw new Error(`Failed to insert campaign contacts: ${insertErr.message}`);
             }
           }
         }

@@ -56,6 +56,7 @@ serve(async (req) => {
       const toolCall = toolCallList[i];
       const vapiToolRef = toolWithToolCallList[i];
       const functionName = toolCall.function?.name || toolCall.name;
+      const toolCallId = toolCall.id;
       let args: Record<string, unknown> = {};
       try {
         args = typeof toolCall.function?.arguments === "string"
@@ -65,7 +66,6 @@ serve(async (req) => {
         console.warn("[tool-webhook] Failed to parse arguments for tool call:", toolCallId);
         args = {};
       }
-      const toolCallId = toolCall.id;
 
       let keyRecord: ApiKeyRecord | null = null;
       try {

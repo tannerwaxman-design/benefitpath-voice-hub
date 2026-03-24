@@ -66,14 +66,14 @@ Deno.serve(async (req: Request) => {
       .order("quality_score", { ascending: false, nullsFirst: false })
       .limit(10);
 
-    // Fetch unsuccessful calls
+    // Fetch unsuccessful calls (failed outcomes or low-scoring connected calls)
     const { data: failCalls } = await supabase
       .from("calls")
       .select("transcript, outcome, quality_score, duration_seconds, detected_intent")
       .eq("agent_id", agent_id)
       .gte("started_at", thirtyDaysAgo.toISOString())
       .not("transcript", "is", null)
-      .in("outcome", ["connected", "completed"])
+      .in("outcome", ["no_answer", "voicemail", "failed", "busy"])
       .order("quality_score", { ascending: true, nullsFirst: false })
       .limit(10);
 
