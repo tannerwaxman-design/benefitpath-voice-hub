@@ -170,8 +170,8 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        call_id: result.data.id,
-        web_call_url: result.data.webCallUrl,
+        call_id: result.id,
+        web_call_url: result.webCallUrl,
       }),
       {
         headers: { ...corsH, "Content-Type": "application/json" },
