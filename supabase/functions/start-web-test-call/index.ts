@@ -117,21 +117,30 @@ Deno.serve(async (req) => {
         .eq("id", agent_id);
     }
 
-    // Create a VAPI web call using the API
-    const result = await vapiRequest<{
-      id: string;
-      webCallUrl: string;
-      status: string;
-    }>({
+    // Create a VAPI web call using the PUBLIC key (VAPI requires public-scoped auth for /call/web)
+    const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY");
+    if (!vapiPublicKey) {
+      return new Response(
+        JSON.stringify({ error: "VAPI_PUBLIC_KEY is not configured" }),
+        { status: 500, headers: { ...corsH, "Content-Type": "application/json" } }
+      );
+    }
+
+    const personalizedGreeting = (agent.greeting_script || "Hello!")
+      .replace(/\[Contact Name\]/gi, contact_name || "there")
+      .replace(/\[Agent Name\]/gi, agent.agent_name || "")
+      .replace(/\[Company\]/gi, agent.company_name_override || "");
+
+    const webCallResponse = await fetch("https://api.vapi.ai/call/web", {
       method: "POST",
-      endpoint: "/call/web",
-      body: {
+      headers: {
+        Authorization: `Bearer ${vapiPublicKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         assistantId: vapiAssistantId,
         assistantOverrides: {
-          firstMessage: (agent.greeting_script || "Hello!")
-            .replace(/\[Contact Name\]/gi, contact_name || "there")
-            .replace(/\[Agent Name\]/gi, agent.agent_name || "")
-            .replace(/\[Company\]/gi, agent.company_name_override || ""),
+          firstMessage: personalizedGreeting,
           metadata: {
             benefitpath_tenant_id: tenant_id,
             benefitpath_agent_id: agent_id,
@@ -139,11 +148,15 @@ Deno.serve(async (req) => {
             benefitpath_contact_name: contact_name || "Test Caller",
           },
         },
-      },
+      }),
     });
 
-    if (!result.ok || !result.data) {
-      console.error("VAPI web call creation failed:", result.error);
+    const webCallText = await webCallResponse.text();
+    let result: { id?: string; webCallUrl?: string } | null = null;
+    try { result = JSON.parse(webCallText); } catch { /* not JSON */ }
+
+    if (!webCallResponse.ok || !result?.id) {
+      console.error("VAPI web call creation failed:", webCallText);
       return new Response(
         JSON.stringify({
           error: "Failed to create voice test call. Please try again.",
