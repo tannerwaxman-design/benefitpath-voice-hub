@@ -154,8 +154,8 @@ export default function KnowledgeBasePage() {
         .order("created_at", { ascending: false });
       setDocs(data || []);
       toast({ title: "Documents uploaded" });
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Upload failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -167,20 +167,27 @@ export default function KnowledgeBasePage() {
     toast({ title: "Document deleted" });
   };
 
-  // Website import (placeholder - uses edge function if available)
+  // Website import — calls scrape-website edge function for real content extraction
   const handleImport = async () => {
     if (!websiteUrl.trim()) return;
     setImporting(true);
     try {
-      // Save URL and mark as imported
+      const { data, error } = await supabase.functions.invoke("scrape-website", {
+        body: { url: websiteUrl.trim() },
+      });
+      if (error) throw error;
+      const { content, title, truncated } = data as { content: string; title: string; truncated: boolean };
       updateKb.mutate({
-        website_url: websiteUrl,
-        website_content: `Content imported from ${websiteUrl}`,
+        website_url: websiteUrl.trim(),
+        website_content: content,
         website_imported_at: new Date().toISOString(),
       });
-      toast({ title: "Website content imported" });
-    } catch {
-      toast({ title: "Import failed", variant: "destructive" });
+      toast({
+        title: `Website imported${title ? `: ${title}` : ""}`,
+        description: `${content.length.toLocaleString()} characters extracted${truncated ? " (truncated)" : ""}`,
+      });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
     } finally {
       setImporting(false);
     }

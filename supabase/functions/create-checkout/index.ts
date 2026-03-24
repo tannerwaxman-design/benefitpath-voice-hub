@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
@@ -49,7 +49,14 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://voicebenefitpath.lovable.app";
+    const ALLOWED_ORIGINS = [
+      "https://voicebenefitpath.lovable.app",
+      "https://benefitpath.com",
+    ];
+    const requestOrigin = req.headers.get("origin") || "";
+    const origin = ALLOWED_ORIGINS.includes(requestOrigin)
+      ? requestOrigin
+      : ALLOWED_ORIGINS[0];
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

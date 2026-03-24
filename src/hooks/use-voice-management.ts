@@ -33,7 +33,7 @@ export function useAllVoices() {
     queryKey: ["voices", "all"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("voices" as any)
+        .from("voices")
         .select("*")
         .order("name");
       if (error) throw error;
@@ -48,14 +48,14 @@ export function useMyVoices() {
     queryKey: ["voices", "my-collection"],
     queryFn: async () => {
       const { data: collection, error: collError } = await supabase
-        .from("user_voice_collection" as any)
+        .from("user_voice_collection")
         .select("voice_id");
       if (collError) throw collError;
 
-      const collectionIds = new Set((collection || []).map((c: any) => c.voice_id));
+      const collectionIds = new Set((collection || []).map((c) => c.voice_id));
 
       const { data: clonedVoices, error: cloneError } = await supabase
-        .from("voices" as any)
+        .from("voices")
         .select("*")
         .eq("type", "cloned");
       if (cloneError) throw cloneError;
@@ -64,7 +64,7 @@ export function useMyVoices() {
       let presetVoices: Voice[] = [];
       if (collectionArray.length > 0) {
         const { data, error } = await supabase
-          .from("voices" as any)
+          .from("voices")
           .select("*")
           .in("id", collectionArray);
         if (error) throw error;
@@ -93,7 +93,7 @@ export function useVoiceLibrary() {
     queryKey: ["voices", "library"],
     queryFn: async () => {
       const { data: voices, error } = await supabase
-        .from("voices" as any)
+        .from("voices")
         .select("*")
         .eq("is_global", true)
         .eq("type", "preset")
@@ -101,10 +101,10 @@ export function useVoiceLibrary() {
       if (error) throw error;
 
       const { data: collection } = await supabase
-        .from("user_voice_collection" as any)
+        .from("user_voice_collection")
         .select("voice_id");
 
-      const collectionIds = new Set((collection || []).map((c: any) => c.voice_id));
+      const collectionIds = new Set((collection || []).map((c) => c.voice_id));
 
       return ((voices || []) as unknown as Voice[]).map((v) => ({
         ...v,
@@ -123,8 +123,8 @@ export function useAddToCollection() {
   return useMutation({
     mutationFn: async (voiceId: string) => {
       const { error } = await supabase
-        .from("user_voice_collection" as any)
-        .insert({ tenant_id: user!.tenant.id, voice_id: voiceId } as any);
+        .from("user_voice_collection")
+        .insert({ tenant_id: user!.tenant.id, voice_id: voiceId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -141,7 +141,7 @@ export function useRemoveFromCollection() {
   return useMutation({
     mutationFn: async (voiceId: string) => {
       const { error } = await supabase
-        .from("user_voice_collection" as any)
+        .from("user_voice_collection")
         .delete()
         .eq("voice_id", voiceId);
       if (error) throw error;
@@ -160,12 +160,12 @@ export function useSetDefaultVoice() {
   return useMutation({
     mutationFn: async (voiceId: string) => {
       await supabase
-        .from("voices" as any)
-        .update({ is_default: false } as any)
+        .from("voices")
+        .update({ is_default: false })
         .eq("is_default", true);
       const { error } = await supabase
-        .from("voices" as any)
-        .update({ is_default: true } as any)
+        .from("voices")
+        .update({ is_default: true })
         .eq("id", voiceId);
       if (error) throw error;
     },
@@ -183,7 +183,7 @@ export function useDeleteVoice() {
   return useMutation({
     mutationFn: async (voiceId: string) => {
       const { error } = await supabase
-        .from("voices" as any)
+        .from("voices")
         .delete()
         .eq("id", voiceId);
       if (error) throw error;
@@ -241,7 +241,7 @@ export function useTtsPreview() {
       const contentType = response.headers.get("Content-Type") || "";
       if (!contentType.includes("audio")) {
         const errJson = await response.json().catch(() => ({}));
-        throw new Error((errJson as any).error || "Unexpected response from TTS");
+        throw new Error((errJson as { error?: string }).error || "Unexpected response from TTS");
       }
 
       const blob = await response.blob();
@@ -289,20 +289,20 @@ export function useAvailableVoices() {
     queryKey: ["voices", "available-for-agent"],
     queryFn: async () => {
       const { data: cloned } = await supabase
-        .from("voices" as any)
+        .from("voices")
         .select("*")
         .eq("type", "cloned");
 
       const { data: collection } = await supabase
-        .from("user_voice_collection" as any)
+        .from("user_voice_collection")
         .select("voice_id");
 
-      const collectionIds = (collection || []).map((c: any) => c.voice_id);
+      const collectionIds = (collection || []).map((c) => c.voice_id);
 
       let presets: Voice[] = [];
       if (collectionIds.length > 0) {
         const { data } = await supabase
-          .from("voices" as any)
+          .from("voices")
           .select("*")
           .in("id", collectionIds);
         presets = (data || []) as unknown as Voice[];
@@ -310,7 +310,7 @@ export function useAvailableVoices() {
 
       if (presets.length === 0 && (!cloned || cloned.length === 0)) {
         const { data } = await supabase
-          .from("voices" as any)
+          .from("voices")
           .select("*")
           .eq("is_global", true)
           .eq("type", "preset");

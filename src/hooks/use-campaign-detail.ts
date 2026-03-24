@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -97,4 +98,44 @@ export function useCampaignDailyStats(campaignId: string | undefined) {
     },
     enabled: !!campaignId && !!user?.tenant_id,
   });
+}
+
+/** Subscribe to real-time updates for an active campaign */
+export function useCampaignRealtime(campaignId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!campaignId) return;
+
+    const channel = supabase
+      .channel(`campaign-realtime-${campaignId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "campaign_contacts", filter: `campaign_id=eq.${campaignId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["campaign-contacts", campaignId] });
+          queryClient.invalidateQueries({ queryKey: ["campaign", campaignId] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "calls", filter: `campaign_id=eq.${campaignId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["campaign-calls", campaignId] });
+          queryClient.invalidateQueries({ queryKey: ["campaign-daily-stats", campaignId] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "campaigns", filter: `id=eq.${campaignId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["campaign", campaignId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [campaignId, queryClient]);
 }

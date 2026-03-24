@@ -89,16 +89,16 @@ export function useAbTestResults(testId: string | undefined) {
       if (callsErr) throw callsErr;
 
       const buildStats = (version: string): VersionStats => {
-        const vCalls = (calls || []).filter((c: any) => c.ab_test_version === version);
-        const connected = vCalls.filter((c: any) => ["connected", "completed"].includes(c.outcome));
-        const withSentiment = vCalls.filter((c: any) => c.sentiment);
-        const positive = vCalls.filter((c: any) => c.sentiment === "positive");
-        const appointments = vCalls.filter((c: any) => c.detected_intent === "schedule_appointment");
+        const vCalls = (calls || []).filter((c) => c.ab_test_version === version);
+        const connected = vCalls.filter((c) => ["connected", "completed"].includes(c.outcome));
+        const withSentiment = vCalls.filter((c) => c.sentiment);
+        const positive = vCalls.filter((c) => c.sentiment === "positive");
+        const appointments = vCalls.filter((c) => c.detected_intent === "schedule_appointment");
         return {
           calls: vCalls.length,
           connected: connected.length,
           connect_rate: vCalls.length > 0 ? Math.round((connected.length / vCalls.length) * 1000) / 10 : 0,
-          avg_duration: connected.length > 0 ? Math.round(connected.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0) / connected.length) : 0,
+          avg_duration: connected.length > 0 ? Math.round(connected.reduce((s: number, c) => s + (c.duration_seconds || 0), 0) / connected.length) : 0,
           appointments: appointments.length,
           appointment_rate: vCalls.length > 0 ? Math.round((appointments.length / vCalls.length) * 1000) / 10 : 0,
           positive_sentiment_pct: withSentiment.length > 0 ? Math.round((positive.length / withSentiment.length) * 1000) / 10 : 0,

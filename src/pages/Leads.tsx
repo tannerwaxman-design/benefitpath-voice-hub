@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Thermometer, LayoutGrid, List, Search, Phone, Calendar, ArrowRight, Flame, Snowflake, XCircle } from "lucide-react";
+import { Thermometer, LayoutGrid, List, Search, Phone, Calendar, ArrowRight, Flame, Snowflake, XCircle, Download } from "lucide-react";
 import { useLeads, useLeadStats, useLeadCalls, type LeadContact } from "@/hooks/use-leads";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, formatDistanceToNow } from "date-fns";
@@ -99,7 +99,7 @@ function LeadDetailPanel({ lead, onClose }: { lead: LeadContact; onClose: () => 
           <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
         ) : calls && calls.length > 0 ? (
           <div className="space-y-2">
-            {calls.map((call: any) => (
+            {calls.map((call) => (
               <div key={call.id} className="rounded-lg border p-3 text-sm">
                 <div className="flex justify-between mb-1">
                   <span className="font-medium text-foreground">{format(new Date(call.started_at), "MMM d, h:mm a")}</span>
@@ -162,6 +162,21 @@ export default function Leads() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 w-[220px]" />
           </div>
+          <Button variant="outline" size="sm" onClick={() => {
+            if (!filtered.length) return;
+            const rows = [["Name", "Phone", "Email", "Status", "Score", "Last Contact"]];
+            for (const l of filtered) {
+              rows.push([`${l.first_name} ${l.last_name}`, l.phone, l.email || "", l.lead_status || "", String(l.lead_score ?? ""), l.last_contacted_at || ""]);
+            }
+            const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+            URL.revokeObjectURL(url);
+          }}>
+            <Download className="h-4 w-4 mr-1" /> Export
+          </Button>
           <div className="flex rounded-lg border overflow-hidden">
             <Button variant={view === "board" ? "default" : "ghost"} size="sm" onClick={() => setView("board")}><LayoutGrid className="h-4 w-4" /></Button>
             <Button variant={view === "list" ? "default" : "ghost"} size="sm" onClick={() => setView("list")}><List className="h-4 w-4" /></Button>

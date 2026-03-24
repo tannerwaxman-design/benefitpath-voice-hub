@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { logAudit } from "@/lib/audit";
 
 export function useAgents() {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ export function useAgent(id: string | undefined) {
 
 export function useCreateAgent() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -49,7 +51,15 @@ export function useCreateAgent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "agent.created",
+        entity_type: "agent",
+        entity_id: (data?.agent?.id ?? data?.id ?? null) as string | null,
+        entity_name: (variables.agent_name ?? variables.name ?? null) as string | null,
+      });
       queryClient.invalidateQueries({ queryKey: ["agents"] });
       toast({ title: "Agent created", description: data?.vapi_synced ? "Synced with voice engine" : "Saved locally" });
     },
@@ -61,6 +71,7 @@ export function useCreateAgent() {
 
 export function useUpdateAgent() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -71,7 +82,15 @@ export function useUpdateAgent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "agent.updated",
+        entity_type: "agent",
+        entity_id: (variables.agent_id ?? variables.id ?? null) as string | null,
+        entity_name: (variables.agent_name ?? variables.name ?? null) as string | null,
+      });
       queryClient.invalidateQueries({ queryKey: ["agents"] });
       queryClient.invalidateQueries({ queryKey: ["agent"] });
       toast({ title: "Agent updated", description: data?.vapi_synced ? "Synced with voice engine" : "Saved locally" });
@@ -84,6 +103,7 @@ export function useUpdateAgent() {
 
 export function useDeleteAgent() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -94,7 +114,14 @@ export function useDeleteAgent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, agentId) => {
+      logAudit({
+        tenant_id: user!.tenant_id,
+        user_id: user!.id,
+        event_type: "agent.deleted",
+        entity_type: "agent",
+        entity_id: agentId,
+      });
       queryClient.invalidateQueries({ queryKey: ["agents"] });
       toast({ title: "Agent deleted" });
     },

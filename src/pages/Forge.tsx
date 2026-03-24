@@ -141,6 +141,7 @@ export default function Forge() {
           await forgeAgent(config);
         } catch (e) {
           console.error("Failed to parse agent config:", e);
+          toast.error("The AI returned an unreadable configuration. Please try again.");
         }
       }
     } catch (err) {
@@ -161,8 +162,8 @@ export default function Forge() {
       });
       if (error) throw error;
       toast.success(`${config.agent_name} has been forged!`);
-    } catch (err: any) {
-      toast.error("Failed to forge agent: " + (err.message || "Unknown error"));
+    } catch (err: unknown) {
+      toast.error("Failed to forge agent: " + (err instanceof Error ? err.message : "Unknown error"));
     }
     setIsForging(false);
   };

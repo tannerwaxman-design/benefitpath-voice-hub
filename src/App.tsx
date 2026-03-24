@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Overview from "./pages/Overview";
 import LandingPage from "./pages/LandingPage";
 import AgentBuilder from "./pages/AgentBuilder";
@@ -36,6 +37,7 @@ import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import CookiesPolicy from "./pages/CookiesPolicy";
+import ApiDocs from "./pages/ApiDocs";
 
 const queryClient = new QueryClient();
 
@@ -46,46 +48,49 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/welcome" element={<LandingPage />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsConditions />} />
-            <Route path="/cookies" element={<CookiesPolicy />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+          <ErrorBoundary>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/welcome" element={<LandingPage />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsConditions />} />
+              <Route path="/cookies" element={<CookiesPolicy />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route element={<DashboardLayout />}>
-                <Route path="/" element={<Overview />} />
-                <Route path="/forge" element={<Forge />} />
-                <Route path="/agents" element={<AgentBuilder />} />
-                <Route path="/agents/:id" element={<AgentEditor />} />
-                <Route path="/voices" element={<Voices />} />
-                <Route path="/knowledge-base" element={<KnowledgeBase />} />
-                <Route path="/tools" element={<Tools />} />
-                <Route path="/campaigns" element={<Campaigns />} />
-                <Route path="/campaigns/new" element={<CampaignWizard />} />
-                <Route path="/campaigns/:id" element={<CampaignDetail />} />
-                <Route path="/contacts" element={<ContactLists />} />
-                <Route path="/leads" element={<Leads />} />
-                <Route path="/call-logs" element={<CallLogs />} />
-                <Route path="/coaching" element={<CoachingDashboard />} />
-                <Route path="/training" element={<Training />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/phone-numbers" element={<PhoneNumbers />} />
-                <Route path="/billing" element={<BillingUsage />} />
-                <Route path="/team" element={<Team />} />
-                <Route path="/settings" element={<Settings />} />
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route element={<DashboardLayout />}>
+                  <Route path="/" element={<ErrorBoundary><Overview /></ErrorBoundary>} />
+                  <Route path="/forge" element={<ErrorBoundary><Forge /></ErrorBoundary>} />
+                  <Route path="/agents" element={<ErrorBoundary><AgentBuilder /></ErrorBoundary>} />
+                  <Route path="/agents/:id" element={<ErrorBoundary><AgentEditor /></ErrorBoundary>} />
+                  <Route path="/voices" element={<ErrorBoundary><Voices /></ErrorBoundary>} />
+                  <Route path="/knowledge-base" element={<ErrorBoundary><KnowledgeBase /></ErrorBoundary>} />
+                  <Route path="/tools" element={<ErrorBoundary><Tools /></ErrorBoundary>} />
+                  <Route path="/campaigns" element={<ErrorBoundary><Campaigns /></ErrorBoundary>} />
+                  <Route path="/campaigns/new" element={<ErrorBoundary><CampaignWizard /></ErrorBoundary>} />
+                  <Route path="/campaigns/:id" element={<ErrorBoundary><CampaignDetail /></ErrorBoundary>} />
+                  <Route path="/contacts" element={<ErrorBoundary><ContactLists /></ErrorBoundary>} />
+                  <Route path="/leads" element={<ErrorBoundary><Leads /></ErrorBoundary>} />
+                  <Route path="/call-logs" element={<ErrorBoundary><CallLogs /></ErrorBoundary>} />
+                  <Route path="/coaching" element={<ErrorBoundary><CoachingDashboard /></ErrorBoundary>} />
+                  <Route path="/training" element={<ErrorBoundary><Training /></ErrorBoundary>} />
+                  <Route path="/analytics" element={<ErrorBoundary><Analytics /></ErrorBoundary>} />
+                  <Route path="/phone-numbers" element={<ErrorBoundary><PhoneNumbers /></ErrorBoundary>} />
+                  <Route path="/billing" element={<ErrorBoundary><BillingUsage /></ErrorBoundary>} />
+                  <Route path="/team" element={<ErrorBoundary><Team /></ErrorBoundary>} />
+                  <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+                  <Route path="/api-docs" element={<ErrorBoundary><ApiDocs /></ErrorBoundary>} />
+                </Route>
               </Route>
-            </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

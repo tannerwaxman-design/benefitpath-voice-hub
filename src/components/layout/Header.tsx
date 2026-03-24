@@ -1,5 +1,6 @@
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, Search, LogOut, Settings, CheckCheck, Phone, Megaphone, AlertTriangle, Info } from "lucide-react";
+import { Bell, Search, LogOut, Settings, CheckCheck, Phone, Megaphone, AlertTriangle, Info, Bot, BarChart3, Users, Loader2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotifications, type Notification } from "@/hooks/use-notifications";
+import { useGlobalSearch, type SearchResult } from "@/hooks/use-global-search";
 
 const pathNames: Record<string, string> = {
   "/": "Overview",
@@ -80,12 +82,57 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
   );
 }
 
+const searchTypeIcons: Record<string, typeof Bot> = {
+  agent: Bot,
+  campaign: Megaphone,
+  contact: Users,
+  call: Phone,
+};
+
 export function Header() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const title = pathNames[location.pathname] || "Dashboard";
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const { results, isSearching } = useGlobalSearch(searchQuery);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        const input = searchRef.current?.querySelector("input");
+        input?.focus();
+        setSearchOpen(true);
+      }
+      if (e.key === "Escape") {
+        setSearchOpen(false);
+        setSearchQuery("");
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleSearchResultClick = (result: SearchResult) => {
+    navigate(result.link);
+    setSearchQuery("");
+    setSearchOpen(false);
+  };
 
   const initials = user?.email
     ? user.email.substring(0, 2).toUpperCase()
@@ -113,9 +160,47 @@ export function Header() {
         <span className="text-sm font-medium text-foreground">{title}</span>
       </div>
       <div className="flex items-center gap-4">
-        <div className="relative hidden md:block">
+        <div className="relative hidden md:block" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input placeholder="Search..." className="pl-9 pr-4 py-2 text-sm bg-secondary/50 rounded-md border-0 focus:ring-2 focus:ring-primary/30 outline-none w-64" />
+          <input
+            placeholder="Search... (Ctrl+K)"
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+            onFocus={() => setSearchOpen(true)}
+            className="pl-9 pr-4 py-2 text-sm bg-secondary/50 rounded-md border-0 focus:ring-2 focus:ring-primary/30 outline-none w-64"
+          />
+          {searchOpen && searchQuery.length >= 2 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-lg z-50 overflow-hidden">
+              {isSearching ? (
+                <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Searching...
+                </div>
+              ) : results.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  No results found for "{searchQuery}"
+                </div>
+              ) : (
+                <div className="max-h-80 overflow-auto">
+                  {results.map(result => {
+                    const Icon = searchTypeIcons[result.type] || Search;
+                    return (
+                      <button
+                        key={`${result.type}-${result.id}`}
+                        onClick={() => handleSearchResultClick(result)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-secondary/50 flex items-center gap-3 transition-colors"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{result.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{result.type} &middot; {result.subtitle}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <Popover>
           <PopoverTrigger asChild>

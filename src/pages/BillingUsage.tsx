@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,21 +9,46 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { useSubscription } from "@/hooks/use-subscription";
-import { STRIPE_PLANS, CREDIT_PACKAGES, getPlanByProductId, PLAN_DISPLAY } from "@/lib/stripe-config";
+import { STRIPE_PLANS, CREDIT_PACKAGES, getPlanByProductId } from "@/lib/stripe-config";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown, Loader2, Coins, RefreshCw, AlertTriangle, XCircle, TrendingDown, Clock, X } from "lucide-react";
+import { CreditCard, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown, Loader2, Coins, RefreshCw, AlertTriangle, XCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-const planFeatures: Record<string, readonly string[]> = {
-  voice_ai_starter: PLAN_DISPLAY.voice_ai_starter.features,
-  voice_ai_pro: PLAN_DISPLAY.voice_ai_pro.features,
-  voice_ai_enterprise: PLAN_DISPLAY.voice_ai_enterprise.features,
+const planFeatures: Record<string, string[]> = {
+  voice_ai_starter: [
+    "1 AI agent",
+    "Outbound calls only",
+    "Basic call logs (no transcripts)",
+    "CSV contact upload",
+    "1 campaign at a time",
+    "Email support",
+  ],
+  voice_ai_pro: [
+    "Unlimited AI agents",
+    "Outbound + inbound calls",
+    "Full transcripts & recordings",
+    "AI call summaries & sentiment",
+    "Knowledge base",
+    "Smart scheduling",
+    "CRM & calendar tools",
+    "Unlimited campaigns",
+    "Priority support",
+  ],
+  voice_ai_enterprise: [
+    "Everything in Professional",
+    "Voice cloning",
+    "AI call scoring",
+    "AI objection trainer",
+    "Multi-language (Spanish)",
+    "Team management (up to 10)",
+    "Call coaching & review",
+    "Dedicated account manager",
+    "Phone & video support",
+  ],
 };
 
 const plans = [
@@ -32,10 +58,72 @@ const plans = [
   { id: "voice_ai_custom", name: "Enterprise", price: -1, icon: Crown, tagline: "For large operations with custom needs" },
 ];
 
-const PLAN_ORDER = ["voice_ai_starter", "voice_ai_pro", "voice_ai_enterprise", "voice_ai_custom"];
+function PurchaseHistorySection({ tenantId }: { tenantId?: string }) {
+  const { data: transactions, isLoading } = useQuery({
+    queryKey: ["credit-transactions", tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("credit_transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId,
+  });
 
-function isPlanDowngrade(from: string, to: string) {
-  return PLAN_ORDER.indexOf(to) < PLAN_ORDER.indexOf(from);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Purchase History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : !transactions || transactions.length === 0 ? (
+          <div className="text-center py-8">
+            <CreditCard className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No transactions yet. Purchase history will appear here after your first credit purchase.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Balance After</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.map((t: any) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={t.type === "purchase" || t.type === "refund" ? "default" : "secondary"} className="text-[10px]">
+                      {t.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{t.description || t.type}</TableCell>
+                  <TableCell className={`text-right text-sm font-medium ${Number(t.amount) >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                    {Number(t.amount) >= 0 ? "+" : ""}${Math.abs(Number(t.amount)).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    ${Number(t.balance_after ?? 0).toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function BillingUsage() {
@@ -47,10 +135,6 @@ export default function BillingUsage() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [creditLoading, setCreditLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
-  const [pendingDowngradePlan, setPendingDowngradePlan] = useState<string | null>(null);
-  const [trialBannerDismissed, setTrialBannerDismissed] = useState(() =>
-    sessionStorage.getItem("trial_banner_dismissed") === "1"
-  );
 
   const tenant = billing?.tenant || user?.tenant;
   const plan = tenant?.plan || "voice_ai_starter";
@@ -58,23 +142,6 @@ export default function BillingUsage() {
   const autoRefillEnabled = tenant?.auto_refill_enabled ?? false;
   const autoRefillThreshold = tenant?.auto_refill_threshold ?? 100;
   const autoRefillPackage = tenant?.auto_refill_package ?? "1000";
-
-  // Minutes quota
-  const minutesUsed = tenant?.minutes_used_this_cycle ?? 0;
-  const minuteLimit = tenant?.monthly_minute_limit ?? 5000;
-  const overageRate = tenant?.overage_rate_per_minute ?? 0.05;
-  const hardStopEnabled = tenant?.hard_stop_enabled ?? false;
-  const minutePct = minuteLimit > 0 ? Math.min((minutesUsed / minuteLimit) * 100, 100) : 0;
-  const isOverLimit = minutesUsed > minuteLimit;
-
-  // Trial
-  const trialEndsAt = tenant?.trial_ends_at ?? null;
-  const tenantStatus = tenant?.status ?? "active";
-  const isOnTrial = tenantStatus === "trial" || (trialEndsAt != null && new Date(trialEndsAt) > new Date());
-  const trialExpired = tenantStatus === "trial" && trialEndsAt != null && new Date(trialEndsAt) <= new Date();
-  const trialDaysLeft = trialEndsAt
-    ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
-    : 0;
 
   const totalSpent = billing?.costSummary?.withMargin ?? (billing?.tenant as any)?.total_cost_this_cycle ?? 0;
   const totalMinutes = billing?.costSummary?.totalMinutes ?? 0;
@@ -110,55 +177,18 @@ export default function BillingUsage() {
     }
   }, []);
 
-  // Fallback: create a brand-new Stripe Checkout session (for new subscribers)
-  const handleLegacyCheckout = async (planId: string) => {
+  const handleCheckout = async (planId: string) => {
     const stripePlan = STRIPE_PLANS[planId as keyof typeof STRIPE_PLANS];
     if (!stripePlan) return;
-    const { data, error } = await supabase.functions.invoke("create-checkout", {
-      body: { priceId: stripePlan.price_id },
-    });
-    if (error) throw error;
-    if (data?.url) window.open(data.url, "_blank");
-  };
-
-  // Primary plan change handler: uses change-plan edge function, falls back to checkout
-  const handleChangePlan = async (planId: string) => {
-    if (planId === "voice_ai_custom") {
-      window.open("mailto:sales@benefitpath.com?subject=Enterprise%20Plan%20Inquiry", "_blank");
-      return;
-    }
-    if (isPlanDowngrade(plan, planId)) {
-      setPendingDowngradePlan(planId);
-      return;
-    }
-    await executePlanChange(planId);
-  };
-
-  const executePlanChange = async (planId: string) => {
-    const stripePlan = STRIPE_PLANS[planId as keyof typeof STRIPE_PLANS];
-    if (!stripePlan) return;
-    setPendingDowngradePlan(null);
     setCheckoutLoading(planId);
     try {
-      const { data, error } = await supabase.functions.invoke("change-plan", {
-        body: { priceId: stripePlan.price_id, planId },
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: stripePlan.price_id },
       });
       if (error) throw error;
-      if (data?.action === "checkout") {
-        await handleLegacyCheckout(planId);
-      } else if (data?.success) {
-        await refreshProfile();
-        toast({
-          title: data.direction === "downgrade" ? "Plan downgraded" : "Plan upgraded",
-          description: data.direction === "downgrade"
-            ? `Your plan has been changed to ${plans.find(p => p.id === planId)?.name}.`
-            : `Welcome to ${plans.find(p => p.id === planId)?.name}!`,
-        });
-      } else if (data?.error) {
-        throw new Error(data.error);
-      }
+      if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
-      toast({ title: "Plan change failed", description: err.message, variant: "destructive" });
+      toast({ title: "Checkout failed", description: err.message, variant: "destructive" });
     } finally {
       setCheckoutLoading(null);
     }
@@ -220,90 +250,12 @@ export default function BillingUsage() {
 
   const balanceStatus = creditBalance === 0 ? "zero" : creditBalance < 200 ? "low" : "ok";
 
-  // Features lost when downgrading to `pendingDowngradePlan`
-  const downgradeLostFeatures = pendingDowngradePlan
-    ? (planFeatures[plan] || []).filter(f => !(planFeatures[pendingDowngradePlan] || []).includes(f))
-    : [];
-
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Billing & Usage</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage your plan, buy credits, and track usage.</p>
       </div>
-
-      {/* Trial banner */}
-      {(isOnTrial || trialExpired) && (
-        trialExpired ? (
-          <div className="flex items-center gap-3 rounded-lg border border-destructive bg-destructive/5 px-4 py-3">
-            <XCircle className="h-5 w-5 text-destructive shrink-0" />
-            <p className="text-sm text-destructive font-medium flex-1">
-              Your free trial has ended. Upgrade to a paid plan to keep all your features and data.
-            </p>
-            <Button size="sm" onClick={() => document.getElementById("plans-section")?.scrollIntoView({ behavior: "smooth" })}>
-              Upgrade Now
-            </Button>
-          </div>
-        ) : !trialBannerDismissed ? (
-          <div className="flex items-center gap-3 rounded-lg border border-primary/40 bg-primary/5 px-4 py-3">
-            <Clock className="h-5 w-5 text-primary shrink-0" />
-            <p className="text-sm text-foreground flex-1">
-              <span className="font-semibold">Free trial — {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} remaining.</span>{" "}
-              Upgrade now to keep all features after your trial ends.
-            </p>
-            <Button size="sm" onClick={() => document.getElementById("plans-section")?.scrollIntoView({ behavior: "smooth" })}>
-              Upgrade
-            </Button>
-            <button
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                sessionStorage.setItem("trial_banner_dismissed", "1");
-                setTrialBannerDismissed(true);
-              }}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : null
-      )}
-
-      {/* Downgrade confirmation dialog */}
-      <Dialog open={!!pendingDowngradePlan} onOpenChange={() => setPendingDowngradePlan(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Plan Downgrade</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              You're switching from <strong>{plans.find(p => p.id === plan)?.name}</strong> to{" "}
-              <strong>{plans.find(p => p.id === pendingDowngradePlan)?.name}</strong>. You'll lose access to:
-            </p>
-            {downgradeLostFeatures.length > 0 ? (
-              <ul className="space-y-1">
-                {downgradeLostFeatures.map(f => (
-                  <li key={f} className="flex items-center gap-2">
-                    <X className="h-3.5 w-3.5 text-destructive shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No feature changes noted.</p>
-            )}
-            <p className="text-xs">The change takes effect immediately and a prorated adjustment will be applied to your next invoice.</p>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPendingDowngradePlan(null)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              disabled={checkoutLoading === pendingDowngradePlan}
-              onClick={() => pendingDowngradePlan && executePlanChange(pendingDowngradePlan)}
-            >
-              {checkoutLoading === pendingDowngradePlan ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing…</> : "Confirm Downgrade"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Section 1: Credit Balance */}
       <Card className={
@@ -376,79 +328,6 @@ export default function BillingUsage() {
               <Button variant="outline" size="sm" onClick={handleManagePayment} disabled={portalLoading}>
                 {portalLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Loading…</> : "Manage Payment Method"}
               </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Section 2b: Minute Quota & Overage */}
-      <Card className={isOverLimit ? "border-destructive" : minutePct >= 75 ? "border-amber-500" : ""}>
-        <CardContent className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Minutes This Cycle</h2>
-              <p className="text-2xl font-bold text-foreground mt-1">
-                {minutesUsed.toLocaleString()}{" "}
-                <span className="text-base font-normal text-muted-foreground">/ {minuteLimit.toLocaleString()} min</span>
-              </p>
-            </div>
-            <Badge
-              variant={isOverLimit ? "destructive" : minutePct >= 75 ? "outline" : "secondary"}
-              className={minutePct >= 75 && !isOverLimit ? "border-amber-500 text-amber-600" : ""}
-            >
-              {minutePct.toFixed(1)}% used
-            </Badge>
-          </div>
-
-          <Progress
-            value={minutePct}
-            className={`h-2 ${isOverLimit ? "[&>div]:bg-destructive" : minutePct >= 75 ? "[&>div]:bg-amber-500" : ""}`}
-          />
-
-          {isOverLimit ? (
-            hardStopEnabled ? (
-              <div className="flex items-center gap-2 text-sm text-destructive">
-                <XCircle className="h-4 w-4 shrink-0" />
-                Calling is paused — you've reached your monthly limit. Upgrade your plan or wait for the next cycle.
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-sm text-amber-600">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                Over limit — extra calls are billed at <strong>${overageRate.toFixed(2)}/min</strong>.{" "}
-                <button
-                  className="underline"
-                  onClick={() => document.getElementById("plans-section")?.scrollIntoView({ behavior: "smooth" })}
-                >
-                  Upgrade for more minutes
-                </button>
-              </div>
-            )
-          ) : minutePct >= 75 ? (
-            <p className="text-sm text-amber-600">
-              You've used {minutePct.toFixed(0)}% of your monthly minutes.{" "}
-              <button
-                className="underline"
-                onClick={() => document.getElementById("plans-section")?.scrollIntoView({ behavior: "smooth" })}
-              >
-                Upgrade for more
-              </button>
-            </p>
-          ) : null}
-
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <div className="text-sm text-muted-foreground">
-              Overage rate: <span className="font-medium text-foreground">${overageRate.toFixed(2)}/min</span>
-              {hardStopEnabled && <span className="ml-2 text-xs">(hard stop enabled)</span>}
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="hard-stop-toggle" className="text-sm text-muted-foreground cursor-pointer">
-                Hard stop at limit
-              </Label>
-              <Switch
-                id="hard-stop-toggle"
-                checked={hardStopEnabled}
-                onCheckedChange={(checked) => updateSettings.mutate({ hard_stop_enabled: checked } as any)}
-              />
             </div>
           </div>
         </CardContent>
@@ -636,28 +515,20 @@ export default function BillingUsage() {
                       </li>
                     ))}
                   </ul>
-                  {(() => {
-                    const isDowngrade = !isCurrent && isPlanDowngrade(plan, p.id);
-                    const label = checkoutLoading === p.id
-                      ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing…</>
-                      : isCurrent
-                        ? "Current Plan"
-                        : p.id === "voice_ai_custom"
-                          ? "Contact Sales"
-                          : isDowngrade
-                            ? <><TrendingDown className="h-4 w-4 mr-1" /> Downgrade</>
-                            : "Upgrade";
-                    return (
-                      <Button
-                        variant={isCurrent ? "outline" : isDowngrade ? "outline" : "default"}
-                        className={`w-full ${isDowngrade && !isCurrent ? "text-muted-foreground" : ""}`}
-                        disabled={isCurrent || checkoutLoading === p.id}
-                        onClick={() => handleChangePlan(p.id)}
-                      >
-                        {label}
-                      </Button>
-                    );
-                  })()}
+                  <Button
+                    variant={isCurrent ? "outline" : "default"}
+                    className="w-full"
+                    disabled={isCurrent || checkoutLoading === p.id}
+                    onClick={() => {
+                      if (p.id === "voice_ai_custom") {
+                        window.open("mailto:sales@benefitpath.com?subject=Enterprise%20Plan%20Inquiry", "_blank");
+                      } else {
+                        handleCheckout(p.id);
+                      }
+                    }}
+                  >
+                    {checkoutLoading === p.id ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing…</> : isCurrent ? "Current Plan" : p.id === "voice_ai_custom" ? "Contact Sales" : "Upgrade"}
+                  </Button>
                 </CardContent>
               </Card>
             );
@@ -668,24 +539,22 @@ export default function BillingUsage() {
         </p>
       </div>
 
-      {/* Section 6: Purchase History (placeholder until transactions exist) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Purchase History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">Credit purchase history will appear here after your first purchase.</p>
-        </CardContent>
-      </Card>
+      {/* Section 6: Purchase History */}
+      <PurchaseHistorySection tenantId={user?.tenant_id} />
 
       {/* Section 7: Subscription Invoices */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Subscription Invoices</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Subscription Invoices</CardTitle>
+            <Button variant="outline" size="sm" onClick={handleManagePayment} disabled={portalLoading}>
+              {portalLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Loading...</> : <><Download className="h-4 w-4 mr-1" /> View All in Stripe</>}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
-            Subscription invoices will appear here after your first billing cycle. Use "Manage Payment Method" to access full invoice history.
+            To view and download invoices, click "View All in Stripe" to open the Stripe customer portal.
           </p>
         </CardContent>
       </Card>

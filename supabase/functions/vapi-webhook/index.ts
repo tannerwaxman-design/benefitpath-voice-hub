@@ -25,8 +25,12 @@ Deno.serve(async (req: Request) => {
     // 1. Verify webhook authenticity
     const providedSecret = req.headers.get("x-vapi-secret");
     if (WEBHOOK_SECRET && providedSecret !== WEBHOOK_SECRET) {
-      console.warn("Webhook signature mismatch");
+      console.warn("Webhook signature mismatch - rejecting request");
       return new Response("Unauthorized", { status: 401 });
+    }
+
+    if (!WEBHOOK_SECRET) {
+      console.warn("VAPI_WEBHOOK_SECRET is not set - webhook requests are unauthenticated");
     }
 
     // 2. Extract the message
@@ -143,29 +147,21 @@ Deno.serve(async (req: Request) => {
             if (pn) phoneNumberId = pn.id;
           }
 
-          // Check if record already exists
-          const { data: existingCall } = await supabase
-            .from("calls")
-            .select("id")
-            .eq("vapi_call_id", vapiCallId)
-            .maybeSingle();
-
-          if (!existingCall) {
-            await supabase.from("calls").insert({
-              vapi_call_id: vapiCallId,
-              tenant_id: tenantId,
-              agent_id: agentId || null,
-              contact_id: matchedContactId,
-              phone_number_id: phoneNumberId,
-              direction: "inbound",
-              from_number: customerNumber,
-              to_number: phoneNumber,
-              started_at: new Date().toISOString(),
-              outcome: "in_progress",
-              contact_name: message.call?.customer?.name || null,
-            });
-            console.log(`[webhook] Created inbound call record: vapi=${vapiCallId} tenant=${tenantId} agent=${agentId}`);
-          }
+          // Upsert inbound call record — ignoreDuplicates makes VAPI retries safe
+          await supabase.from("calls").upsert({
+            vapi_call_id: vapiCallId,
+            tenant_id: tenantId,
+            agent_id: agentId || null,
+            contact_id: matchedContactId,
+            phone_number_id: phoneNumberId,
+            direction: "inbound",
+            from_number: customerNumber,
+            to_number: phoneNumber,
+            started_at: new Date().toISOString(),
+            outcome: "in_progress",
+            contact_name: message.call?.customer?.name || null,
+          }, { onConflict: "vapi_call_id", ignoreDuplicates: true });
+          console.log(`[webhook] Created inbound call record: vapi=${vapiCallId} tenant=${tenantId} agent=${agentId}`);
         }
 
         if (status === "ended") {
@@ -200,7 +196,7 @@ Deno.serve(async (req: Request) => {
                 .from("campaigns")
                 .select("*")
                 .eq("id", campaignId)
-                .single();
+                .maybeSingle();
 
               if (campaign) {
                 if (outcome === "no_answer" && campaign.retry_no_answer) {
@@ -261,7 +257,7 @@ Deno.serve(async (req: Request) => {
               .from("contacts")
               .select("total_calls")
               .eq("id", contactId)
-              .single();
+              .maybeSingle();
 
             if (contact) {
               await supabase
@@ -281,7 +277,7 @@ Deno.serve(async (req: Request) => {
               .from("agents")
               .select("total_calls")
               .eq("id", agentId)
-              .single();
+              .maybeSingle();
 
             if (agentData) {
               await supabase
@@ -317,8 +313,9 @@ Deno.serve(async (req: Request) => {
                   reason: "contact_requested",
                   source: `call:${vapiCallId}`,
                   added_by: "system",
+                  updated_at: new Date().toISOString(),
                 },
-                { onConflict: "tenant_id,phone_number", ignoreDuplicates: true }
+                { onConflict: "tenant_id,phone_number", ignoreDuplicates: false }
               );
 
               if (contactId) {
@@ -435,17 +432,12 @@ Deno.serve(async (req: Request) => {
           reportUpdate.cost_minutes = reportDurationMinutes;
         }
 
-        // Upsert: if call record doesn't exist yet (e.g. inbound where status-update was missed), create it
-        const { data: existingCallForReport } = await supabase
-          .from("calls")
-          .select("id")
-          .eq("vapi_call_id", vapiCallId)
-          .maybeSingle();
-
-        if (!existingCallForReport && tenantId) {
+        if (tenantId) {
           const customerNumber = message.call?.customer?.number || "";
           const phoneNumber = message.call?.phoneNumber?.number || "";
-          await supabase.from("calls").insert({
+          // Create the record if it doesn't exist yet (e.g. missed status-update).
+          // ignoreDuplicates: true + unique constraint makes VAPI retries safe — no duplicate rows.
+          await supabase.from("calls").upsert({
             vapi_call_id: vapiCallId,
             tenant_id: tenantId,
             agent_id: agentId || null,
@@ -455,15 +447,14 @@ Deno.serve(async (req: Request) => {
             started_at: new Date().toISOString(),
             outcome: "completed",
             contact_name: message.call?.customer?.name || null,
-            ...reportUpdate,
-          });
-          console.log(`[webhook] Created missing call record in end-of-call-report: vapi=${vapiCallId}`);
-        } else {
-          // Update call record with rich data
+          }, { onConflict: "vapi_call_id", ignoreDuplicates: true });
+
+          // Always apply report data — idempotent, safe to re-run on retry
           await supabase
             .from("calls")
             .update(reportUpdate)
             .eq("vapi_call_id", vapiCallId);
+          console.log(`[webhook] Applied end-of-call-report data: vapi=${vapiCallId}`);
         }
 
         // Fetch and store costs (end-of-call-report arrives after VAPI has finalized costs)
@@ -546,7 +537,7 @@ Deno.serve(async (req: Request) => {
               .from("campaigns")
               .select("appointments_set")
               .eq("id", campaignId)
-              .single();
+              .maybeSingle();
 
             if (campaign) {
               await supabase
@@ -598,7 +589,7 @@ Deno.serve(async (req: Request) => {
           .from("calls")
           .select("id, outcome")
           .eq("vapi_call_id", vapiCallId)
-          .single();
+          .maybeSingle();
 
         if (callRecord && scorableOutcomes.includes(callRecord.outcome) && transcript.length > 0) {
           const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -611,6 +602,10 @@ Deno.serve(async (req: Request) => {
                 Authorization: `Bearer ${serviceRoleKey}`,
               },
               body: JSON.stringify({ call_id: callRecord.id }),
+            }).then((res) => {
+              if (!res.ok) {
+                console.error(`Call scoring returned HTTP ${res.status} for call ${callRecord.id}`);
+              }
             }).catch((err) =>
               console.error("Failed to trigger call scoring:", err)
             );
@@ -697,7 +692,7 @@ Deno.serve(async (req: Request) => {
               .from("campaigns")
               .select("contacts_transferred")
               .eq("id", campaignId)
-              .single();
+              .maybeSingle();
 
             if (campaign) {
               await supabase
@@ -855,7 +850,7 @@ async function incrementCampaignStat(
     .from("campaigns")
     .select(`${outcomeField}, contacts_called, total_minutes_used`)
     .eq("id", campaignId)
-    .single();
+    .maybeSingle();
 
   if (campaign) {
     const updates: Record<string, unknown> = {
@@ -984,7 +979,11 @@ async function fireTenantWebhook(
         body: JSON.stringify({
           text: `📞 Call ${data.outcome}: ${data.contact_id || "Unknown contact"} — Duration: ${data.duration}s`,
         }),
-      }).catch(() => {});
+      }).then((res) => {
+        if (!res.ok) {
+          console.error(`Slack webhook returned HTTP ${res.status} for tenant ${tenantId}`);
+        }
+      }).catch((err) => console.error(`Slack webhook error for tenant ${tenantId}:`, err));
     }
   } catch (err) {
     console.error("Error firing tenant webhook:", err);

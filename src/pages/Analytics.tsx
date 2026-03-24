@@ -150,7 +150,7 @@ export default function Analytics() {
     { name: "Appointment Set", value: funnel.appointments || 0, fill: "hsl(var(--success))" },
   ] : [];
 
-  const volumeData = callsPerDay.map((d: any) => ({
+  const volumeData = callsPerDay.map((d) => ({
     date: d.day,
     calls: Number(d.total_calls),
     connected: Number(d.connected),
@@ -170,7 +170,21 @@ export default function Analytics() {
               <SelectItem value="90">Last 90 Days</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => toast({ title: "Report exported!" })}><Download className="h-4 w-4 mr-2" /> Export</Button>
+          <Button variant="outline" onClick={() => {
+            const rows = [["Date", "Total Calls", "Connected", "Connect Rate %"]];
+            for (const d of volumeData) {
+              rows.push([d.date, String(d.calls), String(d.connected), String(d.connectRate)]);
+            }
+            const csv = rows.map(r => r.join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `analytics-${dateRange}d-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast({ title: "Report exported!" });
+          }}><Download className="h-4 w-4 mr-2" /> Export</Button>
         </div>
       </div>
 
@@ -242,7 +256,7 @@ export default function Analytics() {
                       </tr>
                     </thead>
                     <tbody>
-                      {agentPerf.map((a: any) => (
+                      {agentPerf.map((a) => (
                         <tr key={a.agent_id} className="border-t hover:bg-secondary/20 transition-colors">
                           <td className="px-4 py-3 text-sm font-medium text-foreground">{a.agent_name}</td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">{Number(a.total_calls).toLocaleString()}</td>

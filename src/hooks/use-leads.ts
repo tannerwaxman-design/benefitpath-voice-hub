@@ -51,10 +51,10 @@ export function useLeadStats() {
       if (error) throw error;
       const all = data || [];
       return {
-        hot: all.filter((c: any) => c.lead_status === "hot").length,
-        warm: all.filter((c: any) => c.lead_status === "warm").length,
-        cold: all.filter((c: any) => c.lead_status === "cold").length,
-        dead: all.filter((c: any) => c.lead_status === "dead").length,
+        hot: all.filter((c) => c.lead_status === "hot").length,
+        warm: all.filter((c) => c.lead_status === "warm").length,
+        cold: all.filter((c) => c.lead_status === "cold").length,
+        dead: all.filter((c) => c.lead_status === "dead").length,
         total: all.length,
       };
     },

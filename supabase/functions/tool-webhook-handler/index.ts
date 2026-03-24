@@ -1,5 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
+import {
+  fetchWithTimeout,
+  isCircuitBlocking,
+  recordCircuitSuccess,
+  recordCircuitFailure,
+} from "../_shared/circuit-breaker.ts";
+
+type ApiKeyRecord = {
+  id: string;
+  api_key: string;
+  service: string;
+  additional_config: Record<string, unknown>;
+  failure_count: number;
+  circuit_opened_at: string | null;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +42,7 @@ serve(async (req) => {
     if (!tenantId) {
       console.error("No tenant_id in call metadata");
       return new Response(JSON.stringify({
-        results: toolCallList.map((tc: any) => ({
+        results: toolCallList.map((tc: { id: string }) => ({
           toolCallId: tc.id,
           result: "I wasn't able to complete that action right now, but I'll make sure someone follows up.",
         })),
@@ -52,9 +67,10 @@ serve(async (req) => {
       }
       const toolCallId = toolCall.id;
 
+      let keyRecord: ApiKeyRecord | null = null;
       try {
         // Find the tool by vapi_tool_id
-        let tool: any = null;
+        let tool: Record<string, unknown> | null = null;
         if (vapiToolRef?.toolId) {
           const { data } = await supabase
             .from("tools")
@@ -75,7 +91,7 @@ serve(async (req) => {
 
           if (tools) {
             const sanitized = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "_").substring(0, 40);
-            tool = tools.find((t: any) => sanitized(t.name) === functionName);
+            tool = tools.find((t) => sanitized(t.name as string) === functionName) ?? null;
           }
         }
 
@@ -107,6 +123,19 @@ serve(async (req) => {
           continue;
         }
 
+        // Cast to include circuit breaker columns (added by migration)
+        keyRecord = apiKeyRecord as ApiKeyRecord | null;
+
+        // Fast-fail if circuit is open and not yet in the half-open window
+        if (keyRecord && isCircuitBlocking(keyRecord)) {
+          results.push({
+            toolCallId,
+            result: `I can't complete that action right now — the ${keyRecord.service} integration is temporarily unavailable. It should recover shortly.`,
+          });
+          void logActivity(supabase, tenantId, tool.id as string, metadata.benefitpath_call_id, "circuit_open", `Circuit open for ${keyRecord.service}`, "circuit_breaker_open");
+          continue;
+        }
+
         const apiKey = apiKeyRecord?.api_key || "";
         const additionalConfig = apiKeyRecord?.additional_config || {};
         const serviceConfig = tool.service_config || {};
@@ -134,6 +163,9 @@ serve(async (req) => {
             result = "Action completed.";
         }
 
+        // Record circuit success (fire-and-forget)
+        if (keyRecord) recordCircuitSuccess(supabase, keyRecord.id);
+
         // Log success
         await logActivity(supabase, tenantId, tool.id, metadata.benefitpath_call_id, "success", `${tool.name}: ${JSON.stringify(args).slice(0, 200)}`, null);
 
@@ -147,6 +179,9 @@ serve(async (req) => {
       } catch (err) {
         console.error(`Tool handler error for ${functionName}:`, err);
         const errMsg = err instanceof Error ? err.message : "Unknown error";
+
+        // Record circuit failure (fire-and-forget)
+        if (keyRecord) recordCircuitFailure(supabase, keyRecord.id, keyRecord.failure_count ?? 0);
 
         await logActivity(supabase, tenantId, toolCallList[i]?.tool_id || "", metadata.benefitpath_call_id, "failed", `Failed: ${errMsg}`, errMsg);
 
@@ -163,6 +198,18 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("tool-webhook-handler fatal error:", err);
+    // Best-effort: log to DB so operators can see fatal handler failures
+    try {
+      const adminClient = createAdminClient();
+      await adminClient.from("tool_activity_log").insert({
+        tenant_id: null,
+        tool_id: null,
+        call_id: null,
+        status: "failed",
+        summary: "Fatal handler error — request could not be processed",
+        error_message: err instanceof Error ? err.message : String(err),
+      });
+    } catch { /* ignore secondary failure */ }
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 200, // Return 200 to prevent VAPI retries
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -170,7 +217,7 @@ serve(async (req) => {
   }
 });
 
-async function logActivity(supabase: any, tenantId: string, toolId: string, callId: string | null, status: string, summary: string, errorMessage: string | null) {
+async function logActivity(supabase: ReturnType<typeof createAdminClient>, tenantId: string, toolId: string, callId: string | null, status: string, summary: string, errorMessage: string | null) {
   try {
     await supabase.from("tool_activity_log").insert({
       tenant_id: tenantId,
@@ -189,7 +236,7 @@ async function logActivity(supabase: any, tenantId: string, toolId: string, call
 // SERVICE HANDLERS
 // ==========================================
 
-async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args: any): Promise<string> {
+async function handleGHL(tool: Record<string, unknown>, apiKey: string, additionalConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const locationId = additionalConfig?.location_id;
   const template = tool.template;
   const serviceConfig = tool.service_config || {};
@@ -200,7 +247,7 @@ async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args:
 
     const startTime = args.preferred_date + "T" + (args.preferred_time || "10:00") + ":00";
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://services.leadconnectorhq.com/calendars/${calendarId}/appointments`,
       {
         method: "POST",
@@ -227,7 +274,7 @@ async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args:
   }
 
   if (template === "create_contact") {
-    const response = await fetch("https://services.leadconnectorhq.com/contacts/", {
+    const response = await fetchWithTimeout("https://services.leadconnectorhq.com/contacts/", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -252,7 +299,7 @@ async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args:
 
   if (template === "update_contact") {
     // Look up contact by phone
-    const searchRes = await fetch(
+    const searchRes = await fetchWithTimeout(
       `https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&query=${encodeURIComponent(args.contact_phone)}&limit=1`,
       { headers: { Authorization: `Bearer ${apiKey}`, Version: "2021-04-15" } }
     );
@@ -261,7 +308,7 @@ async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args:
       const searchData = await searchRes.json();
       const contact = searchData.contacts?.[0];
       if (contact) {
-        const updateRes = await fetch(`https://services.leadconnectorhq.com/contacts/${contact.id}`, {
+        const updateRes = await fetchWithTimeout(`https://services.leadconnectorhq.com/contacts/${contact.id}`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", Version: "2021-04-15" },
           body: JSON.stringify({ [args.field_to_update]: args.new_value }),
@@ -281,7 +328,7 @@ async function handleGHL(tool: any, apiKey: string, additionalConfig: any, args:
   return "Action completed.";
 }
 
-async function handleHubSpot(tool: any, apiKey: string, args: any): Promise<string> {
+async function handleHubSpot(tool: Record<string, unknown>, apiKey: string, args: Record<string, unknown>): Promise<string> {
   const template = tool.template;
   const serviceConfig = tool.service_config || {};
 
@@ -294,7 +341,7 @@ async function handleHubSpot(tool: any, apiKey: string, args: any): Promise<stri
     if (args.phone || args.contact_phone) properties.phone = args.phone || args.contact_phone;
     if (serviceConfig.lifecycle_stage) properties.lifecyclestage = serviceConfig.lifecycle_stage;
 
-    const response = await fetch("https://api.hubapi.com/crm/v3/objects/contacts", {
+    const response = await fetchWithTimeout("https://api.hubapi.com/crm/v3/objects/contacts", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ properties }),
@@ -309,7 +356,7 @@ async function handleHubSpot(tool: any, apiKey: string, args: any): Promise<stri
 
   if (template === "update_contact") {
     // Search by phone/email
-    const searchRes = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/search", {
+    const searchRes = await fetchWithTimeout("https://api.hubapi.com/crm/v3/objects/contacts/search", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -324,7 +371,7 @@ async function handleHubSpot(tool: any, apiKey: string, args: any): Promise<stri
       const searchData = await searchRes.json();
       const contactId = searchData.results?.[0]?.id;
       if (contactId) {
-        const updateRes = await fetch(`https://api.hubapi.com/crm/v3/objects/contacts/${contactId}`, {
+        const updateRes = await fetchWithTimeout(`https://api.hubapi.com/crm/v3/objects/contacts/${contactId}`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({ properties: { [args.field_to_update]: args.new_value } }),
@@ -338,14 +385,14 @@ async function handleHubSpot(tool: any, apiKey: string, args: any): Promise<stri
   return "Action completed.";
 }
 
-async function handleGoogleCalendar(tool: any, apiKey: string, serviceConfig: any, args: any): Promise<string> {
+async function handleGoogleCalendar(tool: Record<string, unknown>, apiKey: string, serviceConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const calendarId = serviceConfig.calendar_id || "primary";
   const duration = serviceConfig.duration_minutes || 30;
 
   const startTime = new Date(`${args.preferred_date}T${args.preferred_time || "10:00"}:00`);
   const endTime = new Date(startTime.getTime() + duration * 60000);
 
-  const eventBody: any = {
+  const eventBody: Record<string, unknown> = {
     summary: `Appointment with ${args.contact_name || "Client"}`,
     start: { dateTime: startTime.toISOString() },
     end: { dateTime: endTime.toISOString() },
@@ -366,7 +413,7 @@ async function handleGoogleCalendar(tool: any, apiKey: string, serviceConfig: an
   }
 
   const conferenceParam = serviceConfig.include_meet_link ? "?conferenceDataVersion=1" : "";
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${conferenceParam}`,
     {
       method: "POST",
@@ -382,12 +429,12 @@ async function handleGoogleCalendar(tool: any, apiKey: string, serviceConfig: an
   throw new Error(`Google Calendar event creation failed: ${errText}`);
 }
 
-async function handleSalesforce(tool: any, apiKey: string, additionalConfig: any, args: any): Promise<string> {
+async function handleSalesforce(tool: Record<string, unknown>, apiKey: string, additionalConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const instanceUrl = additionalConfig?.instance_url || "https://login.salesforce.com";
   const template = tool.template;
 
   if (template === "create_contact") {
-    const response = await fetch(`${instanceUrl}/services/data/v58.0/sobjects/Contact/`, {
+    const response = await fetchWithTimeout(`${instanceUrl}/services/data/v58.0/sobjects/Contact/`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -405,7 +452,7 @@ async function handleSalesforce(tool: any, apiKey: string, additionalConfig: any
   return "Action completed.";
 }
 
-async function handleCustomWebhook(serviceConfig: any, args: any): Promise<string> {
+async function handleCustomWebhook(serviceConfig: Record<string, unknown>, args: Record<string, unknown>): Promise<string> {
   const url = serviceConfig.url;
   if (!url) throw new Error("No webhook URL configured");
 
@@ -415,7 +462,7 @@ async function handleCustomWebhook(serviceConfig: any, args: any): Promise<strin
     headers["Authorization"] = serviceConfig.auth_header;
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method,
     headers,
     body: method !== "GET" ? JSON.stringify({

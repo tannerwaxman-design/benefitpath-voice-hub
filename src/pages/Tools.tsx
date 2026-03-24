@@ -3,6 +3,7 @@ import { ApiKeysBar } from "@/components/tools/ApiKeysBar";
 import { ToolList } from "@/components/tools/ToolList";
 import { ToolTemplatePicker, type ToolTemplate } from "@/components/tools/ToolTemplates";
 import { ToolBuilder } from "@/components/tools/ToolBuilder";
+import { ToolActivityLog } from "@/components/tools/ToolActivityLog";
 
 type View = "list" | "templates" | "builder";
 
@@ -30,7 +31,10 @@ export default function Tools() {
 
       {/* Views */}
       {view === "list" && (
-        <ToolList onCreateNew={() => setView("templates")} />
+        <>
+          <ToolList onCreateNew={() => setView("templates")} />
+          <ToolActivityLog />
+        </>
       )}
 
       {view === "templates" && (

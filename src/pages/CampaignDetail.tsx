@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useCampaignDetail, useCampaignContacts, useCampaignCalls, useCampaignDailyStats } from "@/hooks/use-campaign-detail";
+import { useCampaignDetail, useCampaignContacts, useCampaignCalls, useCampaignDailyStats, useCampaignRealtime } from "@/hooks/use-campaign-detail";
 import { useLaunchCampaign } from "@/hooks/use-campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -436,6 +436,7 @@ export default function CampaignDetail() {
   const navigate = useNavigate();
   const { data: campaign, isLoading } = useCampaignDetail(id);
   const launchCampaign = useLaunchCampaign();
+  useCampaignRealtime(id);
 
   if (isLoading) {
     return (
