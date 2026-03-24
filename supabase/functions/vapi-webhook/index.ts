@@ -200,7 +200,7 @@ Deno.serve(async (req: Request) => {
                 .from("campaigns")
                 .select("*")
                 .eq("id", campaignId)
-                .single();
+                .maybeSingle();
 
               if (campaign) {
                 if (outcome === "no_answer" && campaign.retry_no_answer) {
@@ -261,7 +261,7 @@ Deno.serve(async (req: Request) => {
               .from("contacts")
               .select("total_calls")
               .eq("id", contactId)
-              .single();
+              .maybeSingle();
 
             if (contact) {
               await supabase
@@ -281,7 +281,7 @@ Deno.serve(async (req: Request) => {
               .from("agents")
               .select("total_calls")
               .eq("id", agentId)
-              .single();
+              .maybeSingle();
 
             if (agentData) {
               await supabase
@@ -546,7 +546,7 @@ Deno.serve(async (req: Request) => {
               .from("campaigns")
               .select("appointments_set")
               .eq("id", campaignId)
-              .single();
+              .maybeSingle();
 
             if (campaign) {
               await supabase
@@ -582,7 +582,7 @@ Deno.serve(async (req: Request) => {
           .from("calls")
           .select("id, outcome")
           .eq("vapi_call_id", vapiCallId)
-          .single();
+          .maybeSingle();
 
         if (callRecord && scorableOutcomes.includes(callRecord.outcome) && transcript.length > 0) {
           const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -681,7 +681,7 @@ Deno.serve(async (req: Request) => {
               .from("campaigns")
               .select("contacts_transferred")
               .eq("id", campaignId)
-              .single();
+              .maybeSingle();
 
             if (campaign) {
               await supabase
@@ -839,7 +839,7 @@ async function incrementCampaignStat(
     .from("campaigns")
     .select(`${outcomeField}, contacts_called, total_minutes_used`)
     .eq("id", campaignId)
-    .single();
+    .maybeSingle();
 
   if (campaign) {
     const updates: Record<string, unknown> = {

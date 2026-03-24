@@ -63,17 +63,10 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Check calling days
-      const dayNames = [
-        "sunday",
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-      ];
-      const today = dayNames[now.getDay()];
+      // Check calling days — use tenant timezone so day matches localTimeStr
+      const localDayName = now
+        .toLocaleDateString("en-US", { timeZone: tz, weekday: "long" })
+        .toLowerCase();
       const callingDays = campaign.calling_days || [
         "monday",
         "tuesday",
@@ -81,7 +74,7 @@ Deno.serve(async (req: Request) => {
         "thursday",
         "friday",
       ];
-      if (!callingDays.includes(today)) continue;
+      if (!callingDays.includes(localDayName)) continue;
 
       // Count in-progress calls for this campaign
       const { count: activeCalls } = await supabase
@@ -105,7 +98,9 @@ Deno.serve(async (req: Request) => {
         .gte("started_at", todayStart.toISOString());
 
       const maxPerDay = campaign.max_calls_per_day || 200;
-      const dailySlotsLeft = maxPerDay - (todayCalls || 0);
+      // Re-fetch in-progress count together with today's count to tighten the
+      // race window between the check and the launch.
+      const dailySlotsLeft = maxPerDay - (todayCalls || 0) - (activeCalls || 0);
       if (dailySlotsLeft <= 0) continue;
 
       const toFetch = Math.min(slotsAvailable, dailySlotsLeft);
@@ -130,7 +125,8 @@ Deno.serve(async (req: Request) => {
       let orderedContacts = contactsToCall || [];
       if (campaign.smart_schedule_enabled && contactsToCall?.length) {
         const currentHour = parseInt(localTimeStr.split(":")[0]);
-        const currentDay = now.getDay();
+        const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+        const currentDay = dayNames.indexOf(localDayName);
         
         // Check if current time is a good slot
         const { data: slotData } = await supabase
@@ -168,7 +164,8 @@ Deno.serve(async (req: Request) => {
               status: "completed",
               actual_end: now.toISOString(),
             })
-            .eq("id", campaign.id);
+            .eq("id", campaign.id)
+            .neq("status", "completed");
 
           // Notify: campaign completed
           await insertNotification(supabase, campaign.tenant_id, {
