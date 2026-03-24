@@ -69,7 +69,7 @@ export type CallWithRelations = {
   internal_notes?: string | null;
   tenant_id: string;
   agents: { agent_name: string; soa_enabled?: boolean | null } | null;
-  campaigns: { name: string } | null;
+  campaigns?: { name: string } | null;
   soa_collected?: boolean | null;
   soa_consent_given?: boolean | null;
   soa_timestamp_seconds?: number | null;
