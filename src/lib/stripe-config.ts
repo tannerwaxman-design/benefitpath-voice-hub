@@ -20,6 +20,62 @@ export const STRIPE_PLANS = {
   },
 } as const;
 
+// Canonical plan display metadata (single source of truth)
+export const PLAN_DISPLAY = {
+  voice_ai_starter: {
+    tagline: "Perfect for solo agents testing the waters",
+    features: [
+      "1 AI agent",
+      "Outbound calls only",
+      "Basic call logs (no transcripts)",
+      "CSV contact upload",
+      "1 campaign at a time",
+      "Email support",
+    ],
+  },
+  voice_ai_pro: {
+    tagline: "The go-to plan for serious agents",
+    features: [
+      "Unlimited AI agents",
+      "Outbound + inbound calls",
+      "Full transcripts & recordings",
+      "AI call summaries & sentiment",
+      "Knowledge base",
+      "Smart scheduling",
+      "CRM & calendar tools",
+      "Unlimited campaigns",
+      "Priority support",
+    ],
+  },
+  voice_ai_enterprise: {
+    tagline: "Built for agencies that want every advantage",
+    features: [
+      "Everything in Professional",
+      "Voice cloning",
+      "AI call scoring",
+      "AI objection trainer",
+      "Multi-language (Spanish)",
+      "Team management (up to 10)",
+      "Call coaching & review",
+      "Dedicated account manager",
+      "Phone & video support",
+    ],
+  },
+} as const;
+
+// Feature access helpers
+export function hasFeatureAccess(plan: string, feature: "voice_cloning" | "forge" | "team_management"): boolean {
+  switch (feature) {
+    case "voice_cloning":
+    case "forge":
+      return plan === "voice_ai_enterprise";
+    case "team_management":
+      return plan === "voice_ai_pro" || plan === "voice_ai_enterprise";
+    default:
+      return false;
+  }
+}
+
 // Credit packages (one-time purchases)
 export const CREDIT_PACKAGES: readonly {
   id: string;

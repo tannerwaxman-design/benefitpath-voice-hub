@@ -14,42 +14,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { useSubscription } from "@/hooks/use-subscription";
-import { STRIPE_PLANS, CREDIT_PACKAGES, getPlanByProductId } from "@/lib/stripe-config";
+import { STRIPE_PLANS, CREDIT_PACKAGES, getPlanByProductId, PLAN_DISPLAY } from "@/lib/stripe-config";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard, TrendingUp, DollarSign, Download, Check, Star, Zap, Building2, Crown, Loader2, Coins, RefreshCw, AlertTriangle, XCircle, TrendingDown, Clock, X } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-const planFeatures: Record<string, string[]> = {
-  voice_ai_starter: [
-    "1 AI agent",
-    "Outbound calls only",
-    "Basic call logs (no transcripts)",
-    "CSV contact upload",
-    "1 campaign at a time",
-    "Email support",
-  ],
-  voice_ai_pro: [
-    "Unlimited AI agents",
-    "Outbound + inbound calls",
-    "Full transcripts & recordings",
-    "AI call summaries & sentiment",
-    "Knowledge base",
-    "Smart scheduling",
-    "CRM & calendar tools",
-    "Unlimited campaigns",
-    "Priority support",
-  ],
-  voice_ai_enterprise: [
-    "Everything in Professional",
-    "Voice cloning",
-    "AI call scoring",
-    "AI objection trainer",
-    "Multi-language (Spanish)",
-    "Team management (up to 10)",
-    "Call coaching & review",
-    "Dedicated account manager",
-    "Phone & video support",
-  ],
+const planFeatures: Record<string, readonly string[]> = {
+  voice_ai_starter: PLAN_DISPLAY.voice_ai_starter.features,
+  voice_ai_pro: PLAN_DISPLAY.voice_ai_pro.features,
+  voice_ai_enterprise: PLAN_DISPLAY.voice_ai_enterprise.features,
 };
 
 const plans = [

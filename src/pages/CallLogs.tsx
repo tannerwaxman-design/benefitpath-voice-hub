@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { useCalls } from "@/hooks/use-calls";
+import { useAnySoaEnabled } from "@/hooks/use-soa-enabled";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, Phone, Flame, Thermometer, Snowflake } from "lucide-react";
+import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, Phone, Flame } from "lucide-react";
 import CallDetailPanel, { type CallWithRelations } from "@/components/calls/CallDetailPanel";
 import { TableSkeleton } from "@/components/ui/page-skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -46,19 +47,37 @@ export default function CallLogs() {
   const [search, setSearch] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [directionFilter, setDirectionFilter] = useState("all");
+  const [soaFilter, setSoaFilter] = useState("all");
   const [selectedCall, setSelectedCall] = useState<CallWithRelations | null>(null);
   const [page, setPage] = useState(0);
   const perPage = 10;
 
+  const { data: anySoaEnabled } = useAnySoaEnabled();
+  const showSoaColumn = !!anySoaEnabled;
+
   const { data: calls, isLoading, isError, refetch } = useCalls({ outcome: outcomeFilter, direction: directionFilter, search, limit: 200 });
   const showSkeleton = useDelayedLoading(isLoading);
 
-  const paged = useMemo(() => {
-    const list = calls || [];
-    return list.slice(page * perPage, (page + 1) * perPage);
-  }, [calls, page]);
+  const filteredCalls = useMemo(() => {
+    let list = calls || [];
+    if (soaFilter !== "all") {
+      list = list.filter((c: any) => {
+        const isNonContact = ["voicemail", "no_answer", "busy", "failed"].includes(c.outcome);
+        const agentSoaEnabled = c.agents?.soa_enabled;
+        if (soaFilter === "confirmed") return c.soa_collected && c.soa_consent_given === true;
+        if (soaFilter === "declined") return c.soa_collected && c.soa_consent_given === false;
+        if (soaFilter === "not_collected") return agentSoaEnabled && !c.soa_collected && !isNonContact;
+        return true;
+      });
+    }
+    return list;
+  }, [calls, soaFilter]);
 
-  const totalPages = Math.ceil((calls?.length || 0) / perPage);
+  const paged = useMemo(() => {
+    return filteredCalls.slice(page * perPage, (page + 1) * perPage);
+  }, [filteredCalls, page]);
+
+  const totalPages = Math.ceil(filteredCalls.length / perPage);
 
   function formatDuration(s: number | null) {
     if (!s) return "0:00";
@@ -70,12 +89,13 @@ export default function CallLogs() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   }
 
-  const hasFilters = search || outcomeFilter !== "all" || directionFilter !== "all";
+  const hasFilters = search || outcomeFilter !== "all" || directionFilter !== "all" || soaFilter !== "all";
 
   const clearFilters = () => {
     setSearch("");
     setOutcomeFilter("all");
     setDirectionFilter("all");
+    setSoaFilter("all");
     setPage(0);
   };
 
@@ -118,9 +138,20 @@ export default function CallLogs() {
             <SelectItem value="inbound">Inbound Only</SelectItem>
           </SelectContent>
         </Select>
+        {showSoaColumn && (
+          <Select value={soaFilter} onValueChange={v => { setSoaFilter(v); setPage(0); }}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">SOA: All</SelectItem>
+              <SelectItem value="confirmed">SOA: Confirmed</SelectItem>
+              <SelectItem value="declined">SOA: Declined</SelectItem>
+              <SelectItem value="not_collected">SOA: Not Collected</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
-      {(!calls || calls.length === 0) ? (
+      {(filteredCalls.length === 0) ? (
         hasFilters ? (
           <EmptyState
             icon={Search}
@@ -144,10 +175,10 @@ export default function CallLogs() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-secondary/50">
-                    {["", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Score", "Review", ""].map((h, i) => (
-                      <th key={i} className="px-4 py-3 text-left section-label">{h}</th>
-                    ))}
+                   <tr className="bg-secondary/50">
+                     {["", "Date / Time", "Contact", "Agent", "Duration", "Outcome", "Score", "Review", ...(showSoaColumn ? ["SOA"] : []), ""].map((h, i) => (
+                       <th key={i} className="px-4 py-3 text-left section-label">{h}</th>
+                     ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -189,6 +220,18 @@ export default function CallLogs() {
                           {reviewStatusOptions.find(o => o.value === (call.review_status || "not_reviewed"))?.label || "Not Reviewed"}
                         </Badge>
                       </td>
+                      {showSoaColumn && (
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const isNonContact = ["voicemail", "no_answer", "busy", "failed"].includes(call.outcome);
+                            const agentSoaEnabled = call.agents?.soa_enabled;
+                            if (!agentSoaEnabled || isNonContact) return <span className="text-xs text-muted-foreground">—</span>;
+                            if (call.soa_collected && call.soa_consent_given === true) return <Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px]">✅ Confirmed</Badge>;
+                            if (call.soa_collected && call.soa_consent_given === false) return <Badge variant="secondary" className="bg-destructive/10 text-destructive border-0 text-[10px]">❌ Declined</Badge>;
+                            return <Badge variant="secondary" className="bg-warning/10 text-warning border-0 text-[10px]">⚠️ Not Collected</Badge>;
+                          })()}
+                        </td>
+                      )}
                       <td className="px-4 py-3">{call.recording_url && <button className="p-1 rounded hover:bg-secondary" aria-label="Play recording"><Play className="h-4 w-4 text-muted-foreground" /></button>}</td>
                     </tr>
                     );
@@ -197,7 +240,7 @@ export default function CallLogs() {
               </table>
             </div>
             <div className="flex items-center justify-between px-4 py-3 border-t">
-              <p className="text-sm text-muted-foreground">Showing {page * perPage + 1}-{Math.min((page + 1) * perPage, calls?.length || 0)} of {calls?.length || 0}</p>
+              <p className="text-sm text-muted-foreground">Showing {page * perPage + 1}-{Math.min((page + 1) * perPage, filteredCalls.length)} of {filteredCalls.length}</p>
               <div className="flex gap-1">
                 <Button variant="outline" size="sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>Previous</Button>
                 <Button variant="outline" size="sm" onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}>Next</Button>

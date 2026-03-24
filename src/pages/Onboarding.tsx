@@ -24,24 +24,21 @@ const PLANS = [
   {
     id: "voice_ai_starter",
     name: "Starter",
-    price: "$99/mo",
-    minutes: "500 minutes",
-    features: ["1 AI Agent", "500 minutes/mo", "Basic analytics", "Email support"],
+    price: "$29/mo",
+    features: ["1 AI agent", "Outbound calls only", "Basic call logs", "CSV contact upload", "Email support"],
   },
   {
     id: "voice_ai_pro",
-    name: "Pro",
-    price: "$299/mo",
-    minutes: "2,000 minutes",
-    features: ["5 AI Agents", "2,000 minutes/mo", "Advanced analytics", "Priority support", "CRM integrations"],
+    name: "Professional",
+    price: "$79/mo",
+    features: ["Unlimited AI agents", "Outbound + inbound calls", "Full transcripts & recordings", "Knowledge base", "CRM & calendar tools", "Priority support"],
     popular: true,
   },
   {
     id: "voice_ai_enterprise",
-    name: "Enterprise",
-    price: "Custom",
-    minutes: "Unlimited",
-    features: ["Unlimited agents", "Custom minutes", "Dedicated support", "Custom integrations", "SLA guarantee"],
+    name: "Agency",
+    price: "$199/mo",
+    features: ["Everything in Professional", "Voice cloning", "AI call scoring", "Team management (up to 10)", "Dedicated account manager"],
   },
 ];
 

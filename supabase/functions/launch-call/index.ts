@@ -85,6 +85,7 @@ Deno.serve(async (req: Request) => {
       .from("agents")
       .select("*")
       .eq("id", agent_id)
+      .eq("tenant_id", auth.tenantId)
       .single();
 
     if (!agent || !agent.vapi_assistant_id) {
@@ -144,6 +145,7 @@ Deno.serve(async (req: Request) => {
         .from("phone_numbers")
         .select("*")
         .eq("id", phone_number_id)
+        .eq("tenant_id", auth.tenantId)
         .single();
       if (pn) {
         fromNumber = pn.phone_number;
@@ -172,7 +174,7 @@ Deno.serve(async (req: Request) => {
     // === A/B TEST ROUTING ===
     let abTestId: string | null = null;
     let abTestVersion: string | null = null;
-    let greetingToUse = agent.greeting_script;
+    let greetingToUse = agent.greeting_script || "Hello!";
 
     // Check for active A/B tests on greeting field
     const { data: activeAbTests } = await supabase

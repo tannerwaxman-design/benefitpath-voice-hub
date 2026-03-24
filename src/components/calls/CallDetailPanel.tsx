@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { MessageSquare, Send, Star, Bot, User, RefreshCw } from "lucide-react";
 import AiCommentaryPlayer from "./AiCommentaryPlayer";
+import SoaStatusCard from "./SoaStatusCard";
 import { Progress } from "@/components/ui/progress";
 import type { Json } from "@/integrations/supabase/types";
 import { useCoachingNotes, useAddCoachingNote, useTranscriptComments, useAddTranscriptComment, useUpdateReviewStatus } from "@/hooks/use-coaching";
@@ -67,12 +68,17 @@ export type CallWithRelations = {
   reviewed_at?: string | null;
   internal_notes?: string | null;
   tenant_id: string;
-  agents: { agent_name: string } | null;
+  agents: { agent_name: string; soa_enabled?: boolean } | null;
   campaigns: { name: string } | null;
   vapi_call_id?: string;
   quality_score?: number | null;
   score_breakdown?: Json | null;
   score_feedback?: Json | null;
+  soa_collected?: boolean;
+  soa_consent_given?: boolean | null;
+  soa_timestamp_seconds?: number | null;
+  soa_plan_types?: Json | null;
+  soa_response_text?: string | null;
 };
 
 function formatDate(dt: string) {
@@ -217,32 +223,17 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
           <Badge variant="secondary" className={`${outcomeColors[call.outcome] || ""} border-0 text-[10px]`}>{call.outcome.replace("_", " ")}</Badge>
           <span className="text-xs text-muted-foreground">{formatDate(call.started_at)} • {formatDuration(call.duration_seconds)}</span>
         </div>
-        {/* SOA Badge */}
-        {(call as any).soa_collected !== undefined && (call as any).soa_collected ? (
-          <div className="mt-2">
-            {(call as any).soa_consent_given ? (
-              <div className="flex items-center gap-1.5 text-xs">
-                <Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px]">✅ SOA Collected</Badge>
-                <span className="text-muted-foreground">
-                  at {(call as any).soa_timestamp_seconds != null ? formatTimestamp((call as any).soa_timestamp_seconds) : "—"}
-                  {(call as any).soa_plan_types ? ` — Consent for ${((call as any).soa_plan_types as string[]).map(p => p.split("(")[0].trim()).join(", ")}` : ""}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-xs">
-                <Badge variant="secondary" className="bg-warning/10 text-warning border-0 text-[10px]">⚠️ SOA Declined</Badge>
-                <span className="text-muted-foreground">
-                  at {(call as any).soa_timestamp_seconds != null ? formatTimestamp((call as any).soa_timestamp_seconds) : "—"} — no plans discussed
-                </span>
-              </div>
-            )}
-          </div>
-        ) : (call as any).soa_collected === false && (call as any).agents?.soa_enabled ? (
-          <div className="mt-2">
-            <Badge variant="secondary" className="bg-destructive/10 text-destructive border-0 text-[10px]">❌ SOA Not Collected — Compliance Review Needed</Badge>
-          </div>
-        ) : null}
       </SheetHeader>
+
+      {/* SOA Status Card */}
+      <SoaStatusCard
+        soaCollected={!!call.soa_collected}
+        soaConsentGiven={call.soa_consent_given ?? null}
+        soaTimestampSeconds={call.soa_timestamp_seconds ?? null}
+        soaResponseText={call.soa_response_text ?? null}
+        soaPlanTypes={call.soa_plan_types as string[] | null}
+        agentSoaEnabled={!!call.agents?.soa_enabled}
+      />
 
       {/* Review Status Bar */}
       <div className="bg-secondary/30 rounded-lg p-4 space-y-2">

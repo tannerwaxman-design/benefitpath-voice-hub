@@ -19,9 +19,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToolApiKeys, useConnectApiKey, useDisconnectApiKey, useCrmContactSync, type ToolApiKey } from "@/hooks/use-tools";
 
 const planNames: Record<string, string> = {
-  voice_ai_starter: "Voice AI Starter",
-  voice_ai_pro: "Voice AI Pro",
-  voice_ai_enterprise: "Voice AI Enterprise",
+  voice_ai_starter: "Starter",
+  voice_ai_pro: "Professional",
+  voice_ai_enterprise: "Agency",
 };
 
 const API_SERVICES = [

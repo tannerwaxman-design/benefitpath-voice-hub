@@ -33,7 +33,7 @@ const WELCOME_TEMPLATES = [
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/forge-chat`;
 
-const FORGE_ALLOWED_PLANS = ["voice_ai_enterprise", "voice_ai_agency"];
+const FORGE_ALLOWED_PLANS = ["voice_ai_enterprise"];
 
 export default function Forge() {
   const navigate = useNavigate();

@@ -26,7 +26,7 @@ Deno.serve(async (req: Request) => {
     const providedSecret = req.headers.get("x-vapi-secret");
     if (WEBHOOK_SECRET && providedSecret !== WEBHOOK_SECRET) {
       console.warn("Webhook signature mismatch");
-      // In production, uncomment: return new Response("Unauthorized", { status: 401 });
+      return new Response("Unauthorized", { status: 401 });
     }
 
     // 2. Extract the message
@@ -91,6 +91,15 @@ Deno.serve(async (req: Request) => {
           console.warn(`[webhook] Inbound call to ${calledNumber} but no matching phone_number record found`);
         }
       }
+    }
+
+    // Guard: tenantId is required for all DB operations below
+    if (!tenantId) {
+      console.error("[webhook] No tenant_id resolved for call:", vapiCallId, "type:", callType);
+      return new Response(JSON.stringify({ ok: true, warning: "no_tenant" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // 4. Route based on message type
