@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -9,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useAgents } from "@/hooks/use-agents";
-import { useTrainingSessions, useRunSimulation, usePracticeYourself, type PracticeTranscriptEntry } from "@/hooks/use-training";
-import { GraduationCap, Target, Bot, ClipboardList, Play, ArrowLeft, Loader2, CheckCircle2, Send, Square } from "lucide-react";
+import { useTrainingSessions, useRunSimulation } from "@/hooks/use-training";
+import { usePracticeStart, usePracticeTurn, usePracticeFinish, type ConversationTurn } from "@/hooks/use-practice-turn";
+import { GraduationCap, Target, Bot, ClipboardList, Play, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, Send, PhoneOff } from "lucide-react";
 
 const SCENARIOS = [
   { value: "medicare_aep_reluctant", label: "Medicare AEP — Reluctant Lead", desc: '"I\'m not interested, I already have coverage"' },
@@ -26,13 +26,22 @@ const DIFFICULTIES = [
   { value: "hard", label: "Hard", desc: "Very resistant, multiple strong objections" },
 ];
 
-type View = "home" | "setup_test" | "running" | "result" | "history" | "setup_practice" | "practicing" | "practice_result";
+type View = "home" | "setup_test" | "running" | "result" | "history" | "setup_practice" | "practicing";
 
 export default function Training() {
   const { data: agents } = useAgents();
   const { data: sessions, isLoading: sessionsLoading } = useTrainingSessions();
   const runSimulation = useRunSimulation();
-  const practice = usePracticeYourself();
+
+  // Practice Yourself state
+  const practiceStart = usePracticeStart();
+  const practiceTurn = usePracticeTurn();
+  const practiceFinish = usePracticeFinish();
+  const [practiceSessionId, setPracticeSessionId] = useState<string | null>(null);
+  const [practiceMessages, setPracticeMessages] = useState<ConversationTurn[]>([]);
+  const [practiceInput, setPracticeInput] = useState("");
+  const [practiceEnded, setPracticeEnded] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [view, setView] = useState<View>("home");
   const [selectedAgent, setSelectedAgent] = useState("");
@@ -40,14 +49,56 @@ export default function Training() {
   const [difficulty, setDifficulty] = useState("medium");
   const [result, setResult] = useState<any>(null);
 
-  // Practice Yourself state
-  const [practiceSessionId, setPracticeSessionId] = useState("");
-  const [practiceLeadName, setPracticeLeadName] = useState("Lead");
-  const [practiceTranscript, setPracticeTranscript] = useState<PracticeTranscriptEntry[]>([]);
-  const [userMessage, setUserMessage] = useState("");
-  const [practiceEnded, setPracticeEnded] = useState(false);
-  const [practiceResult, setPracticeResult] = useState<any>(null);
-  const transcriptEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [practiceMessages]);
+
+  const handleStartPractice = async () => {
+    setPracticeMessages([]);
+    setPracticeEnded(false);
+    setPracticeInput("");
+    const data = await practiceStart.mutateAsync({ scenario, difficulty });
+    setPracticeSessionId(data.session_id);
+    setPracticeMessages([{ speaker: "Lead", content: data.lead_message }]);
+    setView("practicing");
+  };
+
+  const handleSendPracticeMessage = async () => {
+    if (!practiceInput.trim() || !practiceSessionId || practiceEnded) return;
+    const userMsg = practiceInput.trim();
+    setPracticeInput("");
+    const newMessages: ConversationTurn[] = [...practiceMessages, { speaker: "You", content: userMsg }];
+    setPracticeMessages(newMessages);
+
+    const history = newMessages.map((m) => ({
+      role: m.speaker === "You" ? "user" : "assistant",
+      content: m.content,
+    }));
+
+    const data = await practiceTurn.mutateAsync({
+      session_id: practiceSessionId,
+      user_message: userMsg,
+      conversation_history: history,
+      scenario,
+      difficulty,
+    });
+
+    const withLead: ConversationTurn[] = [...newMessages, { speaker: "Lead", content: data.lead_message }];
+    setPracticeMessages(withLead);
+    if (data.is_call_ended) setPracticeEnded(true);
+  };
+
+  const handleEndPractice = async () => {
+    if (!practiceSessionId) return;
+    setPracticeEnded(true);
+    const data = await practiceFinish.mutateAsync({
+      session_id: practiceSessionId,
+      transcript: practiceMessages,
+      scenario,
+    });
+    setResult({ ...data, scenario, difficulty, mode: "practice_yourself" });
+    setView("result");
+  };
 
   const activeAgents = agents?.filter(a => a.status === "active" || a.status === "draft") || [];
 
@@ -68,57 +119,6 @@ export default function Training() {
       setView("setup_test");
     }
   };
-
-  const handleStartPractice = async () => {
-    const res = await practice.start.mutateAsync({ scenario, difficulty });
-    setPracticeSessionId(res.session_id);
-    setPracticeLeadName(res.lead_name);
-    setPracticeTranscript([{ role: "lead", content: res.first_message, speaker: res.lead_name }]);
-    setPracticeEnded(false);
-    setPracticeResult(null);
-    setUserMessage("");
-    setView("practicing");
-  };
-
-  const handleSendMessage = async () => {
-    const msg = userMessage.trim();
-    if (!msg || practice.respond.isPending || practiceEnded) return;
-
-    const myEntry: PracticeTranscriptEntry = { role: "user", content: msg, speaker: "You" };
-    const updatedTranscript = [...practiceTranscript, myEntry];
-    setPracticeTranscript(updatedTranscript);
-    setUserMessage("");
-
-    const res = await practice.respond.mutateAsync({
-      session_id: practiceSessionId,
-      scenario,
-      difficulty,
-      transcript: updatedTranscript,
-      user_message: msg,
-    });
-
-    const leadEntry: PracticeTranscriptEntry = { role: "lead", content: res.lead_reply, speaker: practiceLeadName };
-    setPracticeTranscript(prev => [...prev, leadEntry]);
-
-    if (res.should_end) setPracticeEnded(true);
-  };
-
-  const handleEndAndScore = async () => {
-    setPracticeEnded(true);
-    const res = await practice.score.mutateAsync({
-      session_id: practiceSessionId,
-      scenario,
-      difficulty,
-      transcript: practiceTranscript,
-    });
-    setPracticeResult(res);
-    setView("practice_result");
-  };
-
-  // Auto-scroll transcript
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [practiceTranscript]);
 
   const scoreColor = (score: number) =>
     score >= 80 ? "text-success" : score >= 60 ? "text-warning" : "text-destructive";
@@ -412,7 +412,7 @@ export default function Training() {
           <Card>
             <CardHeader><CardTitle className="card-title">Simulation Transcript</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              {transcript.map((t, i: number) => (
+              {transcript.map((t: any, i: number) => (
                 <div key={i} className={`flex ${t.role === "agent" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-lg px-4 py-2 ${
                     t.role === "agent" ? "bg-primary/10 text-foreground" : "bg-secondary text-foreground"
@@ -425,6 +425,150 @@ export default function Training() {
             </CardContent>
           </Card>
         )}
+      </div>
+    );
+  }
+
+  // SETUP PRACTICE YOURSELF
+  if (view === "setup_practice") {
+    return (
+      <div className="space-y-6 max-w-xl">
+        <button onClick={() => setView("home")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to Training Center
+        </button>
+        <h2 className="text-xl font-bold text-foreground">Practice Yourself</h2>
+        <p className="text-sm text-muted-foreground">
+          You play the sales agent. Type your responses and the AI will act as a realistic lead. At the end, you'll receive a full score and feedback.
+        </p>
+        <Card>
+          <CardContent className="p-6 space-y-5">
+            <div>
+              <Label>Lead Scenario</Label>
+              <Select value={scenario} onValueChange={setScenario}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SCENARIOS.map(s => (
+                    <SelectItem key={s.value} value={s.value}>
+                      <div>
+                        <span>{s.label}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{s.desc}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Difficulty</Label>
+              <Select value={difficulty} onValueChange={setDifficulty}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DIFFICULTIES.map(d => (
+                    <SelectItem key={d.value} value={d.value}>
+                      <div>
+                        <span>{d.label}</span>
+                        <span className="text-xs text-muted-foreground ml-2">— {d.desc}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={handleStartPractice}
+              disabled={practiceStart.isPending}
+              className="w-full"
+            >
+              {practiceStart.isPending
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Starting Call…</>
+                : <><Play className="h-4 w-4 mr-2" />Start Practice Call</>}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // PRACTICING — interactive chat
+  if (view === "practicing") {
+    const scenarioLabel = SCENARIOS.find(s => s.value === scenario)?.label ?? scenario;
+    const isLoading = practiceTurn.isPending || practiceFinish.isPending;
+
+    return (
+      <div className="space-y-4 max-w-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Live Practice Call</h2>
+            <p className="text-sm text-muted-foreground">{scenarioLabel} · {difficulty}</p>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleEndPractice}
+            disabled={isLoading || practiceMessages.length < 2}
+          >
+            {practiceFinish.isPending
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Scoring…</>
+              : <><PhoneOff className="h-4 w-4 mr-1" />End Call & Score</>}
+          </Button>
+        </div>
+
+        {practiceEnded && !practiceFinish.isPending && (
+          <div className="flex items-center gap-2 text-sm bg-muted text-muted-foreground p-3 rounded-lg">
+            <AlertTriangle className="h-4 w-4" />
+            The call has ended. Click "End Call &amp; Score" to see your results.
+          </div>
+        )}
+
+        <Card className="flex flex-col" style={{ height: "55vh" }}>
+          <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
+            {practiceMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.speaker === "You" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[75%] rounded-lg px-4 py-2 ${
+                  msg.speaker === "You"
+                    ? "bg-primary/10 text-foreground"
+                    : "bg-secondary text-foreground"
+                }`}>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{msg.speaker}</p>
+                  <p className="text-sm">{msg.content}</p>
+                </div>
+              </div>
+            ))}
+            {(practiceTurn.isPending) && (
+              <div className="flex justify-start">
+                <div className="bg-secondary rounded-lg px-4 py-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Lead</p>
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-2">
+          <Input
+            placeholder="Type your response as the sales agent…"
+            value={practiceInput}
+            onChange={(e) => setPracticeInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendPracticeMessage();
+              }
+            }}
+            disabled={isLoading || practiceEnded}
+          />
+          <Button
+            onClick={handleSendPracticeMessage}
+            disabled={isLoading || !practiceInput.trim() || practiceEnded}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground text-center">
+          Press Enter or click Send to respond. Click "End Call &amp; Score" when you're done.
+        </p>
       </div>
     );
   }
@@ -473,266 +617,6 @@ export default function Training() {
             )}
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  // SETUP PRACTICE
-  if (view === "setup_practice") {
-    return (
-      <div className="space-y-6 max-w-xl">
-        <button onClick={() => setView("home")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to Training Center
-        </button>
-        <h2 className="text-xl font-bold text-foreground">Practice Yourself — Setup</h2>
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <div>
-              <Label>Simulated Lead Scenario</Label>
-              <Select value={scenario} onValueChange={setScenario}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SCENARIOS.map(s => (
-                    <SelectItem key={s.value} value={s.value}>
-                      <div>
-                        <span>{s.label}</span>
-                        <span className="text-xs text-muted-foreground ml-2">{s.desc}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Difficulty</Label>
-              <Select value={difficulty} onValueChange={setDifficulty}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DIFFICULTIES.map(d => (
-                    <SelectItem key={d.value} value={d.value}>
-                      <div>
-                        <span>{d.label}</span>
-                        <span className="text-xs text-muted-foreground ml-2">— {d.desc}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg text-sm text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">How it works</p>
-              <p>You'll type your responses as the agent. The AI will play the role of the lead and push back. End the session anytime to get scored.</p>
-            </div>
-
-            <Button
-              onClick={handleStartPractice}
-              disabled={practice.start.isPending}
-              className="w-full"
-            >
-              {practice.start.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Starting...</> : <><Play className="h-4 w-4 mr-2" /> Start Practice Call</>}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // PRACTICING (live chat)
-  if (view === "practicing") {
-    const scenarioLabel = SCENARIOS.find(s => s.value === scenario)?.label || scenario;
-    const isWaiting = practice.respond.isPending;
-
-    return (
-      <div className="space-y-4 max-w-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Practice Call</h2>
-            <p className="text-sm text-muted-foreground">{scenarioLabel} · {difficulty}</p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEndAndScore}
-            disabled={practice.score.isPending || practiceTranscript.length < 3}
-            className="gap-1.5"
-          >
-            {practice.score.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Square className="h-3.5 w-3.5" />}
-            {practice.score.isPending ? "Scoring..." : "End & Score"}
-          </Button>
-        </div>
-
-        {/* Transcript */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-              {practiceTranscript.map((msg, i) => {
-                const isUser = msg.role === "user";
-                return (
-                  <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[80%] rounded-lg px-4 py-2.5 ${isUser ? "bg-primary/10 text-foreground" : "bg-secondary text-foreground"}`}>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">{msg.speaker}</p>
-                      <p className="text-sm">{msg.content}</p>
-                    </div>
-                  </div>
-                );
-              })}
-              {isWaiting && (
-                <div className="flex justify-start">
-                  <div className="bg-secondary rounded-lg px-4 py-2.5">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">{practiceLeadName}</p>
-                    <div className="flex gap-1 items-center h-4">
-                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={transcriptEndRef} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Input */}
-        {!practiceEnded ? (
-          <div className="flex gap-2">
-            <Input
-              placeholder="Type your response..."
-              value={userMessage}
-              onChange={e => setUserMessage(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-              disabled={isWaiting}
-              autoFocus
-            />
-            <Button onClick={handleSendMessage} disabled={!userMessage.trim() || isWaiting} size="icon">
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="text-center py-3 space-y-2">
-            <p className="text-sm text-muted-foreground">The lead ended the call.</p>
-            <Button onClick={handleEndAndScore} disabled={practice.score.isPending}>
-              {practice.score.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Scoring...</> : "Get My Score"}
-            </Button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // PRACTICE RESULT
-  if (view === "practice_result" && practiceResult) {
-    const fb = practiceResult.feedback || {};
-    const bd = practiceResult.score_breakdown || {};
-
-    const breakdownLabels: Record<string, string> = {
-      opening_hook: "Opening & Hook",
-      value_proposition: "Value Proposition",
-      objection_handling: "Objection Handling",
-      discovery_questions: "Discovery Questions",
-      call_to_action: "Call-to-Action",
-      professionalism: "Professionalism",
-      compliance: "Compliance",
-      outcome_achievement: "Outcome Achievement",
-      conversation_flow: "Conversation Flow",
-      overall_effectiveness: "Overall Effectiveness",
-    };
-
-    return (
-      <div className="space-y-6 max-w-3xl">
-        <button onClick={() => setView("home")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to Training Center
-        </button>
-
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-success" /> Practice Complete!
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {SCENARIOS.find(s => s.value === scenario)?.label || scenario} · {difficulty}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Your Score</p>
-                <p className={`text-4xl font-bold ${scoreColor(practiceResult.score || 0)}`}>
-                  {practiceResult.score || 0}<span className="text-lg text-muted-foreground">/100</span>
-                </p>
-              </div>
-            </div>
-
-            <Progress value={practiceResult.score || 0} className="h-3" />
-
-            {fb.strengths?.length > 0 && (
-              <div className="rounded-lg border border-success/30 bg-success/5 p-4">
-                <p className="text-sm font-medium text-success mb-2">✅ What you did well</p>
-                <ul className="text-sm text-foreground space-y-1">
-                  {fb.strengths.map((s: string, i: number) => <li key={i}>• {s}</li>)}
-                </ul>
-              </div>
-            )}
-
-            {fb.improvements?.length > 0 && (
-              <div className="rounded-lg border border-warning/30 bg-warning/5 p-4">
-                <p className="text-sm font-medium text-warning mb-2">⚡ Areas to improve</p>
-                <ul className="text-sm text-foreground space-y-1">
-                  {fb.improvements.map((s: string, i: number) => <li key={i}>• {s}</li>)}
-                </ul>
-              </div>
-            )}
-
-            {fb.suggested_script && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
-                <p className="text-sm font-medium text-primary mb-2">💡 Suggested Response</p>
-                <p className="text-sm text-foreground italic">"{fb.suggested_script}"</p>
-              </div>
-            )}
-
-            {Object.keys(bd).length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-foreground mb-3">📊 Score Breakdown</p>
-                <div className="space-y-2">
-                  {Object.entries(breakdownLabels).map(([key, label]) => {
-                    const val = (bd as Record<string, number>)[key] ?? 0;
-                    return (
-                      <div key={key} className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground w-44">{label}</span>
-                        <Progress value={val * 10} className="flex-1 h-2" />
-                        <span className={`text-sm font-medium w-10 text-right ${val >= 8 ? "text-success" : val >= 6 ? "text-warning" : "text-destructive"}`}>{val}/10</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button onClick={() => setView("setup_practice")}>Practice Again</Button>
-              <Button variant="outline" onClick={() => setView("home")}>Back to Training</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Transcript replay */}
-        {practiceTranscript.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle className="card-title">Your Call Transcript</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {practiceTranscript.map((t, i) => (
-                <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[75%] rounded-lg px-4 py-2 ${t.role === "user" ? "bg-primary/10 text-foreground" : "bg-secondary text-foreground"}`}>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">{t.speaker}</p>
-                    <p className="text-sm">{t.content}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
       </div>
     );
   }

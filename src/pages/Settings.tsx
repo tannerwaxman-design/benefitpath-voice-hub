@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -10,18 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus, Calendar, Download, CheckCircle } from "lucide-react";
+import { Upload, Copy, RefreshCw, DollarSign, Clock, Phone, TrendingUp, AlertTriangle, Trash2, UserPlus, Eye, EyeOff, Key, Plus, Calendar, CheckCircle2, XCircle, Loader2, Link } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { EnrollmentPeriodsSection } from "@/components/settings/EnrollmentPeriodsSection";
 import { useBillingUsage, useUpdateBillingSettings } from "@/hooks/use-billing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useToolApiKeys, useConnectApiKey, useDisconnectApiKey, useCrmContactSync, type ToolApiKey } from "@/hooks/use-tools";
+import { useToolApiKeys, useConnectApiKey, useDisconnectApiKey, type ToolApiKey } from "@/hooks/use-tools";
+import { useDncList, useUploadDncList, useDownloadDncList, useCheckDncNumber } from "@/hooks/use-dnc-list";
+import { useCrmConnections, useConnectCrm, useDisconnectCrm, type CrmProvider, formatProvider } from "@/hooks/use-crm-connections";
 
 const planNames: Record<string, string> = {
-  voice_ai_starter: "Starter",
-  voice_ai_pro: "Professional",
-  voice_ai_enterprise: "Agency",
+  voice_ai_starter: "Voice AI Starter",
+  voice_ai_pro: "Voice AI Pro",
+  voice_ai_enterprise: "Voice AI Enterprise",
 };
 
 const API_SERVICES = [
@@ -162,7 +164,7 @@ function ApiKeysSection() {
 function PlatformApiKeySection() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [apiKey, setApiKey] = useState<{ id: string; api_key: string; status: string | null; last_used_at: string | null; created_at: string } | null>(null);
+  const [apiKey, setApiKey] = useState<{ id: string; api_key: string; status: string; last_used_at: string | null; created_at: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -172,10 +174,10 @@ function PlatformApiKeySection() {
   const fetchKey = async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("tenant_api_keys")
+      .from("tenant_api_keys" as any)
       .select("*")
       .maybeSingle();
-    setApiKey(data);
+    setApiKey(data as any);
     setLoading(false);
   };
 
@@ -186,12 +188,12 @@ function PlatformApiKeySection() {
     const newKey = `bp_${crypto.randomUUID().replace(/-/g, "")}`;
     if (apiKey) {
       await supabase
-        .from("tenant_api_keys")
+        .from("tenant_api_keys" as any)
         .update({ api_key: newKey, updated_at: new Date().toISOString() })
         .eq("id", apiKey.id);
     } else {
       await supabase
-        .from("tenant_api_keys")
+        .from("tenant_api_keys" as any)
         .insert({ tenant_id: user!.tenant_id, api_key: newKey });
     }
     setGenerating(false);
@@ -202,7 +204,7 @@ function PlatformApiKeySection() {
 
   const revokeKey = async () => {
     if (!apiKey || !confirm("Revoke this API key? Any integrations using it will stop working.")) return;
-    await supabase.from("tenant_api_keys").delete().eq("id", apiKey.id);
+    await supabase.from("tenant_api_keys" as any).delete().eq("id", apiKey.id);
     setApiKey(null);
     toast({ title: "API key revoked" });
   };
@@ -303,98 +305,177 @@ function PlatformApiKeySection() {
   );
 }
 
-const CRM_SERVICES = [
-  { id: "hubspot", label: "HubSpot" },
-  { id: "salesforce", label: "Salesforce" },
-  { id: "ghl", label: "GoHighLevel" },
+const WEBHOOK_EVENTS = [
+  "Call Started",
+  "Call Completed",
+  "Call Transferred",
+  "Appointment Booked",
+  "Voicemail Left",
 ];
-
-function CrmIntegrationsCard() {
-  const { data: apiKeys = [], isLoading } = useToolApiKeys();
-  const { importContacts } = useCrmContactSync();
-  const { toast } = useToast();
-
-  function getConnectedKey(serviceId: string): ToolApiKey | undefined {
-    return apiKeys.find((k) => k.service === serviceId && k.status === "active");
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="section-title">CRM Integrations</CardTitle>
-        <p className="text-sm text-muted-foreground">Import contacts from your CRM and automatically push call outcomes back as notes.</p>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {CRM_SERVICES.map((crm) => {
-            const key = getConnectedKey(crm.id);
-            const lastSyncAt = key?.additional_config?.last_sync_at as string | undefined;
-            const lastSyncCount = key?.additional_config?.last_sync_count as number | undefined;
-            const isPending = importContacts.isPending;
-
-            return (
-              <div key={crm.id} className="p-4 border rounded-lg space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{crm.label}</p>
-                    {key ? (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        <span className="text-xs text-green-600">Connected</span>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-0.5">Not Connected</p>
-                    )}
-                  </div>
-                  {isLoading && <Skeleton className="h-4 w-16" />}
-                </div>
-
-                {key ? (
-                  <>
-                    {lastSyncAt && (
-                      <p className="text-xs text-muted-foreground">
-                        Last sync: {new Date(lastSyncAt).toLocaleDateString()}{" "}
-                        {lastSyncCount != null && `· ${lastSyncCount} contacts`}
-                      </p>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      disabled={isPending}
-                      onClick={() => importContacts.mutate(crm.id)}
-                    >
-                      <Download className="h-3.5 w-3.5 mr-1.5" />
-                      {isPending ? "Importing…" : "Import Contacts"}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      toast({ title: "Connect your API key first", description: "Go to the API tab to add your " + crm.label + " key." });
-                    }}
-                  >
-                    <Key className="h-3.5 w-3.5 mr-1.5" />
-                    Connect in API tab
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function Settings() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: billing, isLoading: billingLoading } = useBillingUsage();
   const updateSettings = useUpdateBillingSettings();
+
+  // Logo upload
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(user?.tenant?.logo_url ?? null);
+  const [logoUploading, setLogoUploading] = useState(false);
+
+  // Webhook config
+  const [webhookUrl, setWebhookUrl] = useState(user?.tenant?.webhook_url ?? "");
+  const [webhookEvents, setWebhookEvents] = useState<string[]>(
+    (user?.tenant as any)?.webhook_events ?? WEBHOOK_EVENTS
+  );
+  const [webhookSaving, setWebhookSaving] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+
+  // Slack
+  const [slackUrl, setSlackUrl] = useState((user?.tenant as any)?.slack_webhook_url ?? "");
+  const [slackSaving, setSlackSaving] = useState(false);
+
+  // Recording retention
+  const [retentionDays, setRetentionDays] = useState(
+    String((user?.tenant as any)?.recording_retention_days ?? "90")
+  );
+  const [retentionSaving, setRetentionSaving] = useState(false);
+
+  // DNC
+  const { data: dncData } = useDncList();
+  const uploadDnc = useUploadDncList();
+  const downloadDnc = useDownloadDncList();
+  const checkDnc = useCheckDncNumber();
+  const dncFileRef = useRef<HTMLInputElement>(null);
+  const [checkPhone, setCheckPhone] = useState("");
+
+  // CRM / Calendar connections
+  const { data: crmConnections = [] } = useCrmConnections();
+  const connectCrm = useConnectCrm();
+  const disconnectCrm = useDisconnectCrm();
+
+  const getCrmConnection = (provider: CrmProvider) =>
+    crmConnections.find((c) => c.provider === provider);
+
+  // Logo upload handler
+  const handleLogoUpload = async (file: File) => {
+    if (!user?.tenant_id) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 2MB", variant: "destructive" });
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.tenant_id}/logo.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("tenant-logos")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("tenant-logos")
+        .getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      await supabase
+        .from("tenants")
+        .update({ logo_url: publicUrl })
+        .eq("id", user.tenant_id);
+
+      setLogoUrl(publicUrl);
+      toast({ title: "Logo uploaded!" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  // Webhook save
+  const handleSaveWebhook = async () => {
+    if (!user?.tenant_id) return;
+    setWebhookSaving(true);
+    try {
+      const { error } = await supabase
+        .from("tenants")
+        .update({ webhook_url: webhookUrl, webhook_events: webhookEvents })
+        .eq("id", user.tenant_id);
+      if (error) throw error;
+      toast({ title: "Webhook settings saved!" });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setWebhookSaving(false);
+    }
+  };
+
+  // Send test webhook
+  const handleTestWebhook = async () => {
+    if (!webhookUrl.trim()) {
+      toast({ title: "Enter a webhook URL first", variant: "destructive" });
+      return;
+    }
+    setTestingWebhook(true);
+    try {
+      const resp = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "test",
+          timestamp: new Date().toISOString(),
+          tenant_id: user?.tenant_id,
+          message: "This is a test webhook from BenefitPath Voice Hub",
+        }),
+      });
+      if (resp.ok) {
+        toast({ title: "Test webhook sent!", description: `HTTP ${resp.status}` });
+      } else {
+        toast({ title: `Webhook returned ${resp.status}`, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Test failed", description: err.message, variant: "destructive" });
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
+  // Slack save
+  const handleSaveSlack = async () => {
+    if (!user?.tenant_id) return;
+    setSlackSaving(true);
+    try {
+      const { error } = await supabase
+        .from("tenants")
+        .update({ slack_webhook_url: slackUrl } as any)
+        .eq("id", user.tenant_id);
+      if (error) throw error;
+      toast({ title: "Slack settings saved!" });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSlackSaving(false);
+    }
+  };
+
+  // Retention save
+  const handleSaveRetention = async () => {
+    if (!user?.tenant_id) return;
+    setRetentionSaving(true);
+    try {
+      const { error } = await supabase
+        .from("tenants")
+        .update({ recording_retention_days: retentionDays === "forever" ? null : Number(retentionDays) } as any)
+        .eq("id", user.tenant_id);
+      if (error) throw error;
+      toast({ title: "Retention policy saved!" });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRetentionSaving(false);
+    }
+  };
 
   const [teamMembers, setTeamMembers] = useState<{ id: string; user_id: string; email: string; role: string; status: string; created_at: string }[]>([]);
   const [teamLoading, setTeamLoading] = useState(true);
@@ -462,7 +543,6 @@ export default function Settings() {
           <TabsTrigger value="enrollment">Enrollment Periods</TabsTrigger>
           <TabsTrigger value="billing">Billing & Usage</TabsTrigger>
           <TabsTrigger value="team">Team & Access</TabsTrigger>
-          <TabsTrigger value="api">API</TabsTrigger>
         </TabsList>
 
         {/* General */}
@@ -486,9 +566,34 @@ export default function Settings() {
               </div>
               <div>
                 <Label>Company Logo</Label>
-                <div className="mt-1 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50">
-                  <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-                  <p className="text-xs text-muted-foreground">Upload logo (PNG, JPG, max 2MB)</p>
+                {logoUrl && (
+                  <div className="mt-2 mb-2">
+                    <img src={logoUrl} alt="Company logo" className="h-16 w-auto rounded border border-border object-contain bg-secondary/20 p-1" />
+                  </div>
+                )}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleLogoUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+                <div
+                  className="mt-1 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50"
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  {logoUploading ? (
+                    <Loader2 className="h-6 w-6 mx-auto text-muted-foreground mb-1 animate-spin" />
+                  ) : (
+                    <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {logoUploading ? "Uploading…" : "Click to upload logo (PNG, JPG, max 2MB)"}
+                  </p>
                 </div>
               </div>
               <Button onClick={() => toast({ title: "Settings saved!" })}>Save Changes</Button>
@@ -498,31 +603,153 @@ export default function Settings() {
 
         {/* Integrations */}
         <TabsContent value="integrations" className="space-y-6 mt-6">
-          <CrmIntegrationsCard />
+          <Card>
+            <CardHeader><CardTitle className="section-title">CRM Integrations</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(["salesforce", "hubspot", "zoho_crm"] as CrmProvider[]).map((provider) => {
+                  const conn = getCrmConnection(provider);
+                  const isConnected = conn?.status === "connected";
+                  return (
+                    <div key={provider} className="p-4 border rounded-lg flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{formatProvider(provider)}</p>
+                        {isConnected ? (
+                          <p className="text-xs text-success flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {conn.account_email ?? conn.account_name ?? "Connected"}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Not Connected</p>
+                        )}
+                      </div>
+                      {isConnected ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => disconnectCrm.mutate(provider)}
+                          disabled={disconnectCrm.isPending}
+                        >
+                          Disconnect
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => connectCrm.mutate(provider)}
+                          disabled={connectCrm.isPending}
+                        >
+                          {connectCrm.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader><CardTitle className="section-title">Webhook Configuration</CardTitle></CardHeader>
             <CardContent className="space-y-4 max-w-xl">
-              <div><Label>Webhook URL</Label><Input placeholder="https://your-api.com/webhook" /></div>
+              <div>
+                <Label>Webhook URL</Label>
+                <Input
+                  placeholder="https://your-api.com/webhook"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Events</Label>
-                {["Call Started", "Call Completed", "Call Transferred", "Appointment Booked", "Voicemail Left"].map(evt => (
-                  <div key={evt} className="flex items-center gap-3"><Switch defaultChecked /><span className="text-sm text-foreground">{evt}</span></div>
+                {WEBHOOK_EVENTS.map((evt) => (
+                  <div key={evt} className="flex items-center gap-3">
+                    <Switch
+                      checked={webhookEvents.includes(evt)}
+                      onCheckedChange={(checked) =>
+                        setWebhookEvents((prev) =>
+                          checked ? [...prev, evt] : prev.filter((e) => e !== evt)
+                        )
+                      }
+                    />
+                    <span className="text-sm text-foreground">{evt}</span>
+                  </div>
                 ))}
               </div>
-              <Button variant="outline" onClick={() => toast({ title: "Test webhook sent!" })}>Send Test Webhook</Button>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveWebhook} disabled={webhookSaving}>
+                  {webhookSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : "Save Webhook Settings"}
+                </Button>
+                <Button variant="outline" onClick={handleTestWebhook} disabled={testingWebhook || !webhookUrl.trim()}>
+                  {testingWebhook ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Sending…</> : "Send Test Webhook"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle className="section-title">Calendar Integration</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {["Google Calendar", "Outlook Calendar", "Calendly"].map(cal => (
-                  <div key={cal} className="flex items-center justify-between p-3 border rounded-lg">
-                    <span className="text-sm text-foreground">{cal}</span>
-                    <Button variant="outline" size="sm" onClick={() => toast({ title: `${cal} connected!` })}>Connect</Button>
-                  </div>
-                ))}
+                {(["google_calendar", "outlook_calendar", "calendly"] as CrmProvider[]).map((provider) => {
+                  const conn = getCrmConnection(provider);
+                  const isConnected = conn?.status === "connected";
+                  return (
+                    <div key={provider} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <span className="text-sm text-foreground">{formatProvider(provider)}</span>
+                        {isConnected && (
+                          <p className="text-xs text-success flex items-center gap-1 mt-0.5">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {conn.account_email ?? conn.account_name ?? "Connected"}
+                          </p>
+                        )}
+                      </div>
+                      {isConnected ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => disconnectCrm.mutate(provider)}
+                          disabled={disconnectCrm.isPending}
+                        >
+                          Disconnect
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => connectCrm.mutate(provider)}
+                          disabled={connectCrm.isPending}
+                        >
+                          {connectCrm.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="section-title">Slack Notifications</CardTitle></CardHeader>
+            <CardContent className="space-y-4 max-w-xl">
+              <p className="text-sm text-muted-foreground">
+                Receive a Slack message when a call is completed, an appointment is booked, or voicemail is left.
+              </p>
+              <div>
+                <Label>Slack Incoming Webhook URL</Label>
+                <Input
+                  placeholder="https://hooks.slack.com/services/..."
+                  value={slackUrl}
+                  onChange={(e) => setSlackUrl(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create an Incoming Webhook in your Slack App settings and paste the URL above.
+                </p>
+              </div>
+              <Button onClick={handleSaveSlack} disabled={slackSaving}>
+                {slackSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : "Save Slack Settings"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -532,19 +759,70 @@ export default function Settings() {
           <Card>
             <CardHeader><CardTitle className="section-title">Do-Not-Call Management</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">Manage your DNC list from the Contact Lists page</p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => toast({ title: "DNC list uploaded" })}>Upload DNC List</Button>
-                <Button variant="outline" onClick={() => toast({ title: "DNC list downloaded" })}>Download DNC List</Button>
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-muted-foreground">
+                  Current DNC list:{" "}
+                  <span className="font-semibold text-foreground">{dncData?.count ?? 0} numbers</span>
+                </div>
               </div>
-              <div><Label>Check Number</Label><div className="flex gap-2"><Input placeholder="+1 (555) 000-0000" /><Button variant="outline" onClick={() => toast({ title: "Number not on DNC list" })}>Check</Button></div></div>
+              <input
+                ref={dncFileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadDnc.mutate(file);
+                  e.target.value = "";
+                }}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => dncFileRef.current?.click()}
+                  disabled={uploadDnc.isPending}
+                >
+                  {uploadDnc.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Uploading…</> : "Upload DNC List (CSV)"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => downloadDnc.mutate()}
+                  disabled={downloadDnc.isPending || !dncData?.count}
+                >
+                  {downloadDnc.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Exporting…</> : "Download DNC List"}
+                </Button>
+              </div>
+              <div>
+                <Label>Check Number</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="+1 (555) 000-0000"
+                    value={checkPhone}
+                    onChange={(e) => setCheckPhone(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && checkPhone.trim()) checkDnc.mutate(checkPhone.trim());
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => checkPhone.trim() && checkDnc.mutate(checkPhone.trim())}
+                    disabled={checkDnc.isPending || !checkPhone.trim()}
+                  >
+                    {checkDnc.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  CSV format: one phone number per line, or comma-separated. Numbers are normalized to +1XXXXXXXXXX.
+                </p>
+              </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle className="section-title">Call Recording Storage</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div><Label>Retention Policy</Label>
-                <Select defaultValue="90">
+              <div>
+                <Label>Retention Policy</Label>
+                <Select value={retentionDays} onValueChange={setRetentionDays}>
                   <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="30">30 days</SelectItem>
@@ -554,6 +832,9 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
               </div>
+              <Button onClick={handleSaveRetention} disabled={retentionSaving}>
+                {retentionSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : "Save Retention Policy"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -590,7 +871,8 @@ export default function Settings() {
                     </div>
                     <div className="flex flex-col gap-2">
                       <Button size="sm" onClick={() => {
-                        window.location.href = "/billing";
+                        const w = window as any;
+                        w.location.href = "/billing";
                       }}>
                         Manage Plan & Credits
                       </Button>
@@ -599,8 +881,8 @@ export default function Settings() {
                           const { data, error } = await supabase.functions.invoke("customer-portal");
                           if (error) throw error;
                           if (data?.url) window.open(data.url, "_blank");
-                        } catch (err: unknown) {
-                          toast({ title: "Could not open billing portal", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
+                        } catch (err: any) {
+                          toast({ title: "Could not open billing portal", description: err.message, variant: "destructive" });
                         }
                       }}>
                         Manage Payment Method
@@ -811,6 +1093,9 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          {/* Platform API Key */}
+          <PlatformApiKeySection />
+
           {/* Integration API Keys */}
           <ApiKeysSection />
 
@@ -853,10 +1138,6 @@ export default function Settings() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </TabsContent>
-        {/* API */}
-        <TabsContent value="api" className="space-y-6 mt-6">
-          <PlatformApiKeySection />
         </TabsContent>
       </Tabs>
     </div>
