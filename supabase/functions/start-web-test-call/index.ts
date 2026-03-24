@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       method: "POST",
       endpoint: "/call/web",
       body: {
-        assistantId: agent.vapi_assistant_id,
+        assistantId: vapiAssistantId,
         assistantOverrides: {
           firstMessage: (agent.greeting_script || "Hello!")
             .replace(/\[Contact Name\]/gi, contact_name || "there")
