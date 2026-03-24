@@ -67,12 +67,17 @@ export type CallWithRelations = {
   reviewed_at?: string | null;
   internal_notes?: string | null;
   tenant_id: string;
-  agents: { agent_name: string } | null;
+  agents: { agent_name: string; soa_enabled?: boolean } | null;
   campaigns: { name: string } | null;
   vapi_call_id?: string;
   quality_score?: number | null;
   score_breakdown?: Json | null;
   score_feedback?: Json | null;
+  soa_collected?: boolean;
+  soa_consent_given?: boolean | null;
+  soa_timestamp_seconds?: number | null;
+  soa_plan_types?: Json | null;
+  soa_response_text?: string | null;
 };
 
 function formatDate(dt: string) {
