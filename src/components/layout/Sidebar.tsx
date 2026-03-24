@@ -26,6 +26,7 @@ const navSections: NavSection[] = [
     title: "OVERVIEW",
     items: [
       { label: "Overview", icon: LayoutDashboard, path: "/" },
+      { label: "War Room", icon: Radio, path: "/war-room", badge: "LIVE" },
     ],
   },
   {
