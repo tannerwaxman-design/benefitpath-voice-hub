@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { useCalls } from "@/hooks/use-calls";
+import { useAnySoaEnabled } from "@/hooks/use-soa-enabled";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, Phone, Flame, Thermometer, Snowflake } from "lucide-react";
+import { Download, Play, Search, ArrowUpRight, ArrowDownLeft, Phone, Flame } from "lucide-react";
 import CallDetailPanel, { type CallWithRelations } from "@/components/calls/CallDetailPanel";
 import { TableSkeleton } from "@/components/ui/page-skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
