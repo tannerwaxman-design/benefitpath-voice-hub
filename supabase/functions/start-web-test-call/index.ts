@@ -172,6 +172,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         call_id: result.id,
         web_call_url: result.webCallUrl,
+        vapi_public_key: vapiPublicKey,
       }),
       {
         headers: { ...corsH, "Content-Type": "application/json" },
