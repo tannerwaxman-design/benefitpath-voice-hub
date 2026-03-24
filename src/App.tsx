@@ -38,6 +38,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import CookiesPolicy from "./pages/CookiesPolicy";
 import ApiDocs from "./pages/ApiDocs";
+import WarRoom from "./pages/WarRoom";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/war-room" element={<ErrorBoundary><WarRoom /></ErrorBoundary>} />
                 <Route element={<DashboardLayout />}>
                   <Route path="/" element={<ErrorBoundary><Overview /></ErrorBoundary>} />
                   <Route path="/forge" element={<ErrorBoundary><Forge /></ErrorBoundary>} />
