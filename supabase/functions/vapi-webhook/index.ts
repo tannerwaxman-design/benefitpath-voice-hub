@@ -234,11 +234,11 @@ Deno.serve(async (req: Request) => {
               .eq("id", campaignContactId);
 
             // Increment attempts
-            await supabase
+            const { error: rpcErr } = await supabase
               .rpc("increment_campaign_contact_attempts", {
                 cc_id: campaignContactId,
-              })
-              .catch((err) => console.warn("[webhook] increment attempts failed:", err));
+              });
+            if (rpcErr) console.warn("[webhook] increment attempts failed:", rpcErr);
           }
 
           // Update campaign stats
