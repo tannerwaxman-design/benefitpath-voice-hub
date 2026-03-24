@@ -151,7 +151,7 @@ export default function CallLogs() {
         )}
       </div>
 
-      {(!calls || calls.length === 0) ? (
+      {(filteredCalls.length === 0) ? (
         hasFilters ? (
           <EmptyState
             icon={Search}
