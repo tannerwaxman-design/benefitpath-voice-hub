@@ -14,7 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, FlaskConical, GripVertical, Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, FlaskConical, GripVertical, Loader2, MessageSquare, Phone, PhoneIncoming, PhoneOutgoing, Play, Plus, Trash2, Upload, Volume2, Wand2 } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { AgentTestPanel } from "@/components/agents/AgentTestPanel";
 import { AbTestField } from "@/components/agents/AbTestField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense } from "react";
@@ -99,6 +101,8 @@ export default function AgentEditor() {
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [voiceCloneStatus, setVoiceCloneStatus] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<"script" | "flow">("script");
+  const [showTestPanel, setShowTestPanel] = useState(false);
+  const [testAutoMessage, setTestAutoMessage] = useState<string | undefined>(undefined);
   const [conversationFlow, setConversationFlow] = useState<FlowData | null>(null);
   const [soaConfig, setSoaConfig] = useState<SoaConfig>({
     soa_enabled: false,
@@ -701,6 +705,32 @@ export default function AgentEditor() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Test Button */}
+      {!isNew && id && (
+        <Button
+          className="fixed bottom-6 right-6 z-40 rounded-full h-12 px-5 shadow-lg"
+          onClick={() => { setTestAutoMessage(undefined); setShowTestPanel(true); }}
+        >
+          <FlaskConical className="h-4 w-4 mr-2" />
+          Test Agent
+        </Button>
+      )}
+
+      {/* Test Panel Sheet */}
+      <Sheet open={showTestPanel} onOpenChange={setShowTestPanel}>
+        <SheetContent side="right" className="w-[400px] sm:max-w-[400px] p-0 flex flex-col">
+          {id && id !== "new" && showTestPanel && (
+            <AgentTestPanel
+              agentId={id}
+              agentName={name || existingAgent?.agent_name || "Agent"}
+              greetingScript={greeting}
+              onClose={() => setShowTestPanel(false)}
+              autoSendMessage={testAutoMessage}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
