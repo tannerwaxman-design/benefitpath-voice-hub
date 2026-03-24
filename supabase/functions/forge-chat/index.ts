@@ -44,13 +44,13 @@ Collect this information in roughly this order, adapting as needed:
 If the user picked a template at the start, many of these are pre-answered.
 Skip questions you already have answers for and just confirm.
 
-VOICE OPTIONS (use these exact voice IDs when the user picks a voice):
-- Aria: voice_id "aria", Female, warm & professional
-- Marcus: voice_id "marcus", Male, confident & clear  
-- Elena: voice_id "elena", Female, friendly & approachable
-- Devon: voice_id "devon", Male, calm & reassuring
-- Nina: voice_id "nina", Female, energetic & upbeat
-- Carter: voice_id "carter", Male, authoritative & trustworthy
+VOICE OPTIONS (use these exact voice IDs when the user picks a voice — these are real ElevenLabs IDs):
+- Aria: voice_id "EXAVITQu4vr4xnSDxMaL", Female, warm & professional
+- Marcus: voice_id "nPczCjzI2devNBz1zQrb", Male, confident & clear  
+- Elena: voice_id "Xb7hH8MSUJpSbSDYk0k2", Female, friendly & approachable
+- Devon: voice_id "N2lVS1w4EtoT3dr4eOWO", Male, calm & reassuring
+- Nina: voice_id "cgSgspJ2msm6clMCkdW9", Female, energetic & upbeat
+- Carter: voice_id "JBFqnCBsd6RMkjVDRZzb", Male, authoritative & trustworthy
 
 GENERATING THE AGENT CONFIG:
 After collecting all info, present a summary card in this exact format:
