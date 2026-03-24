@@ -27,11 +27,11 @@ export function useCrmConnections() {
     queryKey: ["crm-connections", user?.tenant_id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("crm_connections")
+        .from("crm_connections" as never)
         .select("*")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as CrmConnection[];
+      return (data ?? []) as unknown as CrmConnection[];
     },
     enabled: !!user?.tenant_id,
   });
