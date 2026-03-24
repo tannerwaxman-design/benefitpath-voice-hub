@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -93,18 +94,25 @@ export default function Training() {
             </CardContent>
           </Card>
 
-          <Card className="hover:border-primary/40 transition-colors cursor-pointer opacity-60">
-            <CardContent className="p-6 text-center space-y-3">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
-                <Target className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground">Practice Yourself</h3>
-              <p className="text-sm text-muted-foreground">
-                YOU handle the call. The AI acts as a difficult lead and scores your responses.
-              </p>
-              <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-            </CardContent>
-          </Card>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="hover:border-primary/40 transition-colors opacity-60">
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
+                    <Target className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-foreground">Practice Yourself</h3>
+                  <p className="text-sm text-muted-foreground">
+                    YOU handle the call. The AI acts as a difficult lead and scores your responses.
+                  </p>
+                  <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Practice mode is coming soon. You'll be able to role-play as the lead while the AI scores your responses.</p>
+            </TooltipContent>
+          </Tooltip>
 
           <Card className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => setView("history")}>
             <CardContent className="p-6 text-center space-y-3">
