@@ -323,7 +323,7 @@ export default function CallDetailPanel({ call, onClose }: { call: CallWithRelat
 
             {call.score_feedback && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(call.score_feedback as { went_well?: string[] } | null)?.went_well?.length ?? 0 > 0 && (
+                {((call.score_feedback as { went_well?: string[] } | null)?.went_well?.length ?? 0) > 0 && (
                   <div>
                     <p className="text-xs font-medium text-success mb-1.5">✅ What went well</p>
                     <ul className="space-y-1">
