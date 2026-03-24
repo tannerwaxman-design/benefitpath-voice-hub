@@ -354,15 +354,6 @@ export default function AgentEditor() {
     setShowTestCallDialog(false);
   };
 
-  const isSaving = createAgent.isPending || updateAgent.isPending;
-  const hasUnsaved = initialized && !isSaving;
-
-  useEffect(() => {
-    if (!hasUnsaved) return;
-    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [hasUnsaved]);
 
   return (
     <div className="space-y-6">
