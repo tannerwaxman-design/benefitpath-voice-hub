@@ -89,12 +89,13 @@ export default function CallLogs() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   }
 
-  const hasFilters = search || outcomeFilter !== "all" || directionFilter !== "all";
+  const hasFilters = search || outcomeFilter !== "all" || directionFilter !== "all" || soaFilter !== "all";
 
   const clearFilters = () => {
     setSearch("");
     setOutcomeFilter("all");
     setDirectionFilter("all");
+    setSoaFilter("all");
     setPage(0);
   };
 
