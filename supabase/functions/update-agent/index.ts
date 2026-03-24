@@ -130,8 +130,20 @@ Deno.serve(async (req: Request) => {
     if (existingAgent.vapi_assistant_id) {
       const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/vapi-webhook`;
 
+      // Resolve friendly voice names to real ElevenLabs IDs
+      const VOICE_NAME_MAP: Record<string, string> = {
+        aria: "EXAVITQu4vr4xnSDxMaL",
+        marcus: "nPczCjzI2devNBz1zQrb",
+        elena: "Xb7hH8MSUJpSbSDYk0k2",
+        devon: "N2lVS1w4EtoT3dr4eOWO",
+        nina: "cgSgspJ2msm6clMCkdW9",
+        carter: "JBFqnCBsd6RMkjVDRZzb",
+      };
+      const rawVid = updatedConfig.voice_id || "EXAVITQu4vr4xnSDxMaL";
+      const resolvedVid = VOICE_NAME_MAP[rawVid.toLowerCase()] || rawVid;
+
       const vapiUpdate: Record<string, unknown> = {
-        name: `${tenant.company_name} — ${updatedConfig.agent_name}`,
+        name: `${tenant.company_name} — ${updatedConfig.agent_name}`.slice(0, 40),
         model: {
           provider: "openai",
           model: "gpt-4o",
@@ -141,7 +153,7 @@ Deno.serve(async (req: Request) => {
         },
         voice: {
           provider: updatedConfig.voice_provider === "eleven_labs" ? "11labs" : (updatedConfig.voice_provider || "11labs"),
-          voiceId: updatedConfig.voice_id || "aria",
+          voiceId: resolvedVid,
           speed: updatedConfig.speaking_speed || 1.0,
         },
         firstMessage: updatedConfig.greeting_script,

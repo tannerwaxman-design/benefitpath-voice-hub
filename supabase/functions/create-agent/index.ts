@@ -92,9 +92,28 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const webhookUrl = `${supabaseUrl}/functions/v1/vapi-webhook`;
 
+    // Resolve friendly voice names to real ElevenLabs IDs (Forge may output either)
+    const VOICE_NAME_MAP: Record<string, string> = {
+      aria: "EXAVITQu4vr4xnSDxMaL",
+      marcus: "nPczCjzI2devNBz1zQrb",
+      elena: "Xb7hH8MSUJpSbSDYk0k2",
+      devon: "N2lVS1w4EtoT3dr4eOWO",
+      nina: "cgSgspJ2msm6clMCkdW9",
+      carter: "JBFqnCBsd6RMkjVDRZzb",
+      priya: "pFZP5JQG7iQjIQuC4Bku",
+      jackson: "iP95p4xoKVk53GoZ742B",
+      sofia: "XrExE9yKIg1WjnnlVkGX",
+      diego: "TX3LPaxmHKxFdv7VOQHJ",
+    };
+    const rawVoiceId = body.voice_id || "EXAVITQu4vr4xnSDxMaL";
+    const resolvedVoiceId = VOICE_NAME_MAP[rawVoiceId.toLowerCase()] || rawVoiceId;
+
+    // Truncate VAPI assistant name to 40 chars (VAPI limit)
+    const vapiName = `${tenant.company_name} — ${body.agent_name}${body.agent_title ? " (" + body.agent_title + ")" : ""}`.slice(0, 40);
+
     // 6. Build the VAPI assistant payload
     const vapiPayload: Record<string, unknown> = {
-      name: `${tenant.company_name} — ${body.agent_name}${body.agent_title ? " (" + body.agent_title + ")" : ""}`,
+      name: vapiName,
 
       model: {
         provider: "openai",
@@ -111,7 +130,7 @@ Deno.serve(async (req: Request) => {
 
       voice: {
         provider: body.voice_provider === "eleven_labs" ? "11labs" : (body.voice_provider || "11labs"),
-        voiceId: body.voice_id || "aria",
+        voiceId: resolvedVoiceId,
         speed: body.speaking_speed || 1.0,
         ...(body.filler_words_enabled && {
           fillerInjectionEnabled: true,
@@ -234,7 +253,7 @@ Deno.serve(async (req: Request) => {
         status: body.status || "draft",
 
         voice_provider: body.voice_provider || "eleven_labs",
-        voice_id: body.voice_id || "aria",
+        voice_id: resolvedVoiceId,
         voice_name: body.voice_name || null,
         speaking_speed: body.speaking_speed || 1.0,
         tone: body.tone || "professional",
