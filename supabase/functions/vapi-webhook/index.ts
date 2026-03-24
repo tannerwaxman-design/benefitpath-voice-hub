@@ -458,7 +458,7 @@ Deno.serve(async (req: Request) => {
         }
 
         // Fetch and store costs (end-of-call-report arrives after VAPI has finalized costs)
-        if (tenantId && !isTestCall) {
+        if (tenantId) {
           const costData = await fetchAndStoreCosts(supabase, vapiCallId, tenantId);
 
           if (costData.totalCost > 0) {
