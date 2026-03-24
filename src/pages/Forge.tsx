@@ -66,6 +66,22 @@ export default function Forge() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isThinking]);
 
+  const forgeAgent = useCallback(async (config: Record<string, unknown>) => {
+    setIsForging(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-agent", {
+        body: config,
+      });
+      if (error) throw error;
+      const agentId = data?.agent?.id;
+      if (agentId) setForgedAgentId(agentId);
+      toast.success(`${config.agent_name} has been forged!`);
+    } catch (err: unknown) {
+      toast.error("Failed to forge agent: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
+    setIsForging(false);
+  }, []);
+
   const streamChat = useCallback(async (allMessages: ChatMessage[]) => {
     setIsThinking(true);
     const session = await supabase.auth.getSession();
