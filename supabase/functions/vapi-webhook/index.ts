@@ -234,11 +234,11 @@ Deno.serve(async (req: Request) => {
               .eq("id", campaignContactId);
 
             // Increment attempts
-            await supabase
+            const { error: rpcErr } = await supabase
               .rpc("increment_campaign_contact_attempts", {
                 cc_id: campaignContactId,
-              })
-              .catch((err) => console.warn("[webhook] increment attempts failed:", err));
+              });
+            if (rpcErr) console.warn("[webhook] increment attempts failed:", rpcErr);
           }
 
           // Update campaign stats
@@ -290,7 +290,7 @@ Deno.serve(async (req: Request) => {
           }
 
           // Track minutes (cost/credit deduction moved to end-of-call-report)
-          if (tenantId && !isTestCall) {
+          if (tenantId) {
             await supabase.rpc("increment_tenant_minutes", {
               p_tenant_id: tenantId,
               p_minutes: durationMinutes,
@@ -458,7 +458,7 @@ Deno.serve(async (req: Request) => {
         }
 
         // Fetch and store costs (end-of-call-report arrives after VAPI has finalized costs)
-        if (tenantId && !isTestCall) {
+        if (tenantId) {
           const costData = await fetchAndStoreCosts(supabase, vapiCallId, tenantId);
 
           if (costData.totalCost > 0) {
