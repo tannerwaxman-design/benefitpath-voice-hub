@@ -139,7 +139,7 @@ export function useCreateTool() {
       // Step 1: Save to DB
       const { data, error } = await supabase
         .from("tools")
-        .insert({ ...tool, tenant_id: user!.tenant_id } as TablesInsert<"tools">)
+        .insert({ ...tool, tenant_id: user!.tenant_id } as unknown as TablesInsert<"tools">)
         .select()
         .single();
       if (error) throw error;
