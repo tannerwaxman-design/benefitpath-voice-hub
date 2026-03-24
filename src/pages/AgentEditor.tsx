@@ -104,6 +104,7 @@ export default function AgentEditor() {
   const [editorMode, setEditorMode] = useState<"script" | "flow">("script");
   const [showTestPanel, setShowTestPanel] = useState(false);
   const [testAutoMessage, setTestAutoMessage] = useState<string | undefined>(undefined);
+  const [testMode, setTestMode] = useState<"chat" | "voice">("chat");
   const [conversationFlow, setConversationFlow] = useState<FlowData | null>(null);
   const [soaConfig, setSoaConfig] = useState<SoaConfig>({
     soa_enabled: false,
