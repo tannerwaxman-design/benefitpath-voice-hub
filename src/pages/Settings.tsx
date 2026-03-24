@@ -417,7 +417,7 @@ function WebhookConfigSection() {
     setSaving(true);
     const { error } = await supabase
       .from("tenants")
-      .update({ webhook_url: webhookUrl || null })
+      .update({ webhook_url: webhookUrl || null } as any)
       .eq("id", user?.tenant_id);
     setSaving(false);
     if (error) {
