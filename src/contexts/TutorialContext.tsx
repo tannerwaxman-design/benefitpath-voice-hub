@@ -178,7 +178,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     if (!user?.tenant_id) return;
     await supabase
       .from("tenants")
-      .update({ onboarding_completed: false, onboarding_step: 0 } as any)
+      .update({ tutorial_completed: false, onboarding_step: 0 } as any)
       .eq("id", user.tenant_id);
     await refreshProfile();
     setTutorialCompleted(false);
