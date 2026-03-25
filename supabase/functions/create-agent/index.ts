@@ -261,7 +261,7 @@ Deno.serve(async (req: Request) => {
         voice_id: resolvedVoiceId,
         voice_name: body.voice_name || null,
         speaking_speed: body.speaking_speed || 1.0,
-        tone: body.tone || "professional",
+        tone: validatedTone,
         enthusiasm_level: body.enthusiasm_level || 6,
         filler_words_enabled: body.filler_words_enabled ?? true,
         background_noise: body.background_noise || "none",
