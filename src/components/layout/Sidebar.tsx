@@ -27,8 +27,8 @@ const navSections: NavSection[] = [
   {
     title: "OVERVIEW",
     items: [
-      { label: "Overview", icon: LayoutDashboard, path: "/" },
-      { label: "War Room", icon: Radio, path: "/war-room", badge: "LIVE" },
+      { label: "Overview", icon: LayoutDashboard, path: "/", helpText: "Your dashboard with key metrics and daily performance summary." },
+      { label: "War Room", icon: Radio, path: "/war-room", badge: "LIVE", helpText: "Real-time mission control for high-volume calling days." },
     ],
   },
   {
