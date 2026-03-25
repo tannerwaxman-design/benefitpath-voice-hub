@@ -72,7 +72,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     const onboardingStep = tenant.onboarding_step ?? 0;
     const onboardingChecklist = (tenant.onboarding_checklist ?? checklist) as OnboardingChecklist;
     const dismissed = tenant.onboarding_checklist_dismissed ?? false;
-    const completed = tenant.onboarding_completed ?? false;
+    const completed = tenant.tutorial_completed ?? false;
 
     setChecklist(onboardingChecklist);
     setChecklistDismissed(dismissed);
