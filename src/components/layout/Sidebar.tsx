@@ -117,7 +117,7 @@ export function Sidebar() {
                   const active = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
                   return (
                     <Link key={item.path} to={item.path}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className={`group flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         active ? "bg-slate-800 text-white border-l-2 border-primary" : "hover:bg-slate-800/50 hover:text-white"
                       }`}
                       title={collapsed ? item.label : undefined}
