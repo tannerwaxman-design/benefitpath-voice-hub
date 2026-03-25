@@ -152,24 +152,39 @@ Deno.serve(async (req: Request) => {
       return errorResponse("AI service not configured", 500);
     }
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: FORGE_SYSTEM_PROMPT },
-            ...messages,
-          ],
-          stream: true,
-        }),
-      }
-    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout
+
+    let response: Response;
+    try {
+      response = await fetch(
+        "https://ai.gateway.lovable.dev/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: FORGE_SYSTEM_PROMPT },
+              ...messages,
+            ],
+            stream: true,
+          }),
+          signal: controller.signal,
+        }
+      );
+    } catch (abortErr) {
+      clearTimeout(timeoutId);
+      console.error("forge-chat: AI gateway timeout");
+      return new Response(
+        JSON.stringify({ error: "AI is taking too long. Please try again." }),
+        { status: 504, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
+      );
+    }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 429) {
