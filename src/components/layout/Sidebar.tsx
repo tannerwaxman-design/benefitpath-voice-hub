@@ -124,7 +124,7 @@ export function Sidebar() {
                     >
                       <item.icon className={`h-5 w-5 shrink-0 ${item.accentIcon ? "text-amber-400" : ""}`} />
                       {!collapsed && (
-                        <span className="flex items-center gap-2">
+                        <span className="flex items-center gap-2 flex-1">
                           {item.label}
                           {item.badge === "LIVE" ? (
                             <span className="relative flex h-2 w-2">
@@ -136,6 +136,11 @@ export function Sidebar() {
                               {item.badge}
                             </span>
                           ) : null}
+                          {item.helpText && !active && (
+                            <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.preventDefault()}>
+                              <ContextualHelp text={item.helpText} />
+                            </span>
+                          )}
                         </span>
                       )}
                     </Link>
