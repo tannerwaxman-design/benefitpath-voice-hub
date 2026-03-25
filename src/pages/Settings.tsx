@@ -837,6 +837,23 @@ export default function Settings() {
               <Button onClick={() => toast({ title: "Settings saved!" })}>Save Changes</Button>
             </CardContent>
           </Card>
+
+          {/* Restart Tutorial */}
+          <Card>
+            <CardHeader><CardTitle className="section-title">Onboarding Tutorial</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Restart the interactive tutorial that walks you through setting up your AI agents, making test calls, and launching campaigns.
+              </p>
+              <Button variant="outline" onClick={() => {
+                // We'll dispatch a custom event since the tutorial context is separate
+                window.dispatchEvent(new CustomEvent("restart-tutorial"));
+                toast({ title: "Tutorial restarted!", description: "The onboarding tutorial will start from the beginning." });
+              }}>
+                Restart onboarding tutorial
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Integrations */}
