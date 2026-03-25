@@ -1780,6 +1780,7 @@ export type Database = {
           tcpa_compliance_mode: string
           total_cost_this_cycle: number
           trial_ends_at: string | null
+          tutorial_completed: boolean
           twilio_account_sid: string | null
           twilio_auth_token: string | null
           updated_at: string
@@ -1831,6 +1832,7 @@ export type Database = {
           tcpa_compliance_mode?: string
           total_cost_this_cycle?: number
           trial_ends_at?: string | null
+          tutorial_completed?: boolean
           twilio_account_sid?: string | null
           twilio_auth_token?: string | null
           updated_at?: string
@@ -1882,6 +1884,7 @@ export type Database = {
           tcpa_compliance_mode?: string
           total_cost_this_cycle?: number
           trial_ends_at?: string | null
+          tutorial_completed?: boolean
           twilio_account_sid?: string | null
           twilio_auth_token?: string | null
           updated_at?: string
