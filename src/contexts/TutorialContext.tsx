@@ -70,7 +70,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     if (!user?.tenant) return;
     const tenant = user.tenant;
     const onboardingStep = tenant.onboarding_step ?? 0;
-    const onboardingChecklist = tenant.onboarding_checklist ?? checklist;
+    const onboardingChecklist = (tenant.onboarding_checklist ?? checklist) as OnboardingChecklist;
     const dismissed = tenant.onboarding_checklist_dismissed ?? false;
     const completed = tenant.onboarding_completed ?? false;
 
