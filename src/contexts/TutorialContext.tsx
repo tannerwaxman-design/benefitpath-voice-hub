@@ -69,6 +69,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user?.tenant) return;
     const tenant = user.tenant;
+    // Only show tutorial after the setup wizard is completed
+    if (!tenant.onboarding_completed) return;
+
     const onboardingStep = tenant.onboarding_step ?? 0;
     const onboardingChecklist = (tenant.onboarding_checklist ?? checklist) as OnboardingChecklist;
     const dismissed = tenant.onboarding_checklist_dismissed ?? false;
@@ -80,11 +83,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
     if (!initialized) {
       if (!completed && onboardingStep > 0) {
-        // Resume from where they left off
         setCurrentStep(onboardingStep);
         setShowTutorial(true);
       } else if (!completed && onboardingStep === 0) {
-        // First time — show welcome modal
         setShowWelcome(true);
       }
       setInitialized(true);
