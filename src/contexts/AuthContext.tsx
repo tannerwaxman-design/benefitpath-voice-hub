@@ -24,6 +24,7 @@ export interface TenantInfo {
   onboarding_step: number;
   onboarding_checklist: Record<string, boolean>;
   onboarding_checklist_dismissed: boolean;
+  tutorial_completed: boolean;
 }
 
 export interface UserProfile {
