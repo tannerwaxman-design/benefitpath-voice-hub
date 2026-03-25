@@ -21,6 +21,9 @@ export interface TenantInfo {
   auto_refill_threshold: number;
   auto_refill_package: string;
   trial_ends_at: string | null;
+  onboarding_step: number;
+  onboarding_checklist: Record<string, boolean>;
+  onboarding_checklist_dismissed: boolean;
 }
 
 export interface UserProfile {
