@@ -357,7 +357,7 @@ function WelcomeScreen({ onTemplate }: { onTemplate: (t: typeof WELCOME_TEMPLATE
       <p className="text-sm font-medium text-foreground mb-4">
         Pick a starting point, or just tell me what you need:
       </p>
-      <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+      <div data-walkthrough="forge-templates" className="grid grid-cols-2 gap-3 w-full max-w-md">
         {WELCOME_TEMPLATES.map((t) => (
           <button
             key={t.title}
