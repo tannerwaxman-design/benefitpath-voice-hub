@@ -89,52 +89,50 @@ export default function Forge() {
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
 
-    const MAX_RETRIES = 2;
-    let resp: Response | null = null;
+    try {
+      const MAX_RETRIES = 2;
+      let resp: Response | null = null;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const fetchController = new AbortController();
-        const fetchTimeout = setTimeout(() => fetchController.abort(), 60000);
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const fetchController = new AbortController();
+          const fetchTimeout = setTimeout(() => fetchController.abort(), 60000);
 
-        resp = await fetch(CHAT_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ messages: allMessages }),
-          signal: fetchController.signal,
-        });
-        clearTimeout(fetchTimeout);
+          resp = await fetch(CHAT_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ messages: allMessages }),
+            signal: fetchController.signal,
+          });
+          clearTimeout(fetchTimeout);
 
-        if (resp.status === 504 && attempt < MAX_RETRIES) {
-          // Timeout — retry
-          continue;
+          if (resp.status === 504 && attempt < MAX_RETRIES) continue;
+          break;
+        } catch (fetchErr) {
+          if (attempt < MAX_RETRIES) continue;
+          throw fetchErr;
         }
-        break;
-      } catch (fetchErr) {
-        if (attempt < MAX_RETRIES) continue;
-        throw fetchErr;
       }
-    }
 
-    if (!resp) {
-      toast.error("Failed to reach Forge. Please try again.");
-      setIsThinking(false);
-      return;
-    }
+      if (!resp) {
+        toast.error("Failed to reach Forge. Please try again.");
+        setIsThinking(false);
+        return;
+      }
 
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ error: "Unknown error" }));
-      if (resp.status === 429) toast.error("Rate limit reached. Wait a moment and try again.");
-      else if (resp.status === 402) toast.error("AI credits exhausted. Please add credits.");
-      else if (resp.status === 504) toast.error("Forge is taking too long. Please try again.");
-      else toast.error(err.error || "Something went wrong");
-      setIsThinking(false);
-      return;
-    }
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Unknown error" }));
+        if (resp.status === 429) toast.error("Rate limit reached. Wait a moment and try again.");
+        else if (resp.status === 402) toast.error("AI credits exhausted. Please add credits.");
+        else if (resp.status === 504) toast.error("Forge is taking too long. Please try again.");
+        else toast.error(err.error || "Something went wrong");
+        setIsThinking(false);
+        return;
+      }
 
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
@@ -173,7 +171,6 @@ export default function Forge() {
         }
       }
 
-      // Check for agent config JSON in the final content
       const jsonMatch = assistantContent.match(/```json\n([\s\S]*?)\n```/);
       if (jsonMatch) {
         try {
@@ -190,7 +187,6 @@ export default function Forge() {
           toast.error("The AI returned an unreadable configuration. Please try again.");
         }
       } else if (assistantContent.includes("```json")) {
-        // Stream likely cut off mid-JSON
         toast.error("The response was incomplete. Please try confirming again.");
       }
     } catch (err) {
