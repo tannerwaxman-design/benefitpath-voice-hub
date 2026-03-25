@@ -53,10 +53,10 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <WelcomeModal />
-          <TutorialOverlay />
-          <GettingStartedChecklist />
-        <BrowserRouter>
+          <BrowserRouter>
+            <WelcomeModal />
+            <TutorialOverlay />
+            <GettingStartedChecklist />
           <ErrorBoundary>
             <Routes>
               {/* Public routes */}
