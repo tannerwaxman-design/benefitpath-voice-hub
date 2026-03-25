@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 export interface OnboardingChecklist {
   agent_created: boolean;
@@ -12,87 +11,82 @@ export interface OnboardingChecklist {
 }
 
 interface TutorialContextType {
-  showWelcome: boolean;
-  showTutorial: boolean;
+  showWalkthrough: boolean;
   currentStep: number;
   checklist: OnboardingChecklist;
   checklistDismissed: boolean;
   tutorialCompleted: boolean;
-  startTutorial: (mode: "manual" | "forge" | "skip") => void;
   advanceStep: () => void;
   goToStep: (step: number) => void;
   skipTutorial: () => void;
   restartTutorial: () => void;
   dismissChecklist: () => void;
   updateChecklist: (key: keyof OnboardingChecklist) => void;
-  closeTutorial: () => void;
+  pauseOverlay: () => void;
+  resumeOverlay: () => void;
+  overlayPaused: boolean;
 }
 
 const TutorialContext = createContext<TutorialContextType>({
-  showWelcome: false,
-  showTutorial: false,
+  showWalkthrough: false,
   currentStep: 0,
   checklist: { agent_created: false, test_call_made: false, voice_selected: false, contacts_uploaded: false, phone_imported: false },
   checklistDismissed: false,
   tutorialCompleted: true,
-  startTutorial: () => {},
   advanceStep: () => {},
   goToStep: () => {},
   skipTutorial: () => {},
   restartTutorial: () => {},
   dismissChecklist: () => {},
   updateChecklist: () => {},
-  closeTutorial: () => {},
+  pauseOverlay: () => {},
+  resumeOverlay: () => {},
+  overlayPaused: false,
 });
 
 export const useTutorial = () => useContext(TutorialContext);
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 10;
 
 export function TutorialProvider({ children }: { children: ReactNode }) {
   const { user, refreshProfile } = useAuth();
-  const [showWelcome, setShowWelcome] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [checklist, setChecklist] = useState<OnboardingChecklist>({
-    agent_created: false,
-    test_call_made: false,
-    voice_selected: false,
-    contacts_uploaded: false,
-    phone_imported: false,
+    agent_created: false, test_call_made: false, voice_selected: false,
+    contacts_uploaded: false, phone_imported: false,
   });
   const [checklistDismissed, setChecklistDismissed] = useState(false);
   const [tutorialCompleted, setTutorialCompleted] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [overlayPaused, setOverlayPaused] = useState(false);
 
-  // Load tutorial state from tenant
   useEffect(() => {
     if (!user?.tenant) return;
     const tenant = user.tenant;
-    // Only show tutorial after the setup wizard is completed
     if (!tenant.onboarding_completed) return;
 
-    const onboardingStep = tenant.onboarding_step ?? 0;
-    const onboardingChecklist = (tenant.onboarding_checklist ?? checklist) as OnboardingChecklist;
+    const step = tenant.onboarding_step ?? 0;
+    const cl = (tenant.onboarding_checklist ?? checklist) as OnboardingChecklist;
     const dismissed = tenant.onboarding_checklist_dismissed ?? false;
     const completed = tenant.tutorial_completed ?? false;
 
-    setChecklist(onboardingChecklist);
+    setChecklist(cl);
     setChecklistDismissed(dismissed);
     setTutorialCompleted(completed);
 
     if (!initialized) {
-      if (!completed && onboardingStep > 0) {
-        setCurrentStep(onboardingStep);
-        setShowTutorial(true);
-      } else if (!completed && onboardingStep === 0) {
-        setShowWelcome(true);
+      if (!completed) {
+        setCurrentStep(step);
+        setShowWalkthrough(true);
+        // If resuming at step 5 (forge conversation), pause overlay
+        if (step === 5) setOverlayPaused(true);
       }
       setInitialized(true);
     }
   }, [user?.tenant, initialized]);
 
-  // Listen for restart event from Settings page
+  // Listen for restart event
   useEffect(() => {
     const handler = () => {
       if (user?.tenant_id) {
@@ -103,14 +97,27 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           .then(() => refreshProfile());
         setTutorialCompleted(false);
         setCurrentStep(0);
-        setShowWelcome(true);
-        setShowTutorial(false);
+        setShowWalkthrough(true);
+        setOverlayPaused(false);
         setInitialized(false);
       }
     };
     window.addEventListener("restart-tutorial", handler);
     return () => window.removeEventListener("restart-tutorial", handler);
   }, [user?.tenant_id, refreshProfile]);
+
+  // Listen for forge agent created event
+  useEffect(() => {
+    const handler = () => {
+      if (currentStep === 5 && showWalkthrough) {
+        setOverlayPaused(false);
+        setCurrentStep(6);
+        persistStep(6);
+      }
+    };
+    window.addEventListener("agent_created_via_forge", handler);
+    return () => window.removeEventListener("agent_created_via_forge", handler);
+  }, [currentStep, showWalkthrough]);
 
   const persistStep = useCallback(async (step: number) => {
     if (!user?.tenant_id) return;
@@ -129,49 +136,33 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     await refreshProfile();
   }, [user?.tenant_id, refreshProfile]);
 
-  const startTutorial = useCallback((mode: "manual" | "forge" | "skip") => {
-    setShowWelcome(false);
-    if (mode === "skip") {
-      setTutorialCompleted(true);
-      persistCompletion();
-      return;
-    }
-    if (mode === "forge") {
-      // Navigate to forge, tutorial will resume at step 5 after agent creation
-      setCurrentStep(5);
-      setShowTutorial(false);
-      persistStep(5);
-      // Navigation is handled by the component
-      return;
-    }
-    // manual mode
-    setCurrentStep(1);
-    setShowTutorial(true);
-    persistStep(1);
-  }, [persistCompletion, persistStep]);
-
   const advanceStep = useCallback(() => {
-    const nextStep = currentStep + 1;
-    if (nextStep > TOTAL_STEPS) {
-      setShowTutorial(false);
+    const next = currentStep + 1;
+    if (next > TOTAL_STEPS) {
+      setShowWalkthrough(false);
       setTutorialCompleted(true);
       persistCompletion();
       return;
     }
-    setCurrentStep(nextStep);
-    persistStep(nextStep);
+    // Step 5 is the Forge conversation — pause overlay
+    if (next === 5) setOverlayPaused(true);
+    else setOverlayPaused(false);
+    setCurrentStep(next);
+    persistStep(next);
   }, [currentStep, persistCompletion, persistStep]);
 
   const goToStep = useCallback((step: number) => {
     setCurrentStep(step);
-    setShowTutorial(true);
+    setShowWalkthrough(true);
+    if (step === 5) setOverlayPaused(true);
+    else setOverlayPaused(false);
     persistStep(step);
   }, [persistStep]);
 
   const skipTutorial = useCallback(() => {
-    setShowTutorial(false);
-    setShowWelcome(false);
+    setShowWalkthrough(false);
     setTutorialCompleted(true);
+    setOverlayPaused(false);
     persistCompletion();
   }, [persistCompletion]);
 
@@ -184,8 +175,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     await refreshProfile();
     setTutorialCompleted(false);
     setCurrentStep(0);
-    setShowWelcome(true);
-    setShowTutorial(false);
+    setShowWalkthrough(true);
+    setOverlayPaused(false);
     setInitialized(false);
   }, [user?.tenant_id, refreshProfile]);
 
@@ -208,29 +199,15 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       .eq("id", user.tenant_id);
   }, [checklist, user?.tenant_id]);
 
-  const closeTutorial = useCallback(() => {
-    setShowTutorial(false);
-  }, []);
+  const pauseOverlay = useCallback(() => setOverlayPaused(true), []);
+  const resumeOverlay = useCallback(() => setOverlayPaused(false), []);
 
   return (
-    <TutorialContext.Provider
-      value={{
-        showWelcome,
-        showTutorial,
-        currentStep,
-        checklist,
-        checklistDismissed,
-        tutorialCompleted,
-        startTutorial,
-        advanceStep,
-        goToStep,
-        skipTutorial,
-        restartTutorial,
-        dismissChecklist,
-        updateChecklist,
-        closeTutorial,
-      }}
-    >
+    <TutorialContext.Provider value={{
+      showWalkthrough, currentStep, checklist, checklistDismissed, tutorialCompleted,
+      advanceStep, goToStep, skipTutorial, restartTutorial, dismissChecklist,
+      updateChecklist, pauseOverlay, resumeOverlay, overlayPaused,
+    }}>
       {children}
     </TutorialContext.Provider>
   );

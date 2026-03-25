@@ -6,10 +6,10 @@ import { useNavigate } from "react-router-dom";
 
 const CHECKLIST_ITEMS: { key: keyof OnboardingChecklist; label: string; path: string }[] = [
   { key: "agent_created", label: "Create an AI agent", path: "/agents" },
-  { key: "test_call_made", label: "Make a test call", path: "/agents" },
-  { key: "voice_selected", label: "Pick a voice", path: "/voices" },
+  { key: "test_call_made", label: "Test your agent", path: "/agents" },
   { key: "contacts_uploaded", label: "Upload contacts", path: "/contacts" },
   { key: "phone_imported", label: "Import a phone number", path: "/phone-numbers" },
+  { key: "voice_selected", label: "Launch a campaign", path: "/campaigns" },
 ];
 
 export function GettingStartedChecklist() {
@@ -17,29 +17,23 @@ export function GettingStartedChecklist() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Only show after tutorial is done and not dismissed
   if (!tutorialCompleted || checklistDismissed) return null;
 
   const completedCount = Object.values(checklist).filter(Boolean).length;
   const allDone = completedCount === CHECKLIST_ITEMS.length;
-
-  // Hide if all done
   if (allDone) return null;
 
   return (
     <div className="fixed bottom-4 left-4 z-50 w-72 bg-card border rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-      {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3 bg-secondary/30 cursor-pointer"
         onClick={() => setCollapsed(!collapsed)}
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-foreground">Getting Started</span>
-          <span className="text-xs text-muted-foreground">{completedCount}/{CHECKLIST_ITEMS.length}</span>
+          <span className="text-xs text-muted-foreground">{completedCount}/{CHECKLIST_ITEMS.length} done</span>
         </div>
-        <div className="flex items-center gap-1">
-          {collapsed ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-        </div>
+        {collapsed ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
       </div>
 
       {!collapsed && (
@@ -64,14 +58,8 @@ export function GettingStartedChecklist() {
               </button>
             );
           })}
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full mt-2 text-xs text-muted-foreground"
-            onClick={dismissChecklist}
-          >
-            <X className="h-3 w-3 mr-1" /> Dismiss forever
+          <Button variant="ghost" size="sm" className="w-full mt-2 text-xs text-muted-foreground" onClick={dismissChecklist}>
+            <X className="h-3 w-3 mr-1" /> Dismiss
           </Button>
         </div>
       )}
