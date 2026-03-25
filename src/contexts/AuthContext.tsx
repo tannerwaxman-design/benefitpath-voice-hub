@@ -71,7 +71,7 @@ async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
 
   const { data: tenant, error: tError } = await supabase
     .from("tenants")
-    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, credit_balance, industry, status, default_timezone, onboarding_completed, overage_rate_per_minute, billing_cycle_start, billing_cycle_end, hard_stop_enabled, auto_refill_enabled, auto_refill_threshold, auto_refill_package, trial_ends_at")
+    .select("id, company_name, plan, monthly_minute_limit, minutes_used_this_cycle, credit_balance, industry, status, default_timezone, onboarding_completed, overage_rate_per_minute, billing_cycle_start, billing_cycle_end, hard_stop_enabled, auto_refill_enabled, auto_refill_threshold, auto_refill_package, trial_ends_at, onboarding_step, onboarding_checklist, onboarding_checklist_dismissed")
     .eq("id", tenantUser.tenant_id)
     .single();
 
