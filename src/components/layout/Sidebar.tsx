@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/use-permission";
+import { ContextualHelp } from "@/components/onboarding/ContextualHelp";
 import {
   LayoutDashboard, Radio, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, BookOpen, UsersRound, GraduationCap, Flame, Thermometer, FileCode, DollarSign
 } from "lucide-react";
