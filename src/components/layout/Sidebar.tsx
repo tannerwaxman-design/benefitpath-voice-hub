@@ -44,9 +44,9 @@ const navSections: NavSection[] = [
   {
     title: "LAUNCH",
     items: [
-      { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
-      { label: "Contact Lists", icon: Users, path: "/contacts" },
-      { label: "Phone Numbers", icon: Hash, path: "/phone-numbers", roles: ["owner", "admin"] },
+      { label: "Campaigns", icon: Megaphone, path: "/campaigns", helpText: "Launch automated calling campaigns with your agents and contact lists." },
+      { label: "Contact Lists", icon: Users, path: "/contacts", helpText: "Upload and manage your CSV contact lists for campaigns." },
+      { label: "Phone Numbers", icon: Hash, path: "/phone-numbers", roles: ["owner", "admin"], helpText: "Import phone numbers from Twilio for your outbound calls." },
     ],
   },
   {
