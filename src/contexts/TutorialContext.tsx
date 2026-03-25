@@ -111,8 +111,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     const handler = () => {
       if (currentStep === 5 && showWalkthrough) {
         setOverlayPaused(false);
-        setCurrentStep(6);
-        persistStep(6);
+        // Skip test call step (6), go directly to Agent Builder (7)
+        setCurrentStep(7);
+        persistStep(7);
       }
     };
     window.addEventListener("agent_created_via_forge", handler);
