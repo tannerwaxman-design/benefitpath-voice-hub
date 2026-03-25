@@ -4,8 +4,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TutorialProvider } from "@/contexts/TutorialContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
+import { TutorialOverlay } from "@/components/onboarding/TutorialOverlay";
+import { GettingStartedChecklist } from "@/components/onboarding/GettingStartedChecklist";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Overview from "./pages/Overview";
 import LandingPage from "./pages/LandingPage";
@@ -45,10 +49,14 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+      <TutorialProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <WelcomeModal />
+            <TutorialOverlay />
+            <GettingStartedChecklist />
           <ErrorBoundary>
             <Routes>
               {/* Public routes */}
@@ -94,7 +102,8 @@ const App = () => (
             </Routes>
           </ErrorBoundary>
         </BrowserRouter>
-      </TooltipProvider>
+        </TooltipProvider>
+      </TutorialProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

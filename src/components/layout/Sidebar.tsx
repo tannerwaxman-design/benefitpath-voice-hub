@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/use-permission";
+import { ContextualHelp } from "@/components/onboarding/ContextualHelp";
 import {
   LayoutDashboard, Radio, Bot, AudioLines, Megaphone, Users, Phone, BarChart3, Hash, Settings, ChevronLeft, Wrench, BookOpen, UsersRound, GraduationCap, Flame, Thermometer, FileCode, DollarSign
 } from "lucide-react";
@@ -14,6 +15,7 @@ interface NavItem {
   roles?: string[];
   badge?: string;
   accentIcon?: boolean;
+  helpText?: string;
 }
 
 interface NavSection {
@@ -25,26 +27,26 @@ const navSections: NavSection[] = [
   {
     title: "OVERVIEW",
     items: [
-      { label: "Overview", icon: LayoutDashboard, path: "/" },
-      { label: "War Room", icon: Radio, path: "/war-room", badge: "LIVE" },
+      { label: "Overview", icon: LayoutDashboard, path: "/", helpText: "Your dashboard with key metrics and daily performance summary." },
+      { label: "War Room", icon: Radio, path: "/war-room", badge: "LIVE", helpText: "Real-time mission control for high-volume calling days." },
     ],
   },
   {
     title: "CREATE",
     items: [
-      { label: "Forge", icon: Flame, path: "/forge", badge: "AI", accentIcon: true },
-      { label: "Agent Builder", icon: Bot, path: "/agents" },
-      { label: "Voices", icon: AudioLines, path: "/voices" },
-      { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"] },
-      { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"] },
+      { label: "Forge", icon: Flame, path: "/forge", badge: "AI", accentIcon: true, helpText: "Let AI build your agent for you in a conversation." },
+      { label: "Agent Builder", icon: Bot, path: "/agents", helpText: "Create and configure your AI voice agents. Each agent has its own voice, script, and personality." },
+      { label: "Voices", icon: AudioLines, path: "/voices", helpText: "Browse, preview, and clone voices for your agents." },
+      { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"], helpText: "Add FAQs, documents, and company info your agents can reference on calls." },
+      { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"], helpText: "Connect external APIs (CRM, calendar) that your agents can use during calls." },
     ],
   },
   {
     title: "LAUNCH",
     items: [
-      { label: "Campaigns", icon: Megaphone, path: "/campaigns" },
-      { label: "Contact Lists", icon: Users, path: "/contacts" },
-      { label: "Phone Numbers", icon: Hash, path: "/phone-numbers", roles: ["owner", "admin"] },
+      { label: "Campaigns", icon: Megaphone, path: "/campaigns", helpText: "Launch automated calling campaigns with your agents and contact lists." },
+      { label: "Contact Lists", icon: Users, path: "/contacts", helpText: "Upload and manage your CSV contact lists for campaigns." },
+      { label: "Phone Numbers", icon: Hash, path: "/phone-numbers", roles: ["owner", "admin"], helpText: "Import phone numbers from Twilio for your outbound calls." },
     ],
   },
   {
@@ -115,14 +117,14 @@ export function Sidebar() {
                   const active = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
                   return (
                     <Link key={item.path} to={item.path}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className={`group flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         active ? "bg-slate-800 text-white border-l-2 border-primary" : "hover:bg-slate-800/50 hover:text-white"
                       }`}
                       title={collapsed ? item.label : undefined}
                     >
                       <item.icon className={`h-5 w-5 shrink-0 ${item.accentIcon ? "text-amber-400" : ""}`} />
                       {!collapsed && (
-                        <span className="flex items-center gap-2">
+                        <span className="flex items-center gap-2 flex-1">
                           {item.label}
                           {item.badge === "LIVE" ? (
                             <span className="relative flex h-2 w-2">
@@ -134,6 +136,11 @@ export function Sidebar() {
                               {item.badge}
                             </span>
                           ) : null}
+                          {item.helpText && !active && (
+                            <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.preventDefault()}>
+                              <ContextualHelp text={item.helpText} />
+                            </span>
+                          )}
                         </span>
                       )}
                     </Link>

@@ -1762,7 +1762,10 @@ export type Database = {
           margin_percent: number
           minutes_used_this_cycle: number
           monthly_minute_limit: number
+          onboarding_checklist: Json
+          onboarding_checklist_dismissed: boolean
           onboarding_completed: boolean
+          onboarding_step: number
           overage_rate_per_minute: number
           owner_user_id: string
           plan: string
@@ -1777,6 +1780,7 @@ export type Database = {
           tcpa_compliance_mode: string
           total_cost_this_cycle: number
           trial_ends_at: string | null
+          tutorial_completed: boolean
           twilio_account_sid: string | null
           twilio_auth_token: string | null
           updated_at: string
@@ -1810,7 +1814,10 @@ export type Database = {
           margin_percent?: number
           minutes_used_this_cycle?: number
           monthly_minute_limit?: number
+          onboarding_checklist?: Json
+          onboarding_checklist_dismissed?: boolean
           onboarding_completed?: boolean
+          onboarding_step?: number
           overage_rate_per_minute?: number
           owner_user_id: string
           plan?: string
@@ -1825,6 +1832,7 @@ export type Database = {
           tcpa_compliance_mode?: string
           total_cost_this_cycle?: number
           trial_ends_at?: string | null
+          tutorial_completed?: boolean
           twilio_account_sid?: string | null
           twilio_auth_token?: string | null
           updated_at?: string
@@ -1858,7 +1866,10 @@ export type Database = {
           margin_percent?: number
           minutes_used_this_cycle?: number
           monthly_minute_limit?: number
+          onboarding_checklist?: Json
+          onboarding_checklist_dismissed?: boolean
           onboarding_completed?: boolean
+          onboarding_step?: number
           overage_rate_per_minute?: number
           owner_user_id?: string
           plan?: string
@@ -1873,6 +1884,7 @@ export type Database = {
           tcpa_compliance_mode?: string
           total_cost_this_cycle?: number
           trial_ends_at?: string | null
+          tutorial_completed?: boolean
           twilio_account_sid?: string | null
           twilio_auth_token?: string | null
           updated_at?: string
