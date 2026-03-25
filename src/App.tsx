@@ -49,9 +49,13 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+      <TutorialProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <WelcomeModal />
+          <TutorialOverlay />
+          <GettingStartedChecklist />
         <BrowserRouter>
           <ErrorBoundary>
             <Routes>
