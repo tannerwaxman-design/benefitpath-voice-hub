@@ -1762,7 +1762,10 @@ export type Database = {
           margin_percent: number
           minutes_used_this_cycle: number
           monthly_minute_limit: number
+          onboarding_checklist: Json
+          onboarding_checklist_dismissed: boolean
           onboarding_completed: boolean
+          onboarding_step: number
           overage_rate_per_minute: number
           owner_user_id: string
           plan: string
@@ -1810,7 +1813,10 @@ export type Database = {
           margin_percent?: number
           minutes_used_this_cycle?: number
           monthly_minute_limit?: number
+          onboarding_checklist?: Json
+          onboarding_checklist_dismissed?: boolean
           onboarding_completed?: boolean
+          onboarding_step?: number
           overage_rate_per_minute?: number
           owner_user_id: string
           plan?: string
@@ -1858,7 +1864,10 @@ export type Database = {
           margin_percent?: number
           minutes_used_this_cycle?: number
           monthly_minute_limit?: number
+          onboarding_checklist?: Json
+          onboarding_checklist_dismissed?: boolean
           onboarding_completed?: boolean
+          onboarding_step?: number
           overage_rate_per_minute?: number
           owner_user_id?: string
           plan?: string
