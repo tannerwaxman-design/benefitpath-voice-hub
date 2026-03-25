@@ -15,6 +15,7 @@ interface NavItem {
   roles?: string[];
   badge?: string;
   accentIcon?: boolean;
+  helpText?: string;
 }
 
 interface NavSection {
