@@ -34,11 +34,11 @@ const navSections: NavSection[] = [
   {
     title: "CREATE",
     items: [
-      { label: "Forge", icon: Flame, path: "/forge", badge: "AI", accentIcon: true },
-      { label: "Agent Builder", icon: Bot, path: "/agents" },
-      { label: "Voices", icon: AudioLines, path: "/voices" },
-      { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"] },
-      { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"] },
+      { label: "Forge", icon: Flame, path: "/forge", badge: "AI", accentIcon: true, helpText: "Let AI build your agent for you in a conversation." },
+      { label: "Agent Builder", icon: Bot, path: "/agents", helpText: "Create and configure your AI voice agents. Each agent has its own voice, script, and personality." },
+      { label: "Voices", icon: AudioLines, path: "/voices", helpText: "Browse, preview, and clone voices for your agents." },
+      { label: "Knowledge Base", icon: BookOpen, path: "/knowledge-base", roles: ["owner", "admin", "manager"], helpText: "Add FAQs, documents, and company info your agents can reference on calls." },
+      { label: "Tools", icon: Wrench, path: "/tools", roles: ["owner", "admin"], helpText: "Connect external APIs (CRM, calendar) that your agents can use during calls." },
     ],
   },
   {
