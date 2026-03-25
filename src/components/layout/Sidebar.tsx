@@ -76,8 +76,21 @@ export function Sidebar() {
   const role = useRole();
   const [collapsed, setCollapsed] = useState(false);
 
+  // Map nav labels to walkthrough attributes
+  const walkthroughMap: Record<string, string> = {
+    "Forge": "nav-forge",
+    "Agent Builder": "nav-agent-builder",
+    "Campaigns": "nav-campaigns",
+    "Contact Lists": "nav-contacts",
+    "Call Logs": "nav-call-logs",
+    "Leads": "nav-leads",
+    "Voices": "nav-voices",
+    "War Room": "nav-war-room",
+    "Phone Numbers": "nav-phone-numbers",
+  };
+
   return (
-    <aside className={`${collapsed ? "w-16" : "w-[260px]"} bg-slate-900 text-slate-400 flex flex-col min-h-screen transition-all duration-200 shrink-0`}>
+    <aside data-walkthrough="sidebar" className={`${collapsed ? "w-16" : "w-[260px]"} bg-slate-900 text-slate-400 flex flex-col min-h-screen transition-all duration-200 shrink-0`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-16 border-b border-slate-800">
         <div className="flex items-center gap-2">
@@ -117,6 +130,7 @@ export function Sidebar() {
                   const active = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
                   return (
                     <Link key={item.path} to={item.path}
+                      data-walkthrough={walkthroughMap[item.label] || undefined}
                       className={`group flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         active ? "bg-slate-800 text-white border-l-2 border-primary" : "hover:bg-slate-800/50 hover:text-white"
                       }`}
