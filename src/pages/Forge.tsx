@@ -76,6 +76,8 @@ export default function Forge() {
       const agentId = data?.agent?.id;
       if (agentId) setForgedAgentId(agentId);
       toast.success(`${config.agent_name} has been forged!`);
+      // Dispatch event for walkthrough to detect agent creation
+      window.dispatchEvent(new CustomEvent("agent_created_via_forge"));
     } catch (err: unknown) {
       toast.error("Failed to forge agent: " + (err instanceof Error ? err.message : "Unknown error"));
     }
@@ -416,6 +418,7 @@ function MessageBubble({
               <button
                 key={i}
                 onClick={() => onQuickReply(label)}
+                data-walkthrough={label.includes("Test") ? "forge-test-button" : undefined}
                 className="inline-flex items-center px-3.5 py-2 bg-card border border-border rounded-full text-sm font-medium text-foreground hover:bg-amber-50 hover:border-amber-300 hover:shadow-sm transition-all"
               >
                 {label}
