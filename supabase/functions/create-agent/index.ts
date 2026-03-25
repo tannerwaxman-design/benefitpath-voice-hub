@@ -53,11 +53,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // 4. Compile the system prompt
+    // Validate tone against allowed check constraint values
+    const VALID_TONES = ["professional", "friendly", "conversational", "empathetic"];
+    const rawTone = (body.tone || "professional").toLowerCase();
+    const validatedTone = VALID_TONES.includes(rawTone) ? rawTone : "professional";
+
     const promptInput = {
       agent_name: body.agent_name,
       agent_title: body.agent_title || null,
       company_name_override: body.company_name_override || body.company_name || null,
-      tone: body.tone || "professional",
+      tone: validatedTone,
       enthusiasm_level: body.enthusiasm_level || 6,
       filler_words_enabled: body.filler_words_enabled ?? true,
       call_objective: body.call_objective || "appointment_setting",
