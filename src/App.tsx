@@ -102,7 +102,8 @@ const App = () => (
             </Routes>
           </ErrorBoundary>
         </BrowserRouter>
-      </TooltipProvider>
+        </TooltipProvider>
+      </TutorialProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
