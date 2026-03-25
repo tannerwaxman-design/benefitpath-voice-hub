@@ -91,6 +91,26 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.tenant, initialized]);
 
+  // Listen for restart event from Settings page
+  useEffect(() => {
+    const handler = () => {
+      if (user?.tenant_id) {
+        supabase
+          .from("tenants")
+          .update({ onboarding_completed: false, onboarding_step: 0 } as any)
+          .eq("id", user.tenant_id)
+          .then(() => refreshProfile());
+        setTutorialCompleted(false);
+        setCurrentStep(0);
+        setShowWelcome(true);
+        setShowTutorial(false);
+        setInitialized(false);
+      }
+    };
+    window.addEventListener("restart-tutorial", handler);
+    return () => window.removeEventListener("restart-tutorial", handler);
+  }, [user?.tenant_id, refreshProfile]);
+
   const persistStep = useCallback(async (step: number) => {
     if (!user?.tenant_id) return;
     await supabase
