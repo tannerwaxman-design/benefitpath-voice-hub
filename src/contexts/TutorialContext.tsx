@@ -68,7 +68,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   // Load tutorial state from tenant
   useEffect(() => {
     if (!user?.tenant) return;
-    const tenant = user.tenant as any;
+    const tenant = user.tenant;
     const onboardingStep = tenant.onboarding_step ?? 0;
     const onboardingChecklist = tenant.onboarding_checklist ?? checklist;
     const dismissed = tenant.onboarding_checklist_dismissed ?? false;
